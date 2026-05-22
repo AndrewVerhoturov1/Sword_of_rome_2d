@@ -16,6 +16,14 @@
 
 Главная цель этой папки: сделать работу агентов управляемой, проверяемой и повторяемой.
 
+## Быстрый старт
+
+- Новая Kilo-задача -> сначала `AGENTS.md`, потом `.ai/agent_protocol.md`, затем нужный файл из `.ai/rules/`.
+- Вопрос во внешний чат по `/v1` -> `.ai/prompts/create_external_question_prompt.md` и `.ai/external_chats/external_chat_rules.md`.
+- Production-like `/r1` route -> `.ai/external_chats/manual.md`, `.ai/external_chats/publisher_config.json`, `scripts/external_chat_publish.py`.
+- Нужен готовый шаблон артефакта -> смотри раздел `.ai/templates/` ниже.
+- Непонятно устройство workflow в целом -> начни с этого файла, потом смотри `.ai/rules/codex_orchestrator.md`.
+
 ## Базовая схема
 
 ```text
@@ -169,6 +177,18 @@ Kilo может:
 - честно отметить ограничения.
 
 Но финальное подтверждение capability в Kilo делает человек, а затем Codex обновляет workflow-решения на основе подтвержденного состояния.
+
+## Когда читать rules
+
+- `.ai/rules/codex_orchestrator.md` — правила оркестратора; читать перед подготовкой handoff, external package и review после Kilo run.
+- `.ai/rules/kilo_mode_contract.md` — mode/role contract; читать перед каждым Kilo запуском, чтобы не смешать `Kilo mode` и `Task role`.
+- `.ai/rules/kilo_builder.md` — Builder-роль; читать, когда Kilo пишет новый код или меняет существующий код.
+- `.ai/rules/kilo_docs.md` — Docs-роль; читать, когда Kilo обновляет docs, navigation, workflow texts или public-facing объяснения.
+- `.ai/rules/kilo_debugger.md` — Debugger-роль; читать, когда Kilo расследует ошибки, падения, сбои runtime или несоответствие expected behavior.
+- `.ai/rules/kilo_tester.md` — Tester-роль; читать, когда Kilo проверяет поведение, тестовые сценарии и verification flow.
+- `.ai/rules/kilo_refactor.md` — Refactor-роль; читать, когда Kilo меняет структуру существующего кода без смены продуктового смысла.
+- `.ai/rules/agent_protocol.md` — session/run/checkpoint contract; читать, когда задача идёт через session workflow и требует handoff -> report -> review цепочку.
+- `.ai/rules/model_roster.md` — active model policy; читать, когда нужно выбрать class-based recommendation для `/kilo`.
 
 ## Active model layer for `/kilo`
 
@@ -549,3 +569,12 @@ Codex поддерживает четыре короткие repo-level entry-к
 Если фактическая модель неизвестна, нужно писать `недоступно`.
 
 Mode switching запрещён без прямого указания в handoff.
+
+## Templates
+
+- `.ai/templates/block_plan_template.md` — шаблон плана одного orchestration-блока с ordered agent sequence и checkpoints.
+- `.ai/templates/block_orchestrator_package_template.md` — шаблон пакета для младшего оркестратора: scope, stop conditions, agent path и canon references.
+- `.ai/templates/block_context_pack_template.md` — шаблон компактной context-выжимки для одного блока, когда нужно передать только bounded subset материалов.
+- `.ai/templates/block_report_template.md` — шаблон итогового block-level report после выполнения или review блока.
+- `.ai/templates/chunk_plan_template.md` — шаблон плана одного небольшого chunk/run, когда не нужен большой block-level package.
+- `.ai/templates/chunk_completion_report_template.md` — шаблон короткого completion report по одному chunk или small workflow step.
