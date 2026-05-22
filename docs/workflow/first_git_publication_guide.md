@@ -2,6 +2,16 @@
 
 Гид для `sword-of-rome-web`. Помогает выполнить `git init`, первый commit и первый push без включения local-only мусора.
 
+## Статус этого документа после публикации
+
+Этот файл больше не описывает текущий статус repo как "ещё не опубликован". Репозиторий уже опубликован на GitHub как [`AndrewVerhoturov1/Sword_of_rome_2d`](https://github.com/AndrewVerhoturov1/Sword_of_rome_2d).
+
+Сейчас этот гид нужен как:
+
+- историческая запись первого public bootstrap;
+- safety-checklist для похожей первой публикации в новом repo;
+- напоминание, какие local-only и runtime-пути нельзя тащить в public commit.
+
 ## Что уже подготовлено
 
 ### `.gitignore` уже настроен
@@ -113,14 +123,18 @@ git commit -m "Initial commit: project context, workflow layer, reference materi
 
 ### 5. Создание GitHub-репозитория
 
+Этот шаг уже выполнен для текущего repo. Ниже сохранён исходный pre-publication сценарий как historical setup reference.
+
 Открой [github.com/new](https://github.com/new) и создай репозиторий:
 
-- **Repository name:** `sword-of-rome-web`
+- **Repository name:** `Sword_of_rome_2d` или другое имя нового repo по текущей задаче
 - **Description:** Browser-based 2D editor and authoring tool for counter-based wargames
 - **Visibility:** Public или Private — на твой выбор
 - **Не** ставь галочки «Initialize with README», «Add .gitignore» или «Choose a license» — у тебя уже есть свой README и .gitignore
 
 ### 6. Первый push
+
+Для текущего repo этот шаг уже пройден. Команды ниже нужны только если ты повторяешь bootstrap для нового репозитория.
 
 После создания репозитория GitHub покажет команды. Выполни:
 

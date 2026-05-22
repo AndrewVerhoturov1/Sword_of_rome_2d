@@ -9,6 +9,13 @@
 - История `/v1` считается частью публичного контекста проекта.
 - Репозиторий опубликован на GitHub: [`AndrewVerhoturov1/Sword_of_rome_2d`](https://github.com/AndrewVerhoturov1/Sword_of_rome_2d). Гайд по публикации — [`docs/workflow/first_git_publication_guide.md`](../docs/workflow/first_git_publication_guide.md).
 
+## External Start Here
+
+- Начни с [`README.md`](../README.md), потом читай [`AGENTS.md`](../AGENTS.md), затем [`canon/context/sword_of_rome_web_project_context.md`](../canon/context/sword_of_rome_web_project_context.md).
+- Для текущей зрелости repo отдельно проверь [`project_state.md`](project_state.md) до чтения архитектурных деталей.
+- Не путай planned architecture с уже реализованным product code: архитектурные документы описывают целевой editor/runtime, а не готовое приложение.
+- Local-only пути `arena-prototype-launcher/`, `_local/`, `output/Arena tests/` и runtime-подпапки `.ai/` не считаются публичным каноном.
+
 ## Reading order для внешнего чата
 
 Если ты внешний чат и читаешь этот файл как project-specific navigation:
