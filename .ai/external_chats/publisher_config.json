@@ -1,10 +1,10 @@
 {
-  "repo": "{{GITHUB_REPO}}",
+  "repo": "AndrewVerhoturov1/external-agent-read-test",
   "branch": "main",
   "static_manual_path": "external_agent_static_manual.md",
   "temp_root": "external-agent-tmp/",
   "local_static_source": ".ai/external_chats/external_agent_static_manual.md",
-  "static_manual_version": "{{STATIC_MANUAL_VERSION}}",
+  "static_manual_version": "EA-STATIC-2026-05-14-V2",
   "raw_url_template": "https://raw.githubusercontent.com/{repo}/{branch}/{path}",
   "blob_url_template": "https://github.com/{repo}/blob/{branch}/{path}",
   "required_static_anchors": [

@@ -7,7 +7,7 @@
 - Это repo про **browser-based editor / authoring tool** для 2D counter-based варгеймов.
 - Sword of Rome-like материалы здесь = первый тестовый модуль и reference layer.
 - История `/v1` считается частью публичного контекста проекта.
-- Репозиторий пока не опубликован в GitHub. Гайд по первой публикации — [`docs/workflow/first_git_publication_guide.md`](../docs/workflow/first_git_publication_guide.md).
+- Репозиторий опубликован на GitHub: [`AndrewVerhoturov1/Sword_of_rome_2d`](https://github.com/AndrewVerhoturov1/Sword_of_rome_2d). Гайд по публикации — [`docs/workflow/first_git_publication_guide.md`](../docs/workflow/first_git_publication_guide.md).
 
 ## Reading order для внешнего чата
 
