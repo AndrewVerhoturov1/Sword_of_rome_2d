@@ -47,3 +47,58 @@
 ### Статус
 
 `Принято`
+
+## `2026-05-23` — `4-layer product architecture with rules hook boundary`
+
+### Контекст
+
+После двух `/v1` second opinion по architectural decomposition (`V1-20260523-052756` и `V1-20260523-052757`) стало ясно, что грубая `2-layer` модель полезна только как стартовая интуиция, но недостаточна для product planning.
+
+Главная проблема 2-layer framing:
+
+- внутри `editor layer` смешиваются infrastructure, data model и authoring tools;
+- внутри `project-specific layer` смешиваются content и rules;
+- отсутствует явный universal runtime/play layer как буфер между editor и конкретной игрой.
+
+### Решение
+
+Для product code принять `4-layer` архитектуру:
+
+1. `Core Infrastructure + Project/Data Model`
+2. `Universal Authoring / Editor Capabilities`
+3. `Universal Runtime / Play Sandbox`
+4. `Module Package`
+
+Внутри `Module Package` явно разделять:
+
+- `Module Content`
+- `Module Rules/Hooks`
+
+Между universal runtime и module-specific rules ввести явный boundary-контракт:
+
+`RulesHooksInterface`
+
+Также явно держать разделение:
+
+- `map.json`
+- `scenario.json`
+- `savegame.json`
+
+### Причины
+
+- Это не даёт Sword of Rome-like модулю превратиться в hardcoded центр всей платформы.
+- Это сохраняет Phaser в роли renderer, а не source of truth.
+- Это создаёт чистый шов между universal runtime и module-specific behavior.
+- Это снижает риск смешивания editor-логики и play-логики.
+- Это лучше готовит платформу к later server-authoritative architecture.
+
+### Последствия
+
+- `.ai/architecture.md` должен описывать именно `4-layer` модель и module boundaries.
+- Первый product-code skeleton должен следовать этим слоям, а не начинаться как "одна игра".
+- `RulesHooksInterface` нужно отдельно зафиксировать до начала substantive product-code implementation.
+- `Table Sandbox 0.1` должен планироваться как набор universal modules, а не как первый hardcoded Sword of Rome runtime.
+
+### Статус
+
+`Принято`
