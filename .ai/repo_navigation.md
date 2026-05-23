@@ -101,6 +101,7 @@
 
 - [`plans/master/domain_schemas_contract.md`](plans/master/domain_schemas_contract.md) — master-plan по domain/data contract: canonical entities, file set, invariants, open questions.
 - [`plans/master/rules_hooks_interface.md`](plans/master/rules_hooks_interface.md) — master-plan по boundary между universal runtime и module-specific rules hooks.
+- [`plans/master/action_event_contract.md`](plans/master/action_event_contract.md) — master-plan по action/event backbone: input → validation → resolution → commit → state mutation → log, с разделением Action (запрос) и Event (подтверждённый факт).
 
 ### Навигация
 
@@ -117,6 +118,7 @@
 - [`external_chats/notebook/README.md`](external_chats/notebook/README.md) — что лежит в notebook entry history.
 - [`external_chats/notebook/2026-05-23_V1-20260523-055021_domain-data-contract-proposal-for-the-2d-counter.md`](external_chats/notebook/2026-05-23_V1-20260523-055021_domain-data-contract-proposal-for-the-2d-counter.md) — staged notebook entry с external domain/data contract proposal для universal 2D counter-based wargame authoring platform.
 - [`external_chats/notebook/2026-05-23_V1-20260523-055021-2_domain-model-razdelyaet-immutable-definitions-mapdefinition-piecedefinition-scenariodefinition.md`](external_chats/notebook/2026-05-23_V1-20260523-055021-2_domain-model-razdelyaet-immutable-definitions-mapdefinition-piecedefinition-scenariodefinition.md) — staged notebook entry с external split между immutable definitions и mutable runtime state.
+- [`external_chats/notebook/2026-05-23_V1-20260523-062449_ruleshooksinterface-second-opinion-for-the-universal-2d-counter.md`](external_chats/notebook/2026-05-23_V1-20260523-062449_ruleshooksinterface-second-opinion-for-the-universal-2d-counter.md) — staged notebook entry с external recommendation по hybrid resolution model для RulesHooksInterface: module rules возвращают proposed events через `resolveAction`, runtime остаётся единственным committer.
 
 ## Public vs Local-only
 
