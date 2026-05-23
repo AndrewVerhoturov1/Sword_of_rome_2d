@@ -25,7 +25,7 @@ REQUIRED_FIELDS = (
     "raw_response",
 )
 
-QUESTION_ID_PATTERN = re.compile(r"^V1-(\d{8})-(\d{6})$")
+QUESTION_ID_PATTERN = re.compile(r"^V1-(\d{8})-(\d{6})(?:-\d+)?$")
 NAV_HEADER = "| External Question ID | Date | Status | Topic | Notebook Entry Path | Summary |"
 NAV_SEPARATOR = "|---|---|---|---|---|---|"
 NAV_PLACEHOLDER_PREFIX = "| — | — | `staged` | Entries will appear here |"

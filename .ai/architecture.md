@@ -261,6 +261,253 @@ Sword of Rome-like модуль должен жить здесь, а не про
 Ниже интерфейса = universal platform.
 Реализация интерфейса = module-specific behavior.
 
+## Canonical Domain/Data Contract
+
+### Three-Way Split
+
+Product data model должен жёстко разделять:
+
+1. `definitions`
+2. `runtime state`
+3. `module rules`
+
+Это значит:
+
+- описание игры не смешивается с текущей партией;
+- текущая партия не смешивается с executable rules;
+- rules layer не становится hidden storage layer.
+
+### Definitions
+
+К `definitions` относятся:
+
+- `ModuleManifest`
+- `MapDefinition`
+- `SpaceDefinition`
+- `ConnectionDefinition`
+- `ZoneDefinition`
+- `FactionDefinition`
+- `PieceDefinition`
+- `ScenarioDefinition`
+- `DocumentDefinition`
+- later `CardDefinition`
+
+Это stable-ish content layer.
+
+### Runtime State
+
+К `runtime state` относятся:
+
+- `PieceInstance`
+- `ScenarioState`
+- `GameState`
+- `SaveGameState`
+- `TurnState`
+- `PhaseState`
+- `Action`
+- `Event`
+
+Это mutable play layer.
+
+### Rules Layer
+
+К `rules layer` относятся:
+
+- `RulesMetadata`
+- implementation of `RulesHooksInterface`
+
+Rules layer знает module-specific behavior, но не владеет canonical save state.
+
+## Canonical File Set
+
+Current planning choice:
+
+```text
+project.json
+modules/<moduleId>/module.json
+modules/<moduleId>/map.json
+modules/<moduleId>/scenario.<scenarioId>.json
+modules/<moduleId>/rules.metadata.json
+saves/<saveId>.savegame.json
+```
+
+### `project.json`
+
+Stores:
+
+- workspace-level metadata;
+- list of modules;
+- schema/version metadata;
+- optional active module/editor defaults.
+
+Does not store:
+
+- map graph;
+- save state;
+- executable rules.
+
+### `module.json`
+
+Conceptually this file is `ModuleManifest`.
+
+Stores:
+
+- `moduleId`
+- `name`
+- `version`
+- `engineCompatibility`
+- `schemaVersions`
+- pointers to content files
+- default scenario/map
+- rules metadata pointer
+- rules entry pointer
+
+Does not store:
+
+- full runtime saves;
+- event log;
+- full inline executable rules.
+
+### `map.json`
+
+Stores:
+
+- static board definition;
+- spaces;
+- connections;
+- zones/off-map boxes;
+- board asset references;
+- visual metadata.
+
+Does not store:
+
+- current piece positions;
+- current control;
+- current phase;
+- event history.
+
+### `scenario.<scenarioId>.json`
+
+Stores:
+
+- scenario template over chosen map;
+- initial piece instances;
+- starting control/state;
+- starting turn/phase;
+- scenario variables.
+
+Does not store:
+
+- post-start play history;
+- mutable save snapshots across turns.
+
+### `rules.metadata.json`
+
+Stores:
+
+- rules version;
+- hook contract version;
+- phase ids;
+- supported action kinds;
+- automation level;
+- visibility capabilities.
+
+Does not store:
+
+- executable rule code;
+- authoritative runtime state.
+
+### `savegame.json`
+
+Stores:
+
+- current play session snapshot;
+- `GameState`;
+- event log;
+- turn/phase state;
+- mutable piece/control/variable state;
+- references to module/scenario/map versions or hashes.
+
+Does not store:
+
+- canonical definitions;
+- executable rules.
+
+## Core Entity Split
+
+### `PieceDefinition` vs `PieceInstance`
+
+- `PieceDefinition` = what counter type is.
+- `PieceInstance` = one concrete counter in one scenario/save.
+
+### `MapDefinition` vs `ScenarioState` vs `SaveGameState`
+
+- `MapDefinition` = board topology.
+- `ScenarioState` = initial setup over that topology.
+- `SaveGameState` = current mutable state after play.
+
+### `Action` vs `Event`
+
+- `Action` = request/intention.
+- `Event` = committed fact.
+
+Runtime pipeline must preserve that difference.
+
+## Rules Hooks Runtime Contract
+
+Minimal mandatory runtime-facing hooks:
+
+- `getAllowedActions(...)`
+- `validateAction(...)`
+- `getPhaseActions(...)`
+- `onPhaseStart(...)`
+- `checkWinCondition(...)`
+
+Recommended near-term extension:
+
+- `resolveAction(...)`
+
+Boundary rule:
+
+- runtime asks hooks;
+- hooks return structured answers;
+- runtime commits state changes and appends log.
+
+Hooks may read:
+
+- read-only `GameState`
+- read-only module content
+- actor context
+- phase/turn context
+
+Hooks may not:
+
+- mutate Phaser directly;
+- bypass action/event pipeline;
+- own save persistence;
+- hide state mutation outside runtime.
+
+## Stable Invariants
+
+1. `Phaser` never becomes source of truth.
+2. `map.json` does not contain current runtime state.
+3. `scenario.json` does not contain play history.
+4. `savegame.json` does not redefine content definitions.
+5. `Action` and `Event` stay separate.
+6. `PieceDefinition` and `PieceInstance` stay separate.
+7. Runtime state changes through action/event pipeline only.
+8. All canonical files carry `schemaVersion`.
+9. Saves carry compatible module/map/scenario version references or hashes.
+
+## Open Questions
+
+Still intentionally open:
+
+- exact stack model;
+- module dependency model;
+- save compatibility policy;
+- final event derivation split between runtime and rules hooks.
+
 ## Table Sandbox 0.1 Scope
 
 В первый product milestone входят:

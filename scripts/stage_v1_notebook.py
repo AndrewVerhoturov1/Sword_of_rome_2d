@@ -15,7 +15,7 @@ from write_v1_notebook import NAV_HEADER, NAV_PLACEHOLDER_PREFIX, NAV_SEPARATOR,
 
 
 SECTION_RE = re.compile(r"^##\s+(.+?)\s*$", re.MULTILINE)
-QUESTION_ID_RE = re.compile(r"^V1-(\d{8})-(\d{6})$")
+QUESTION_ID_RE = re.compile(r"^V1-(\d{8})-(\d{6})(?:-\d+)?$")
 FOOTNOTE_URL_RE = re.compile(r"^\[\d+\]:\s+(https?://\S+)", re.MULTILINE)
 MARKDOWN_LINK_URL_RE = re.compile(r"\((https?://[^)\s]+)\)")
 INLINE_URL_RE = re.compile(r"https?://[^\s)\]]+")

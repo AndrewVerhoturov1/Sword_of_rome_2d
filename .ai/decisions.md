@@ -102,3 +102,63 @@
 ### Статус
 
 `Принято`
+
+## `2026-05-23` — `Canonical domain/data split and file contract`
+
+### Контекст
+
+После двух `/v1` ответов по domain/data contract (`V1-20260523-055021` и `V1-20260523-055021-2`) стало ясно, что для дальнейшей реализации недостаточно только layer architecture. Нужен явный canonical split между definitions, runtime state и module-specific rules.
+
+Без этого быстро смешаются:
+
+- тип фишки и конкретная фишка в партии;
+- карта и текущее состояние партии;
+- JSON metadata и executable rule logic;
+- request/intention и committed fact.
+
+### Решение
+
+Принять следующий canonical split:
+
+1. `definitions`
+2. `runtime state`
+3. `module rules`
+
+Принять следующий canonical file set:
+
+- `project.json`
+- `modules/<moduleId>/module.json`
+- `modules/<moduleId>/map.json`
+- `modules/<moduleId>/scenario.<scenarioId>.json`
+- `modules/<moduleId>/rules.metadata.json`
+- `saves/<saveId>.savegame.json`
+
+Также принять как canonical distinctions:
+
+- `PieceDefinition` != `PieceInstance`
+- `MapDefinition` != `ScenarioState` != `SaveGameState`
+- `Action` != `Event`
+
+Executable rules не хранятся в JSON metadata. JSON хранит только metadata и ссылки; исполняемая rules logic живёт отдельно за boundary `RulesHooksInterface`.
+
+### Причины
+
+- Это удерживает платформу data-driven.
+- Это не даёт Phaser стать source of truth.
+- Это сохраняет чистый шов между universal runtime и module-specific behavior.
+- Это делает возможными save/load, replay, migration и later server-authoritative flow.
+- Это уменьшает риск захардкодить Sword of Rome-like module в universal schema.
+
+### Последствия
+
+- `architecture.md` должен содержать explicit domain/data contract, а не только слойную схему.
+- Следующий уровень детализации должен идти в будущие schema docs и hook contract docs.
+- Любой product-code skeleton должен следовать именно этому split.
+- Спорные темы не считаются принятыми автоматически:
+  - stack model
+  - module dependencies
+  - exact save compatibility policy
+
+### Статус
+
+`Принято`
