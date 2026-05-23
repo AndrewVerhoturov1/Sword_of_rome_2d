@@ -279,3 +279,39 @@ boundary.
 ### Статус
 
 `Принято`
+## `2026-05-23` — `Product UX stays mode-based and explicit`
+
+### Контекст
+
+После `/v1`-синтеза по product UX model стало ясно, что одной
+authoring-схемы недостаточно. Продукт нужно читать как явные
+режимы работы с понятными переходами, иначе быстро смешаются
+definitions, scenario setup и runtime state.
+
+### Решение
+
+Принять mode-based UX rule:
+
+- `authoring`, `playtest preview`, `runtime/save` flows остаются явными;
+- они не должны тихо перекрывать друг друга одним и тем же
+  user action;
+- `save module` и `save runtime snapshot` должны оставаться разными
+  workflow outcomes.
+
+### Причины
+
+- Это удерживает user mental model чистым.
+- Это защищает canonical split `definitions / runtime state / module rules`.
+- Это не даёт Play Sandbox превратиться в скрытый definitions editor.
+
+### Последствия
+
+- Нужен отдельный UX planning doc для product-wide workflow.
+- Authoring docs, package docs и milestone docs должны говорить одним
+  языком про mode transitions.
+- Future UX growth нужно строить поверх этой explicit boundary, а не
+  через смешанные actions.
+
+### Статус
+
+`Принято`

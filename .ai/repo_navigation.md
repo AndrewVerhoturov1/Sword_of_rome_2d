@@ -140,3 +140,6 @@
 - `.ai/external_chats/requests/`, `responses/`, `tasks/`, `recorder_packages/`, `notebook_sources/`, `notebook_packages/` — runtime внешних чатов.
 
 Эти пути не надо считать публичным каноном проекта, пока человек отдельно не скажет обратное.
+## Recent Additions
+
+- [`plans/master/module_product_ux_model.md`](plans/master/module_product_ux_model.md) — product-wide UX model: authoring, playtest, runtime/save flows, daily loop, mode transitions, and anti-confusion rules.

@@ -227,7 +227,28 @@ This model should be read together with:
 - `domain_schemas_contract.md`
 - `minimal_canonical_file_schemas.md`
 - `module_authoring_workflow.md`
+- `module_product_ux_model.md`
 - `post_0_1_platform_roadmap.md`
+
+## UX Loop Placement
+
+The package model must also stay legible in product UX terms.
+
+The user-facing workflow should read like this:
+
+1. edit canonical package content in authoring mode;
+2. validate the package;
+3. launch preview from the validated package;
+4. create runtime snapshots separately from package save;
+5. later, if needed, explicitly derive a new scenario from runtime state.
+
+Practical consequences:
+
+- package validation belongs before preview launch;
+- package save and runtime save are different actions;
+- scenario fork must be explicit later workflow, not hidden inside `savegame`;
+- package growth should remain visible to the user as new content zones, not as
+  silent manifest bloat.
 
 ## Open Questions
 

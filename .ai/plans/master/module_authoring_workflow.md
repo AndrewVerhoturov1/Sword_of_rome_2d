@@ -195,3 +195,17 @@ How to read both docs together:
   bundle;
 - `module.json` stays a manifest in the long run, even if `0.1` keeps compact
   inline `pieces/factions`.
+
+## Relation To Product UX Model
+
+This file is not the full UX model of the product.
+
+Use `module_product_ux_model.md` for:
+
+- the full user loop across authoring, playtest, and runtime/save flows;
+- explicit mode transitions;
+- package lifecycle in the user's mental model.
+
+Use this file for the narrower question:
+
+- how the authoring side itself should work inside that larger UX model.

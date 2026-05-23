@@ -350,3 +350,18 @@ Use this roadmap to decide when package complexity should grow:
 - `0.2` hardening validates the compact package;
 - `0.3` authoring breadth often triggers first package splitting;
 - `0.5` and `1.0` are where richer package zones become normal, not special.
+
+## UX Model Placement
+
+`module_product_ux_model.md` belongs to the post-`0.1` product-UX track.
+
+Use this roadmap to decide when UX complexity should grow:
+
+- `0.2` hardens the minimal user loop: validate, preview, restart, save, and
+  return to authoring;
+- `0.3` makes the Module Authoring Workspace feel like a coherent daily tool;
+- `0.4` improves playtest feedback through assisted runtime while keeping mode
+  boundaries explicit;
+- `0.5` broadens UX to richer content flows such as cards/documents;
+- `1.0` should read as one coherent authoring/runtime platform, not a loose
+  pile of tools.

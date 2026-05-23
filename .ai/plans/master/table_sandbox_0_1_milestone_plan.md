@@ -254,6 +254,27 @@ The same rule applies to file complexity:
 - do not make `savegame.json` smarter than needed for `0.1`;
 - do not let `module.json` become a content dump too early.
 
+## Minimal UX Loop For 0.1
+
+`0.1` should already be understandable as a tiny but coherent user loop:
+
+1. open Module Authoring Workspace;
+2. edit a tiny module package;
+3. validate the package;
+4. launch Play Sandbox Preview;
+5. move one piece through the full runtime pipeline;
+6. inspect board refresh and event log;
+7. save runtime snapshot if needed;
+8. return to authoring for correction.
+
+Not required in `0.1`:
+
+- full playtest session manager;
+- scenario fork from runtime snapshot;
+- rich runtime branching workflow;
+- sophisticated runtime undo/redo;
+- package publishing flow.
+
 ## Next Artifact
 
 After this plan, the natural follow-up is `first_vertical_slice_spec.md`.
