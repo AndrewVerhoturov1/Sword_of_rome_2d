@@ -99,6 +99,8 @@
 
 ### Master Plans
 
+- [`plans/master/post_0_1_platform_roadmap.md`](plans/master/post_0_1_platform_roadmap.md) вЂ” macro-roadmap РїРѕСЃР»Рµ `Table Sandbox 0.1`: `0.2` hardening, `0.3` authoring expansion, `0.4` assisted runtime, `0.5` generic cards/documents, `1.0` modular platform alpha.
+
 - [`plans/master/domain_schemas_contract.md`](plans/master/domain_schemas_contract.md) — master-plan по domain/data contract: canonical entities, file set, invariants, open questions.
 - [`plans/master/minimal_canonical_file_schemas.md`](plans/master/minimal_canonical_file_schemas.md) — master-plan по minimal canonical file schemas: compact entity definitions, validation, invariants.
 - [`plans/master/rules_hooks_interface.md`](plans/master/rules_hooks_interface.md) — master-plan по boundary между universal runtime и module-specific rules hooks.

@@ -545,6 +545,33 @@ Still intentionally open:
 - server-authoritative online
 - AI
 
+## Post-0.1 Roadmap Shape
+
+После `Table Sandbox 0.1` проект должен расти как platform-first ladder, а не
+как "теперь доделываем одну игру".
+
+Recommended macro-sequence:
+
+1. `0.2` - platform hardening, validation, save compatibility.
+2. `0.3` - authoring workspace expansion.
+3. `0.4` - assisted runtime through `RulesHooksInterface`.
+4. `0.5` - generic cards/documents capabilities.
+5. `1.0` - modular platform alpha.
+
+Boundary rule:
+
+- Layer 1-3 растут только через universal capabilities;
+- game-specific behavior остаётся в module rules;
+- Sword of Rome-like module остаётся reference/test module, а не диктует lower
+  layers.
+
+Macro-roadmap details live in `plans/master/post_0_1_platform_roadmap.md`.
+
+## Roadmap Guardrail
+
+После `0.1` нельзя сразу переключаться на direct game-specific completion.
+Сначала рост по platform-first milestones, потом расширение reference module.
+
 ## Next Planning Steps
 
 1. Зафиксировать glossary верхнеуровневых сущностей.
