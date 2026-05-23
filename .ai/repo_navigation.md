@@ -100,6 +100,7 @@
 ### Master Plans
 
 - [`plans/master/domain_schemas_contract.md`](plans/master/domain_schemas_contract.md) — master-plan по domain/data contract: canonical entities, file set, invariants, open questions.
+- [`plans/master/minimal_canonical_file_schemas.md`](plans/master/minimal_canonical_file_schemas.md) — master-plan по minimal canonical file schemas: compact entity definitions, validation, invariants.
 - [`plans/master/rules_hooks_interface.md`](plans/master/rules_hooks_interface.md) — master-plan по boundary между universal runtime и module-specific rules hooks.
 - [`plans/master/action_event_contract.md`](plans/master/action_event_contract.md) — master-plan по action/event backbone: input → validation → resolution → commit → state mutation → log, с разделением Action (запрос) и Event (подтверждённый факт).
 - [`plans/master/table_sandbox_0_1_milestone_plan.md`](plans/master/table_sandbox_0_1_milestone_plan.md) — operational milestone plan для первого universal tabletop sandbox.

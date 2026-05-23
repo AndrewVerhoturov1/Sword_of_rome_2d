@@ -199,6 +199,8 @@ After this doc is accepted, next planning step can be one of:
 2. a more concrete module-by-module implementation roadmap for `Table Sandbox 0.1`;
 3. a `/v1` question focused only on milestone ordering if external validation is still desired.
 
+For the schema track, the next artifact should be `minimal_canonical_file_schemas.md`.
+
 ## External Sequencing Knowledge
 
 This milestone should not be planned as a broad game build. The useful external

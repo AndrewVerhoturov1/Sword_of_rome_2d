@@ -10,6 +10,7 @@ One piece moves from one space to another through the full canonical pipeline.
 
 ## Preconditions
 
+- canonical files follow `minimal_canonical_file_schemas.md`;
 - sample module exists;
 - sample scenario exists;
 - runtime can load definitions and state into `GameState`;
@@ -65,6 +66,7 @@ This slice is valid only if all of the following are true:
 - validation, resolution, commit, reducer, log, and render all happen visibly;
 - the same slice can be replayed from canonical data;
 - the test module does not require special-case lower-layer logic.
+- the slice uses the same file vocabulary as the schema doc: workspace index, module manifest, board topology, initial setup, rules metadata, mutable runtime snapshot.
 
 ## What This Slice Proves
 

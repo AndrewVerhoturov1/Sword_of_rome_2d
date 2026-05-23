@@ -14,6 +14,16 @@ Planning artifact. Operational milestone plan for the first sandbox loop.
 - rules stay permissive and module-agnostic enough for the first test module;
 - one tiny end-to-end slice proves the architecture.
 
+Read this plan together with `minimal_canonical_file_schemas.md`. Use one
+vocabulary everywhere:
+
+- `project.json` = workspace index;
+- `module.json` = module manifest;
+- `map.json` = board topology;
+- `scenario.json` = initial setup;
+- `rules.metadata.json` = rules capabilities metadata;
+- `savegame.json` = mutable runtime snapshot.
+
 ## Non-Goals
 
 Пока не входит:
@@ -40,6 +50,8 @@ Create the smallest sample module package that can round-trip:
 - `scenario.<scenarioId>.json`;
 - `rules.metadata.json`;
 - `savegame.json`.
+
+Follow `minimal_canonical_file_schemas.md` for the first-pass field contract.
 
 Dependency:
 - nothing else can be stable until IDs, references, and file ownership exist.
@@ -182,6 +194,7 @@ canonical sample files
 - event log is visible and append-only;
 - save/load round-trips the canonical state;
 - rules stay permissive and do not hardcode the first test module into lower layers.
+- the file roles match `minimal_canonical_file_schemas.md` exactly.
 
 ## Deferred Features
 

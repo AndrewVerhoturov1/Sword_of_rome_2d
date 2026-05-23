@@ -121,6 +121,12 @@ Owner:
 
 - `Module Package`
 
+First-pass note for `Table Sandbox 0.1`:
+
+- if keeping separate `pieces.json` / `factions.json` is too heavy for the first
+  thin slice, a small temporary compact layout inside `module.json` is acceptable;
+- this is a short-term milestone simplification, not long-term canonical target.
+
 ### `modules/<moduleId>/map.json`
 
 Purpose:
@@ -369,5 +375,6 @@ Need explicit decision:
 This file should be followed by:
 
 1. `rules_hooks_interface.md`
-2. future JSON/Zod schema specs
-3. milestone-level implementation breakdown
+2. `minimal_canonical_file_schemas.md`
+3. future JSON/Zod schema specs
+4. milestone-level implementation breakdown
