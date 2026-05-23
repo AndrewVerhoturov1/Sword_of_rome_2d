@@ -175,6 +175,12 @@ Stack note for `0.1`:
 - stack is derived from grouping pieces by `locationId`;
 - `stackId` and `stackPosition` stay out of the first save contract.
 
+Compatibility note for `0.1`:
+
+- structurally incompatible save files must be blocked;
+- minor safe metadata mismatches may be warning-only;
+- automatic migration is out of scope for `0.1`.
+
 ## Minimal File Dependency Order
 
 ```text
@@ -197,6 +203,29 @@ project.json
 - `savegame` не должен молча загружаться при несовместимых версиях module/map/scenario.
 - `eventLog[].seq` должен быть монотонным.
 - runtime state меняется только через committed events.
+
+## Save Compatibility Policy For 0.1
+
+Safe default:
+
+- compatible save -> load normally;
+- minor safe mismatch -> warn, then allow;
+- structural incompatibility -> block load;
+- migration-required case -> block load.
+
+Block when:
+
+- `schemaVersion` is incompatible;
+- `moduleId`, `mapId`, or `scenarioId` is missing or unknown;
+- required version references clearly mismatch without a compatibility rule;
+- `pieceDefId` or `locationId` in saved state points to missing definitions;
+- event log contains unknown event types that cannot be safely ignored.
+
+Warning-only is acceptable when:
+
+- only human-readable names or non-canonical metadata changed;
+- optional fields are missing but have safe defaults;
+- version metadata differs in a way that does not break required references.
 
 ## First Slice Constraint
 
@@ -225,6 +254,13 @@ Safe default:
 - это temporary compact layout;
 - это не final canonical direction;
 - позже их лучше вынести в отдельные files вроде `factions.json` и `pieces.json`.
+
+Extraction trigger:
+
+- if `module.json` stops reading like a manifest and starts reading like a content dump,
+  definitions should move out;
+- if piece/faction counts grow meaningfully, or dedicated editor surfaces appear,
+  move to separate files.
 
 ## Later Extension
 

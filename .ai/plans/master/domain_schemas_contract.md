@@ -344,6 +344,23 @@ Mandatory:
 8. All files carry `schemaVersion`.
 9. Saves carry module/map/scenario version references or hashes.
 
+## Authoring Vs Runtime Boundary
+
+Safe default for `Table Sandbox 0.1`:
+
+- `authoring` mode changes definitions and setup files;
+- `playSandbox` mode changes current runtime state through `Action/Event`.
+
+In practice:
+
+- map edits belong to `map.json`;
+- scenario setup edits belong to `scenario.json`;
+- current piece movement belongs to `GameState` / `savegame.json`;
+- current control changes belong to runtime state, not map definitions.
+
+This boundary must stay explicit. The same visual gesture must not silently
+edit definitions in one case and runtime state in another without a clear mode.
+
 ## Open Questions To Resolve
 
 ### Stack model
@@ -383,6 +400,12 @@ Need explicit decision:
 - hard block on version mismatch;
 - warning-only mode;
 - migration-required flow.
+
+Safe default for `Table Sandbox 0.1`:
+
+- block structural incompatibility;
+- allow warning-only for minor safe metadata mismatches;
+- defer migration engine.
 
 ## Recommended Follow-up
 

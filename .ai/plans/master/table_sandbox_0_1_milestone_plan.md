@@ -138,12 +138,24 @@ Dependency:
 - must not invent a second data model;
 - should not bypass runtime authority.
 
+Mode rule:
+
+- `authoring` changes definitions and setup files;
+- `playSandbox` changes current runtime state through `Action/Event`;
+- do not allow silent switching between these meanings.
+
 ### 8. Save/load hardening
 
 Make save/load round-trip the runtime state and event log without redefining content.
 
 Dependency:
 - useful once several event types exist.
+
+Compatibility rule for `0.1`:
+
+- structural incompatibility blocks load;
+- minor safe metadata mismatch may warn and continue;
+- migration is later work.
 
 ### 9. Validation hardening
 
@@ -169,6 +181,13 @@ Only after the universal loop works, add a tiny Sword of Rome-like test layer:
 
 Dependency:
 - must not reshape universal layers.
+
+Compact layout rule for `0.1`:
+
+- small `PieceDefinition[]` and `FactionDefinition[]` may live in `module.json`
+  temporarily;
+- once `module.json` stops being readable as a manifest, move them to
+  `pieces.json` and `factions.json`.
 
 ## Dependency Graph
 
@@ -222,6 +241,11 @@ Also deferred for the same reason:
 
 If a feature only makes the Sword of Rome-like test module more accurate, but does not
 strengthen the universal sandbox loop, defer it.
+
+The same rule applies to file complexity:
+
+- do not make `savegame.json` smarter than needed for `0.1`;
+- do not let `module.json` become a content dump too early.
 
 ## Next Artifact
 
