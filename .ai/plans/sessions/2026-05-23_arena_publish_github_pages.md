@@ -6,7 +6,7 @@
 
 ## Status
 
-in_progress
+completed
 
 ## Goal
 
@@ -32,20 +32,20 @@ in_progress
 
 ### P3: End-To-End Verification And Hardening
 
-- Status: pending.
+- Status: completed.
 - Проверить сценарии `publish -> update -> remove`.
 - Проверить, что Pages-каталог и live-demo реально обновляются.
 - Зафиксировать остаточные ограничения v1 и ошибки preflight.
 
 ## Active Plan Item
 
-`P3: End-To-End Verification And Hardening`
+`None`
 
 ## Runs
 
 - `Session run: 001` - accepted after Codex review; P1 closed.
 - `Session run: 002` - accepted after Codex review; P2 closed.
-- `Session run: 003` - pending; prepare Kilo handoff for P3 end-to-end verification and hardening.
+- `Session run: 003` - accepted after Codex review; P3 closed.
 
 ## User Overrides
 
@@ -60,4 +60,5 @@ in_progress
 - Утверждён implementation plan для publish-контура.
 - `P1` принят по review: backend publish core, remote bootstrap, registry persistence и base-path guard закрыты.
 - `P2` принят по review: UI publish-controls, detail panel, repo/demo links и async disable-state закрыты.
-- Следующий допустимый substantive step: один Kilo handoff на `P3`.
+- `P3` принят по review: live end-to-end publish/update/remove подтверждён, auto-enable GitHub Pages добавлен в bootstrap path.
+- Session goal закрыт.
