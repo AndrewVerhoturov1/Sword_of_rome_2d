@@ -102,6 +102,9 @@
 - [`plans/master/domain_schemas_contract.md`](plans/master/domain_schemas_contract.md) — master-plan по domain/data contract: canonical entities, file set, invariants, open questions.
 - [`plans/master/rules_hooks_interface.md`](plans/master/rules_hooks_interface.md) — master-plan по boundary между universal runtime и module-specific rules hooks.
 - [`plans/master/action_event_contract.md`](plans/master/action_event_contract.md) — master-plan по action/event backbone: input → validation → resolution → commit → state mutation → log, с разделением Action (запрос) и Event (подтверждённый факт).
+- [`plans/master/table_sandbox_0_1_milestone_plan.md`](plans/master/table_sandbox_0_1_milestone_plan.md) — operational milestone plan для первого universal tabletop sandbox.
+- [`plans/master/first_vertical_slice_spec.md`](plans/master/first_vertical_slice_spec.md) — spec одного end-to-end proof slice: движение фишки через полный canonical pipeline.
+- [`plans/master/first_milestone_runtime_skeleton.md`](plans/master/first_milestone_runtime_skeleton.md) — next-step working skeleton для Table Sandbox 0.1.
 
 ### Навигация
 
