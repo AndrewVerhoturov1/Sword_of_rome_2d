@@ -143,3 +143,4 @@
 ## Recent Additions
 
 - [`plans/master/module_product_ux_model.md`](plans/master/module_product_ux_model.md) — product-wide UX model: authoring, playtest, runtime/save flows, daily loop, mode transitions, and anti-confusion rules.
+- [`plans/master/prototype_integration_mapping.md`](plans/master/prototype_integration_mapping.md) — how to use the external `table-map-editor-canvas-local-fixed` prototype as a reference donor without turning it into the product foundation.

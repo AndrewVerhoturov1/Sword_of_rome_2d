@@ -315,3 +315,36 @@ definitions, scenario setup и runtime state.
 ### Статус
 
 `Принято`
+## `2026-05-23` вЂ” `External prototype is a reference donor, not foundation`
+
+### Контекст
+
+External prototype `table-map-editor-canvas-local-fixed` was reviewed as a
+candidate input for the future Map Editor surface.
+
+### Решение
+
+Treat it as:
+
+- reference prototype;
+- selective donor of map-editor UX and interaction ideas;
+- not direct product-code foundation;
+- not source of canonical architecture.
+
+### Причины
+
+- it is useful for map-editing behavior;
+- it preserves ideas that fit the authoring shell;
+- it must not override canonical package/runtime boundaries;
+- it must not become the base architecture for the whole product.
+
+### Последствия
+
+- Map Editor can borrow interaction patterns from it;
+- other surfaces should not inherit its internal shape;
+- product code still starts from canonical architecture and narrow slices;
+- controlled extraction is the default integration method.
+
+### Статус
+
+`Принято`

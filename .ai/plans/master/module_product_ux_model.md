@@ -220,6 +220,21 @@ For `0.1`, the product only needs a thin but coherent loop:
 4. `savegame.json` must stay runtime-only in both data model and user mental model.
 5. Sword of Rome-like content must remain a test lens, not the center of the UX.
 
+## External Prototype Input
+
+The external `table-map-editor-canvas-local-fixed` prototype is relevant mainly
+to the future `Map Editor` surface inside the authoring shell.
+
+Use it as:
+
+- UX reference for map editing behavior;
+- selective donor of interaction ideas;
+- not a product-wide UX foundation;
+- not a runtime/session model.
+
+The main product UX must still be driven by the canonical mode split and package
+lifecycle, not by the prototype's internal structure.
+
 ## Relation To Other Docs
 
 Read together with:

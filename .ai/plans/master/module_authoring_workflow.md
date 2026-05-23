@@ -209,3 +209,15 @@ Use `module_product_ux_model.md` for:
 Use this file for the narrower question:
 
 - how the authoring side itself should work inside that larger UX model.
+
+## External Prototype Input
+
+The external `table-map-editor-canvas-local-fixed` prototype is most relevant to
+the future Map Editor surface inside this workflow.
+
+Use it as:
+
+- a reference for map editing interaction;
+- a donor of inspector/layout ideas;
+- a source of candidate canvas behaviors;
+- not a direct product architecture.

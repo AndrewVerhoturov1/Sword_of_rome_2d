@@ -365,3 +365,13 @@ Use this roadmap to decide when UX complexity should grow:
 - `0.5` broadens UX to richer content flows such as cards/documents;
 - `1.0` should read as one coherent authoring/runtime platform, not a loose
   pile of tools.
+
+## Prototype Placement
+
+External prototypes like `table-map-editor-canvas-local-fixed` belong on the
+authoring-side growth line, mainly as reference material for the future Map
+Editor surface.
+
+They should not steer the roadmap toward a prototype-first foundation. The
+roadmap remains platform-first, and the prototype is only a donor of specific
+UX and interaction ideas.

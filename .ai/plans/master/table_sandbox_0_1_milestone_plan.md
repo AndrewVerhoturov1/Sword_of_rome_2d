@@ -275,6 +275,14 @@ Not required in `0.1`:
 - sophisticated runtime undo/redo;
 - package publishing flow.
 
+## Prototype Relation
+
+The external map-editor prototype should not become the starting architecture
+for `0.1`.
+
+Use it only as a UX reference for future map editing behavior while keeping the
+`0.1` coding slice anchored in the canonical data and runtime pipeline.
+
 ## Next Artifact
 
 After this plan, the natural follow-up is `first_vertical_slice_spec.md`.
