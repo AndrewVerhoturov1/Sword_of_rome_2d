@@ -57,6 +57,7 @@ View redraws from committed state, not from raw input.
 - no hidden mutation path exists outside committed event handling;
 - `GameState` stays the sole source of truth;
 - module rules remain permissive and do not own state mutation.
+- any stack shown by the UI is derived from shared `locationId`, not stored as a separate canonical `Stack`.
 
 ## Acceptance Criteria
 
@@ -90,6 +91,11 @@ Do not pull these into the first slice:
 - online sync;
 - strict legality;
 - polished UI.
+- `Stack` as a first-class entity;
+- `stackId`;
+- `stackPosition`;
+- `split_stack_requested`;
+- `merge_stack_requested`.
 
 ## Next Steps After Slice
 

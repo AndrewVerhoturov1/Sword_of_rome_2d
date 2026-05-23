@@ -169,6 +169,12 @@ Planning artifact. First-pass schema contract for `Table Sandbox 0.1`.
 - executable rules;
 - renderer state как source of truth.
 
+Stack note for `0.1`:
+
+- save format stores `PieceInstance.locationId`, not a separate stack entity;
+- stack is derived from grouping pieces by `locationId`;
+- `stackId` and `stackPosition` stay out of the first save contract.
+
 ## Minimal File Dependency Order
 
 ```text
@@ -203,6 +209,7 @@ project.json
 
 - доказать путь `Action -> validation -> resolveAction -> Event -> GameState -> log -> render`;
 - не тащить раньше времени лишнюю сложность в schema layer.
+- stack display for the slice can be derived from shared `locationId`; no canonical `Stack` entity is required.
 
 ## Safe Default For 0.1
 
@@ -242,9 +249,11 @@ Safe default:
 
 Пока не закрыто:
 
-- точное место для `FactionDefinition` и `PieceDefinition` после compact stage;
 - точная save compatibility policy;
 - точная stack model;
 - нужен ли отдельный `rulesEntry` уже в early runtime;
 - нужен ли action history помимо event log.
 
+Open items here mean later expansion, not a blocker for `0.1`. For `0.1`,
+stack is derived from `locationId`, while `FactionDefinition` and
+`PieceDefinition` stay in the temporary compact `module.json` layout if needed.

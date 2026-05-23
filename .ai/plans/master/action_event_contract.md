@@ -432,6 +432,12 @@ This affects:
 - event payloads
 - reducer logic
 
+Planning default for `Table Sandbox 0.1`:
+
+- stack is derived from shared `locationId`;
+- `Stack` is not a first-class canonical entity yet;
+- `stackId` and `stackPosition` are deferred until later.
+
 ### Save granularity
 
 Still open:

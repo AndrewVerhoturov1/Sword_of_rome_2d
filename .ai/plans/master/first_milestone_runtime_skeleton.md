@@ -191,6 +191,9 @@ planning:
 - save compatibility policy;
 - final event derivation split between runtime and rules hooks.
 
+For `Table Sandbox 0.1`, stack safe default is derived grouping by
+`locationId`, not a separate canonical `Stack` entity.
+
 ## Useful Output Of This Artifact
 
 After this doc is accepted, next planning step can be one of:

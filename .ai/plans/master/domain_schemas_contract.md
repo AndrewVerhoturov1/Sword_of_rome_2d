@@ -354,6 +354,20 @@ Need explicit decision:
 - first-class `Stack` entity; or
 - `stackId` + `stackPosition` on `PieceInstance`.
 
+Safe default for `Table Sandbox 0.1`:
+
+- stack is a derived grouping by shared `locationId`;
+- `Stack` is not a canonical entity yet;
+- `stackId` and `stackPosition` are not required in the first save format;
+- the first milestone keeps one-piece move as the primary proof path.
+
+Why this default:
+
+- it preserves the clean `PieceInstance -> locationId` contract;
+- it avoids an extra stack lifecycle too early;
+- it keeps `savegame.json` simple;
+- it leaves advanced stacks for later without blocking the first slice.
+
 ### Module dependencies
 
 Need explicit decision:

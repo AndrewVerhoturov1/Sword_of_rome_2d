@@ -211,6 +211,13 @@ Explicitly after `0.1`:
 - module dependency framework;
 - migration framework.
 
+Also deferred for the same reason:
+
+- `split_stack_requested`;
+- `merge_stack_requested`;
+- canonical stack ordering;
+- first-class `Stack` entity.
+
 ## Anti-Scope-Creep Rule
 
 If a feature only makes the Sword of Rome-like test module more accurate, but does not
