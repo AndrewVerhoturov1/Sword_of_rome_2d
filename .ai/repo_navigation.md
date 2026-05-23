@@ -116,9 +116,6 @@
 - [`external_chats/V1_navigation.md`](external_chats/V1_navigation.md) — индекс прошлых `/v1` ответов.
 - [`external_chats/notebook/`](external_chats/notebook/) — notebook entry files.
 - [`external_chats/notebook/README.md`](external_chats/notebook/README.md) — что лежит в notebook entry history.
-- [`external_chats/notebook/2026-05-23_V1-20260523-055021_domain-data-contract-proposal-for-the-2d-counter.md`](external_chats/notebook/2026-05-23_V1-20260523-055021_domain-data-contract-proposal-for-the-2d-counter.md) — staged notebook entry с external domain/data contract proposal для universal 2D counter-based wargame authoring platform.
-- [`external_chats/notebook/2026-05-23_V1-20260523-055021-2_domain-model-razdelyaet-immutable-definitions-mapdefinition-piecedefinition-scenariodefinition.md`](external_chats/notebook/2026-05-23_V1-20260523-055021-2_domain-model-razdelyaet-immutable-definitions-mapdefinition-piecedefinition-scenariodefinition.md) — staged notebook entry с external split между immutable definitions и mutable runtime state.
-- [`external_chats/notebook/2026-05-23_V1-20260523-062449_ruleshooksinterface-second-opinion-for-the-universal-2d-counter.md`](external_chats/notebook/2026-05-23_V1-20260523-062449_ruleshooksinterface-second-opinion-for-the-universal-2d-counter.md) — staged notebook entry с external recommendation по hybrid resolution model для RulesHooksInterface: module rules возвращают proposed events через `resolveAction`, runtime остаётся единственным committer.
 
 ## Public vs Local-only
 
