@@ -293,3 +293,17 @@ Extraction trigger:
 Open items here mean later expansion, not a blocker for `0.1`. For `0.1`,
 stack is derived from `locationId`, while `FactionDefinition` and
 `PieceDefinition` stay in the temporary compact `module.json` layout if needed.
+
+## Relation To Mature Package Model
+
+This file is the compact `0.1` schema contract.
+
+The mature target shape of `module package` lives in
+`module_package_model.md`.
+
+Rule of use:
+
+- use this file for first-pass compact layout;
+- use `module_package_model.md` for later package splitting and richer content
+  zones;
+- do not treat compact `0.1` layout as final package shape.

@@ -182,3 +182,16 @@ Still open on purpose:
 - when `PieceDefinition[]` and `FactionDefinition[]` should move out of `module.json`;
 - whether scenario-fork-from-save becomes a first-class tool later.
 
+## Relation To Module Package Model
+
+This workflow is the practical authoring side for the package model.
+
+The mature package shape is documented in `module_package_model.md`.
+
+How to read both docs together:
+
+- this file says how a designer works day to day;
+- `module_package_model.md` says how the package should evolve as a product
+  bundle;
+- `module.json` stays a manifest in the long run, even if `0.1` keeps compact
+  inline `pieces/factions`.

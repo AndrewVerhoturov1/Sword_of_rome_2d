@@ -205,6 +205,44 @@ Sword of Rome-like module остаётся reference/test module. Он не до
 
 `Принято`
 
+## `2026-05-23` — `Module package evolves from compact 0.1 layout to mature multi-part package`
+
+### Контекст
+
+`Table Sandbox 0.1` уже достаточно ясно описал compact package shape:
+manifest, map, scenario, rules metadata, save/runtime split, temporary inline
+`pieces/factions` if needed. Следующий шаг не ломает этот базис, а делает
+package модель зрелой: с ясными content zones, optional rich content и runtime
+boundary.
+
+### Решение
+
+Принять направление, что:
+
+- `module package` в будущем становится multi-part product bundle;
+- `module.json` остаётся manifest, не content dump;
+- `savegame.json` остаётся runtime artifact, не canonical module content;
+- richer content files появляются по мере взросления модуля;
+- `module_package_model.md` становится главным planning doc для этой цели.
+
+### Причины
+
+- Это сохраняет эволюцию от `0.1` без painful rewrite.
+- Это даёт понятный путь для import/export, reuse и future publishing.
+- Это не даёт Sword of Rome-like reference module навязать shape всей
+  платформе.
+
+### Последствия
+
+- Нужно вести отдельный master plan for package model.
+- Compact `0.1` layout остаётся допустимым только как стартовая simplification.
+- Optional content zones не должны попадать в early package просто ради
+  "будущей красоты".
+
+### Статус
+
+`Принято`
+
 ## `2026-05-23` — `Hybrid module authoring workspace with specialized surfaces`
 
 ### Контекст

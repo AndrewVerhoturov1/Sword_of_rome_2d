@@ -576,10 +576,11 @@ Macro-roadmap details live in `plans/master/post_0_1_platform_roadmap.md`.
 
 1. Зафиксировать glossary верхнеуровневых сущностей.
 2. Описать `ModuleManifest` для любого module package.
-3. Описать минимальные schemas для `map.json`, `scenario.json`, `savegame.json`.
-4. Задокументировать `RulesHooksInterface` отдельным planning-артефактом.
-5. Зафиксировать module-level scope для `Table Sandbox 0.1`.
-6. После этого планировать первый product-code skeleton под слои и модули выше.
+3. Описать зрелую `module package` модель как отдельный planning-артефакт.
+4. Описать минимальные schemas для `map.json`, `scenario.json`, `savegame.json`.
+5. Задокументировать `RulesHooksInterface` отдельным planning-артефактом.
+6. Зафиксировать module-level scope для `Table Sandbox 0.1`.
+7. После этого планировать первый product-code skeleton под слои и модули выше.
 
 ## Architectural Rules
 

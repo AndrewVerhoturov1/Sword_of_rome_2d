@@ -340,3 +340,13 @@ Rule:
 
 Использовать этот документ как macro-roadmap над `Table Sandbox 0.1`, а не как
 замену его milestone plan.
+
+## Package Model Placement
+
+`module_package_model.md` belongs to the post-`0.1` packaging track.
+
+Use this roadmap to decide when package complexity should grow:
+
+- `0.2` hardening validates the compact package;
+- `0.3` authoring breadth often triggers first package splitting;
+- `0.5` and `1.0` are where richer package zones become normal, not special.

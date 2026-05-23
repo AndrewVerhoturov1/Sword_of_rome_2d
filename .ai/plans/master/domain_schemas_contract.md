@@ -415,3 +415,18 @@ This file should be followed by:
 2. `minimal_canonical_file_schemas.md`
 3. future JSON/Zod schema specs
 4. milestone-level implementation breakdown
+
+## Module Package Model Link
+
+This contract stays the main boundary doc for `definitions / runtime state /
+module rules`.
+
+The richer future shape of `module package` is documented separately in
+`module_package_model.md`.
+
+Use this file to keep the boundary clear:
+
+- `module.json` is manifest, not content dump;
+- `rules.metadata.json` is metadata, not executable rules;
+- `savegame.json` is runtime artifact, not canonical module content;
+- `module package` may grow richer later, but the boundary stays the same.
