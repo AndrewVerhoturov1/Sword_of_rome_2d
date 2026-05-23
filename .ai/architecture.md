@@ -85,6 +85,12 @@ Responsibility:
 - создавать и редактировать reusable building blocks варгейма;
 - собирать валидные project/module data поверх Layer 1.
 
+Practical shape:
+
+- one Module Authoring Workspace;
+- several specialized editor surfaces inside it;
+- explicit Play Sandbox Preview for runtime proof.
+
 Входит:
 
 - map authoring;
@@ -243,6 +249,12 @@ Sword of Rome-like модуль должен жить здесь, а не про
 `Play Mode` = rules-ready runtime shell с ограничением действий через rule hooks later.
 
 Нельзя размывать границу через хаотичные `if (isPlayMode)` в editor инструментах.
+
+Практически это означает:
+
+- authoring surfaces edit definitions and setup;
+- Play Sandbox Preview edits runtime state only through Action/Event;
+- module package is assembled in authoring mode, then executed in play mode.
 
 ### Rules Hook Boundary Is Mandatory
 

@@ -106,6 +106,7 @@
 - [`plans/master/table_sandbox_0_1_milestone_plan.md`](plans/master/table_sandbox_0_1_milestone_plan.md) — operational milestone plan для первого universal tabletop sandbox.
 - [`plans/master/first_vertical_slice_spec.md`](plans/master/first_vertical_slice_spec.md) — spec одного end-to-end proof slice: движение фишки через полный canonical pipeline.
 - [`plans/master/first_milestone_runtime_skeleton.md`](plans/master/first_milestone_runtime_skeleton.md) — next-step working skeleton для Table Sandbox 0.1.
+- [`plans/master/module_authoring_workflow.md`](plans/master/module_authoring_workflow.md) — authoring workflow: workspace shell + editor surfaces + play sandbox preview.
 
 ### Навигация
 

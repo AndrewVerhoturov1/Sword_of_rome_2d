@@ -24,6 +24,8 @@ vocabulary everywhere:
 - `rules.metadata.json` = rules capabilities metadata;
 - `savegame.json` = mutable runtime snapshot.
 
+Read module-creation details in [module_authoring_workflow.md](./module_authoring_workflow.md).
+
 ## Non-Goals
 
 Пока не входит:
@@ -143,6 +145,11 @@ Mode rule:
 - `authoring` changes definitions and setup files;
 - `playSandbox` changes current runtime state through `Action/Event`;
 - do not allow silent switching between these meanings.
+
+Workflow rule:
+
+- authoring lives in one Module Authoring Workspace with several surfaces;
+- Play Sandbox Preview is part of the workflow, but it is not a definitions editor.
 
 ### 8. Save/load hardening
 
