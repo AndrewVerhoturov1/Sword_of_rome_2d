@@ -3,6 +3,8 @@ _local/
 output/Arena tests/
 
 **/node_modules/
+**/__pycache__/
+*.pyc
 **/.codex-logs/
 dist/
 build/

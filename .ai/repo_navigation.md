@@ -4,7 +4,7 @@
 
 ## Что здесь главное
 
-- Это repo про **browser-based editor / authoring tool** для 2D counter-based варгеймов.
+- Это repo про browser-based editor / authoring tool для 2D counter-based варгеймов.
 - Sword of Rome-like материалы здесь = первый тестовый модуль и reference layer.
 - История `/v1` считается частью публичного контекста проекта.
 - Репозиторий опубликован на GitHub: [`AndrewVerhoturov1/Sword_of_rome_2d`](https://github.com/AndrewVerhoturov1/Sword_of_rome_2d). Гайд по публикации — [`docs/workflow/first_git_publication_guide.md`](../docs/workflow/first_git_publication_guide.md).
@@ -16,7 +16,7 @@
 - Не путай planned architecture с уже реализованным product code: архитектурные документы описывают целевой editor/runtime, а не готовое приложение.
 - Local-only пути `arena-prototype-launcher/`, `_local/`, `output/Arena tests/` и runtime-подпапки `.ai/` не считаются публичным каноном.
 
-## Reading order для внешнего чата
+## Reading Order Для Внешнего Чата
 
 Если ты внешний чат и читаешь этот файл как project-specific navigation:
 
@@ -28,15 +28,15 @@
 6. [`architecture.md`](architecture.md) — зафиксированный architectural focus.
 7. [`decisions.md`](decisions.md) — принятые решения.
 
-## Публичные слои
+## Публичные Слои
 
-### Стартовые точки
+### Стартовые Точки
 
-- [`README.md`](../README.md) — короткое описание проекта и разделение public/local-only слоёв.
+- [`README.md`](../README.md) — краткое описание проекта и разделение public/local-only слоёв.
 - [`AGENTS.md`](../AGENTS.md) — workflow contract этого repo.
 - [`project_brief.md`](project_brief.md) — краткая формулировка цели.
 - [`project_state.md`](project_state.md) — текущий статус repo.
-- [`architecture.md`](architecture.md) — зафиксированный architectural focus.
+- [`architecture.md`](architecture.md) — architectural focus.
 - [`decisions.md`](decisions.md) — принятые решения.
 
 ### Canon
@@ -73,11 +73,11 @@
 
 - [`ideas/README.md`](../ideas/README.md) — место для непринятых идей.
 
-## Workflow-слой `.ai/`
+## Workflow-Слой `.ai/`
 
 - `.ai/` содержит workflow-правила, конфигурацию, промпты и навигацию для `Codex + Kilo Code`.
 
-### Ключевые файлы
+### Ключевые Файлы
 
 - [`rules/agent_protocol.md`](rules/agent_protocol.md) — агентный протокол.
 - [`rules/codex_orchestrator.md`](rules/codex_orchestrator.md) — правила Codex-оркестратора.
@@ -93,8 +93,14 @@
 - [`validators/`](validators/) — валидаторы workflow-артефактов.
 - [`external_chats/external_chat_rules.md`](external_chats/external_chat_rules.md) — правила для External Web Chat.
 - [`external_chats/external_agent_static_manual.md`](external_chats/external_agent_static_manual.md) — статический мануал для внешних агентов.
+- [`external_chats/chatgpt_project_source_repo_onboarding.md`](external_chats/chatgpt_project_source_repo_onboarding.md) — onboarding-конспект для внешнего агента в ChatGPT Projects.
 - [`external_chats/publisher_config.json`](external_chats/publisher_config.json) — конфигурация publisher для External Web Chat.
 - [`bootstrap/portable/`](bootstrap/portable/) — portable bootstrap package для переноса workflow в новый проект.
+
+### Master Plans
+
+- [`plans/master/domain_schemas_contract.md`](plans/master/domain_schemas_contract.md) — master-plan по domain/data contract: canonical entities, file set, invariants, open questions.
+- [`plans/master/rules_hooks_interface.md`](plans/master/rules_hooks_interface.md) — master-plan по boundary между universal runtime и module-specific rules hooks.
 
 ### Навигация
 
@@ -104,11 +110,13 @@
 - [`architecture.md`](architecture.md) — architectural focus.
 - [`decisions.md`](decisions.md) — принятые решения.
 
-## V1 history
+## V1 History
 
 - [`external_chats/V1_navigation.md`](external_chats/V1_navigation.md) — индекс прошлых `/v1` ответов.
 - [`external_chats/notebook/`](external_chats/notebook/) — notebook entry files.
 - [`external_chats/notebook/README.md`](external_chats/notebook/README.md) — что лежит в notebook entry history.
+- [`external_chats/notebook/2026-05-23_V1-20260523-055021_domain-data-contract-proposal-for-the-2d-counter.md`](external_chats/notebook/2026-05-23_V1-20260523-055021_domain-data-contract-proposal-for-the-2d-counter.md) — staged notebook entry с external domain/data contract proposal для universal 2D counter-based wargame authoring platform.
+- [`external_chats/notebook/2026-05-23_V1-20260523-055021-2_domain-model-razdelyaet-immutable-definitions-mapdefinition-piecedefinition-scenariodefinition.md`](external_chats/notebook/2026-05-23_V1-20260523-055021-2_domain-model-razdelyaet-immutable-definitions-mapdefinition-piecedefinition-scenariodefinition.md) — staged notebook entry с external split между immutable definitions и mutable runtime state.
 
 ## Public vs Local-only
 
