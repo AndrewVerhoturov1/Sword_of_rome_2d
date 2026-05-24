@@ -28,3 +28,7 @@ Thumbs.db
 .ai/external_chats/notebook_packages/
 !.ai/external_chats/tasks/
 !.ai/external_chats/tasks/README.md
+
+# Vite dev logs
+table-sandbox/.vite-dev*.log
+table-sandbox/.vite-dev*.err.log

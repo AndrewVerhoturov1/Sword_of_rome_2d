@@ -69,6 +69,18 @@
 - [`scripts/validate_external_chat_package.py`](../scripts/validate_external_chat_package.py) — валидация external chat package.
 - [`scripts/external_chat_publish.py`](../scripts/external_chat_publish.py) — публикация artifacts для External Web Chat.
 
+### Table Sandbox (First Product Code)
+
+- [`table-sandbox/`](../table-sandbox/) — первый product-code блок: Phaser-based renderer, runtime action/event pipeline, game state, React debug panel.
+- [`table-sandbox/src/renderer/phaserScene.ts`](../table-sandbox/src/renderer/phaserScene.ts) — Phaser render scene.
+- [`table-sandbox/src/renderer/PhaserStage.tsx`](../table-sandbox/src/renderer/PhaserStage.tsx) — React-Phaser bridge component.
+- [`table-sandbox/src/runtime/actionEvent.ts`](../table-sandbox/src/runtime/actionEvent.ts) — Action/Event pipeline: input → validation → resolution → commit → state mutation → log.
+- [`table-sandbox/src/runtime/GameState.ts`](../table-sandbox/src/runtime/GameState.ts) — Game state model.
+- [`table-sandbox/src/debug/DebugPanel.tsx`](../table-sandbox/src/debug/DebugPanel.tsx) — Debug panel component.
+- [`table-sandbox/src/App.tsx`](../table-sandbox/src/App.tsx) — Main app component.
+- [`table-sandbox/package.json`](../table-sandbox/package.json) — Dependencies and scripts.
+- [`table-sandbox/vite.config.ts`](../table-sandbox/vite.config.ts) — Vite build config.
+
 ### Ideas
 
 - [`ideas/README.md`](../ideas/README.md) — место для непринятых идей.
