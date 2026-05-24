@@ -6,13 +6,13 @@ import { bootstrapGameState } from "./runtime/bootstrap";
 import {
   createMovePieceAction,
   createEvent,
-  validateAction,
   reduceEvent,
   createEventLog,
   appendEvent,
   type Action,
   type EventLog,
 } from "./runtime/actionEvent";
+import { validateAction, resolveAction } from "./runtime/rulesHooks";
 import "./App.css";
 
 /**
@@ -29,9 +29,12 @@ import "./App.css";
  *
  * PhaserStage — только renderer/input, не владеет состоянием.
  *
+ * Handoff 0012: rules boundary стала явной.
+ * Flow: runtime asks rules.validateAction → rules.resolveAction → runtime commits.
+ *
  * Первый move slice UX:
  *   1. Клик по space с фишкой → выбор фишки (подсветка)
- *   2. Клик по другому space → move_piece_requested → piece_moved → redraw
+ *   2. Клик по другому space → move_piece_requested → validate → resolve → piece_moved → redraw
  */
 
 export default function App() {
@@ -47,8 +50,11 @@ export default function App() {
    *   Шаг 1 — если фишка не выбрана и кликнутый space содержит фишку:
    *            выбрать эту фишку.
    *   Шаг 2 — если фишка уже выбрана и кликнут другой space:
-   *            создать move_piece_requested → провалидировать →
-   *            скоммитить piece_moved → reduce GameState → обновить event log.
+   *            создать move_piece_requested →
+   *            спросить rules.validateAction →
+   *            спросить rules.resolveAction →
+   *            скоммитить каждый proposed event →
+   *            reduce GameState → обновить event log.
    *
    * Phaser НЕ мутирует GameState. Только runtime коммитит события.
    */
@@ -88,7 +94,7 @@ export default function App() {
         "user"
       );
 
-      // Валидация
+      // Валидация — спрашиваем rules shim
       const validation = validateAction(action, gameState);
       if (validation.status === "block") {
         setLastAction(action);
@@ -96,18 +102,23 @@ export default function App() {
         return;
       }
 
-      // Коммитим piece_moved Event
-      const event = createEvent(action, "piece_moved");
+      // Resolution — спрашиваем rules shim, какие events предложить
+      const proposedEvents = resolveAction(action, gameState);
 
-      // Обновляем EventLog
-      setEventLog((prev) => {
-        const updated = { events: [...prev.events] };
-        appendEvent(updated, event);
-        return updated;
-      });
+      // Коммитим каждый proposed event (runtime — единственный authority)
+      for (const proposed of proposedEvents) {
+        const event = createEvent(action, proposed.eventType, proposed.payload);
 
-      // Reducer: применяем event к GameState (единственный путь мутации)
-      setGameState((prev) => reduceEvent(prev, event));
+        // Обновляем EventLog
+        setEventLog((prev) => {
+          const updated = { events: [...prev.events] };
+          appendEvent(updated, event);
+          return updated;
+        });
+
+        // Reducer: применяем event к GameState (единственный путь мутации)
+        setGameState((prev) => reduceEvent(prev, event));
+      }
 
       setLastAction(action);
       setSelectedPieceId(null);

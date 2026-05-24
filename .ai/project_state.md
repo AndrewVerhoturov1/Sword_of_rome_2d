@@ -16,7 +16,8 @@
   - `0008` — technical bootstrap shell;
   - `0009` — canonical fixture seed;
   - `0010` — runtime/data bootstrap from fixtures;
-  - `0011` — first narrow Action/Event move slice.
+  - `0011` — first narrow Action/Event move slice;
+  - `0012` — permissive RulesHooks shim.
 
 ## Что уже работает в product code
 
@@ -37,6 +38,11 @@
   - reducer updates `GameState`
   - event log grows
   - renderer redraws piece from updated runtime state
+- Rules boundary уже выделен:
+  - runtime asks `validateAction`
+  - runtime asks `resolveAction`
+  - rules shim answers permissively
+  - runtime commits returned events itself
 
 ## Что зафиксировано в workflow
 

@@ -7,6 +7,10 @@
  * Правило: ни один Phaser scene object не создаёт Action/Event напрямую.
  * Только runtime (вне Phaser) может создавать Action и коммитить Event.
  *
+ * Handoff 0012: validateAction перенесён в RulesHooks (rulesHooks.ts).
+ * Runtime теперь спрашивает rules shim для validate и resolve,
+ * а сам коммитит event и применяет reducer.
+ *
  * Полный контракт описан в:
  * .ai/plans/master/action_event_contract.md
  */
@@ -70,65 +74,29 @@ export interface Event {
 /** Монотонный счётчик коммитов */
 let _eventSeq = 0;
 
-/** Создать committed Event из Action */
-export function createEvent(action: Action, eventType: string): Event {
+/**
+ * Создать committed Event из Action.
+ *
+ * Если payload передан явно, используется он.
+ * Иначе payload копируется из action.payload (поведение по умолчанию).
+ *
+ * Это позволяет RulesHooks.resolveAction(...) предлагать свой payload,
+ * отличный от action.payload, если нужно.
+ */
+export function createEvent(
+  action: Action,
+  eventType: string,
+  payload?: Record<string, unknown>
+): Event {
   _eventSeq++;
   return {
     eventId: `event-${_eventSeq}`,
     seq: _eventSeq,
     type: eventType,
-    payload: { ...action.payload },
+    payload: payload ?? { ...action.payload },
     causedByActionId: action.actionId,
     timestamp: Date.now(),
   };
-}
-
-// ---- Validation ----
-
-export type ValidationStatus = "allow" | "warn" | "block";
-
-export interface ValidationResult {
-  status: ValidationStatus;
-  reasonCode: string;
-}
-
-/**
- * Permissive-валидатор для первого Action/Event Spine slice.
- *
- * Для move_piece_requested проверяет:
- *  - наличие pieceId, fromLocationId, toLocationId в payload;
- *  - piece существует в GameState.
- *
- * Для всех остальных action — permissive allow.
- *
- * В будущем валидация будет передана RulesHooks.
- */
-export function validateAction(
-  action: Action,
-  state?: GameState
-): ValidationResult {
-  if (action.type === "move_piece_requested") {
-    const { pieceId, fromLocationId, toLocationId } = action.payload;
-    if (!pieceId || !fromLocationId || !toLocationId) {
-      return { status: "block", reasonCode: "move_piece_requested_missing_payload" };
-    }
-    if (state) {
-      const piece = state.pieces.find((p) => p.pieceId === pieceId);
-      if (!piece) {
-        return { status: "block", reasonCode: "move_piece_requested_unknown_piece" };
-      }
-      if (piece.locationId !== fromLocationId) {
-        return {
-          status: "warn",
-          reasonCode: "move_piece_requested_location_mismatch",
-        };
-      }
-    }
-    return { status: "allow", reasonCode: "move_piece_requested_permissive_allow" };
-  }
-
-  // Все остальные типы — permissive allow
-  return { status: "allow", reasonCode: "bootstrap_permissive" };
 }
 
 // ---- Reducer ----

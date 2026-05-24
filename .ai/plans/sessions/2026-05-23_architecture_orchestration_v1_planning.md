@@ -87,6 +87,9 @@ in_progress
 - `Session run: 006` - handoff `0011_action_event_spine_first_move.md` prepared for the first narrow move slice through canonical Action/Event flow.
 - `Session run: 007` - `0011` reviewed by Codex: build/typecheck passed, scope looks clean, product verdict = pending human check because this is a visible browser/runtime slice.
 - `Session run: 008` - user confirmed real browser behavior for `0011`; Codex accepts the first narrow Action/Event move slice and prepares workflow checkpoint.
+- `Session run: 009` - handoff `0012_permissive_rules_hooks_shim.md` prepared for the next narrow boundary step: runtime asks, rules answer, runtime commits.
+- `Session run: 010` - `0012` reviewed by Codex: code and checks look clean, verdict = pending human check because the browser move loop must still be confirmed after the boundary extraction.
+- `Session run: 011` - user confirmed real browser behavior for `0012`; Codex accepts the permissive RulesHooks shim as the next runtime baseline.
 
 ## User Overrides
 
@@ -140,6 +143,21 @@ in_progress
   - authoritative `GameState` still lives outside Phaser;
   - renderer redraw follows committed runtime state;
   - event log and debug evidence reflect the committed move.
+- Current next practical step is fixed locally, without new `/v1`:
+  - extract a minimal permissive `RulesHooks` shim;
+  - move `validate` and `resolve` answers behind that boundary;
+  - keep current move behavior unchanged.
+- `0012` code review result:
+  - permissive rules logic is extracted into a dedicated `rulesHooks.ts` shim;
+  - runtime now asks rules for `validateAction` and `resolveAction`;
+  - runtime still commits events and applies reducer itself;
+  - build and typecheck pass locally;
+  - human visual check is now completed by the user;
+  - `0012` is accepted as the first explicit `runtime asks -> rules answer -> runtime commits` baseline.
+- Current accepted baseline now also includes:
+  - permissive `RulesHooks` lives in `table-sandbox/src/runtime/rulesHooks.ts`;
+  - current move behavior is preserved for the user;
+  - runtime/rules boundary is cleaner without expanding rules breadth yet.
 - В repo уже принят framing: проект = browser-based 2D authoring tool / editor / tabletop sandbox, а Sword of Rome-like модуль = первый тестовый модуль.
 - По `/v1` уже получены и staged два external second opinion:
   - `V1-20260523-052756`
