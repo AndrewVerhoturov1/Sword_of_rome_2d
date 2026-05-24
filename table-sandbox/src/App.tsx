@@ -9,10 +9,13 @@ import {
   reduceEvent,
   createEventLog,
   appendEvent,
+  resetActionSeq,
+  resetEventSeq,
   type Action,
   type EventLog,
 } from "./runtime/actionEvent";
 import { validateAction, resolveAction } from "./runtime/rulesHooks";
+import { saveSnapshot, loadSnapshot } from "./runtime/snapshot";
 import "./App.css";
 
 /**
@@ -42,6 +45,43 @@ export default function App() {
   const [lastAction, setLastAction] = useState<Action | null>(null);
   const [eventLog, setEventLog] = useState<EventLog>(createEventLog);
   const [selectedPieceId, setSelectedPieceId] = useState<string | null>(null);
+  const [snapshotStatus, setSnapshotStatus] = useState<string | null>(null);
+
+  /**
+   * Сохранить текущий runtime snapshot в localStorage.
+   */
+  const handleSave = useCallback(() => {
+    const result = saveSnapshot(gameState, eventLog);
+    setSnapshotStatus(result.message);
+  }, [gameState, eventLog]);
+
+  /**
+   * Загрузить runtime snapshot из localStorage.
+   *
+   * Восстанавливает GameState и EventLog.
+   * Сбрасывает монотонные счётчики, чтобы следующие action/event
+   * продолжали нумерацию без конфликтов.
+   */
+  const handleLoad = useCallback(() => {
+    const result = loadSnapshot();
+    setSnapshotStatus(result.message);
+
+    if (result.ok && result.snapshot) {
+      const { gameState: loadedGS, eventLog: loadedEL } = result.snapshot;
+
+      // Сброс монотонных счётчиков на максимум из загруженного лога
+      if (loadedEL.events.length > 0) {
+        const maxSeq = Math.max(...loadedEL.events.map((e) => e.seq));
+        resetActionSeq(maxSeq);
+        resetEventSeq(maxSeq);
+      }
+
+      setGameState(loadedGS);
+      setEventLog(loadedEL);
+      setLastAction(null);
+      setSelectedPieceId(null);
+    }
+  }, []);
 
   /**
    * Обработчик клика по space из Phaser.
@@ -161,16 +201,37 @@ export default function App() {
       </main>
 
       <footer className="app-footer">
-        <span>GameState version: {gameState.version}</span>
-        <span className="footer-sep">|</span>
-        <span>
-          {gameState.projectId}/{gameState.moduleId}/{gameState.mapId}/
-          {gameState.scenarioId}
-        </span>
-        <span className="footer-sep">|</span>
-        <span>Events: {eventLog.events.length}</span>
-        <span className="footer-sep">|</span>
-        <span>Источник истины: Runtime (React state), НЕ Phaser</span>
+        <div className="footer-left">
+          <span>GameState version: {gameState.version}</span>
+          <span className="footer-sep">|</span>
+          <span>
+            {gameState.projectId}/{gameState.moduleId}/{gameState.mapId}/
+            {gameState.scenarioId}
+          </span>
+          <span className="footer-sep">|</span>
+          <span>Events: {eventLog.events.length}</span>
+          <span className="footer-sep">|</span>
+          <span>Источник истины: Runtime (React state), НЕ Phaser</span>
+        </div>
+        <div className="footer-actions">
+          <button
+            className="snapshot-btn save-btn"
+            onClick={handleSave}
+            title="Сохранить текущее состояние в локальное хранилище браузера"
+          >
+            Сохранить
+          </button>
+          <button
+            className="snapshot-btn load-btn"
+            onClick={handleLoad}
+            title="Загрузить сохранённое состояние из локального хранилища браузера"
+          >
+            Загрузить
+          </button>
+          {snapshotStatus && (
+            <span className="snapshot-status">{snapshotStatus}</span>
+          )}
+        </div>
       </footer>
     </div>
   );

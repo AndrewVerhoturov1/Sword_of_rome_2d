@@ -72,6 +72,7 @@
 .app-footer {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 8px;
   padding: 8px 24px;
   background: #161b22;
@@ -81,6 +82,52 @@
   color: #8b949e;
 }
 
+.footer-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.footer-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
 .footer-sep {
   color: #30363d;
+}
+
+/* ---- Snapshot save/load buttons ---- */
+
+.snapshot-btn {
+  padding: 4px 12px;
+  border: 1px solid #30363d;
+  border-radius: 4px;
+  background: #21262d;
+  color: #c9d1d9;
+  font-family: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.snapshot-btn:hover {
+  background: #30363d;
+  border-color: #58a6ff;
+}
+
+.snapshot-btn:active {
+  background: #161b22;
+}
+
+.snapshot-status {
+  font-size: 11px;
+  color: #8b949e;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }

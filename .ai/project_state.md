@@ -2,11 +2,11 @@
 
 ## Дата обновления
 
-`2026-05-24`
+`2026-05-25`
 
 ## Текущий этап
 
-`Table Sandbox 0.1: first move slice accepted baseline`
+`Table Sandbox 0.1: minimal runtime snapshot accepted baseline`
 
 ## Что уже принято
 
@@ -17,7 +17,9 @@
   - `0009` — canonical fixture seed;
   - `0010` — runtime/data bootstrap from fixtures;
   - `0011` — first narrow Action/Event move slice;
-  - `0012` — permissive RulesHooks shim.
+  - `0012` — permissive RulesHooks shim;
+  - direct graph-aware hardening for `move_piece_requested`;
+  - `0014` — minimal runtime snapshot save/load.
 
 ## Что уже работает в product code
 
@@ -38,11 +40,21 @@
   - reducer updates `GameState`
   - event log grows
   - renderer redraws piece from updated runtime state
+- Первый минимальный persistence loop уже доказан:
+  - `Сохранить` пишет runtime snapshot в `localStorage`
+  - `Загрузить` восстанавливает `GameState`
+  - `Загрузить` восстанавливает `eventLog`
+  - renderer redraw идёт из restored runtime state
 - Rules boundary уже выделен:
   - runtime asks `validateAction`
   - runtime asks `resolveAction`
   - rules shim answers permissively
   - runtime commits returned events itself
+- Move validation уже усилена:
+  - проверка существования `pieceId`
+  - проверка `fromLocationId`
+  - проверка `toLocationId`
+  - проверка bidirectional connection между space
 
 ## Что зафиксировано в workflow
 
@@ -58,7 +70,7 @@
 
 ## Текущие ограничения
 
-- Нет save/load slice.
+- Нет mature save system beyond one narrow local snapshot.
 - Нет broad rules engine.
 - Нет drag/drop system.
 - Нет authoring surfaces product-level breadth.
@@ -66,16 +78,18 @@
 
 ## Ближайший practical next step
 
-Следующий шаг должен оставаться узким и идти поверх уже принятого move slice.
+Следующий шаг пока не зафиксирован локально окончательно.
 
-Рабочее направление:
+Рабочая рамка:
 
-- следующий runtime step после `0011`, без перепридумывания архитектуры;
+- идти поверх уже принятого move + rules + snapshot baseline;
 - не возвращаться назад к bootstrap;
-- не расползаться сразу в save/load, broad rules или editor breadth.
+- не расползаться сразу в broad rules, save architecture или editor breadth;
+- сначала взять grounded second opinion через `/v1` по следующему узкому шагу.
 
 ## Текущие риски
 
 - Легко расползти следующий handoff в несколько систем сразу: runtime, rules, persistence и UI.
+- Легко начать строить “большую систему сохранений”, хотя сейчас принят только один narrow `localStorage` snapshot.
 - Легко начать чинить “на будущее” вместо следующего узкого slice.
 - Bundle warning от Phaser/Vite остаётся, но пока не blocker.

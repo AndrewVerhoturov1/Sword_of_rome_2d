@@ -75,6 +75,23 @@ export interface Event {
 let _eventSeq = 0;
 
 /**
+ * Сбросить _eventSeq до указанного значения.
+ * Используется при restore из snapshot, чтобы следующие новые события
+ * продолжали монотонную нумерацию.
+ */
+export function resetEventSeq(nextSeq: number): void {
+  _eventSeq = nextSeq;
+}
+
+/**
+ * Сбросить _actionSeq до указанного значения.
+ * Используется при restore из snapshot.
+ */
+export function resetActionSeq(nextSeq: number): void {
+  _actionSeq = nextSeq;
+}
+
+/**
  * Создать committed Event из Action.
  *
  * Если payload передан явно, используется он.

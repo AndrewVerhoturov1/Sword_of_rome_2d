@@ -92,6 +92,9 @@ in_progress
 - `Session run: 011` - user confirmed real browser behavior for `0012`; Codex accepts the permissive RulesHooks shim as the next runtime baseline.
 - `Session run: 012` - handoff `0013_graph_aware_move_validation.md` prepared for the next narrow hardening step: graph-aware validation for `move_piece_requested`.
 - `Session run: 013` - tiny graph-aware validation fix applied directly by Codex at explicit user request; build and typecheck passed locally.
+- `Session run: 014` - `/v1` answer `V1-20260524-233900` processed through local notebook pipeline; accepted local takeaway = next narrow step should be minimal local save/load snapshot for runtime state.
+- `Session run: 015` - handoff `0014_minimal_runtime_snapshot_save_load.md` prepared for the next narrow persistence step: localStorage snapshot for `GameState + eventLog`.
+- `Session run: 016` - `0014` reviewed by Codex; code path for save/load confirmed in repo, initial live confusion traced to wrong URL/port, final human confirmation received: save/load works.
 
 ## User Overrides
 
@@ -168,6 +171,25 @@ in_progress
   - `RulesHooks.validateAction(...)` now checks source/target spaces and bidirectional connection existence;
   - `move_piece_requested_location_mismatch` now blocks instead of warns;
   - current positive path `space-a -> space-b` remains valid.
+- `/v1` follow-up guidance accepted locally:
+  - `V1-20260524-233900` confirms `rulesHooks.ts` is present and connected in the current baseline;
+  - recommended next narrow step = minimal `localStorage` save/load snapshot;
+  - snapshot scope must stay runtime-only: `GameState + eventLog`;
+  - no save slots, migrations, import/export, cloud save, or Phaser/UI state persistence in this step.
+- `0014` is now accepted:
+  - footer has minimal `Сохранить` / `Загрузить` controls;
+  - runtime snapshot persists through `localStorage`;
+  - both `GameState` and `eventLog` restore successfully;
+  - renderer redraw follows restored runtime state;
+  - `RulesHooks` remained untouched.
+- Current accepted baseline now also includes:
+  - one narrow runtime snapshot seam;
+  - storage key `table-sandbox.snapshot.v1`;
+  - safe no-crash behavior for missing/invalid snapshot;
+  - runtime authority preserved through save/load.
+- Current next practical step is not frozen locally yet:
+  - ask `/v1` for the next narrow step after accepted snapshot baseline;
+  - keep the question grounded in the current repo, not in broad roadmap mode.
 - В repo уже принят framing: проект = browser-based 2D authoring tool / editor / tabletop sandbox, а Sword of Rome-like модуль = первый тестовый модуль.
 - По `/v1` уже получены и staged два external second opinion:
   - `V1-20260523-052756`
