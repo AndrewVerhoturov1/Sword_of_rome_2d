@@ -283,6 +283,21 @@ for `0.1`.
 Use it only as a UX reference for future map editing behavior while keeping the
 `0.1` coding slice anchored in the canonical data and runtime pipeline.
 
+## Pre-Code Closure
+
+Before broad product implementation starts, this milestone now expects one short
+closure sequence:
+
+- first product-code brief;
+- technical shell decision;
+- tiny canonical fixture set;
+- fixed `move_piece_requested -> piece_moved` pair;
+- explicit acceptance checklist;
+- frozen prototype role as reference/donor, not foundation.
+
+This is not another broad planning loop. It is the final narrowing step before
+the first real coding block.
+
 ## Next Artifact
 
 After this plan, the natural follow-up is `first_vertical_slice_spec.md`.

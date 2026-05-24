@@ -126,3 +126,16 @@ Read together with:
 
 Use the prototype as a reference and selective donor for the Map Editor surface.
 Do not let it become the starting architecture of the whole product.
+
+## Role Freeze Before Code
+
+Before the first product-code block starts, the prototype role should be
+considered closed:
+
+- reference prototype;
+- selective donor;
+- not product-code foundation;
+- not runtime architecture authority.
+
+This role freeze belongs to the short pre-code closure, so that the first
+implementation slice does not drift into prototype-led architecture.

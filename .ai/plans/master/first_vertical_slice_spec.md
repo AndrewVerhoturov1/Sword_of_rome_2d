@@ -105,3 +105,26 @@ If this slice works, the next sensible expansion is:
 2. save/load hardening;
 3. validation hardening;
 4. tiny test module pass.
+
+## Execution Preconditions
+
+This slice assumes that a short pre-code closure has already frozen:
+
+- the technical shell;
+- the tiny canonical fixture set;
+- the first action/event pair;
+- the first acceptance checklist;
+- the prototype role as reference-only input.
+
+The slice should not be treated as an open-ended implementation start. It is a
+specific proof target after those decisions are explicit.
+
+## Done Signal
+
+The first coding proof is complete when the following loop is visible and
+repeatable on real canonical fixtures:
+
+`load -> GameState -> Action -> Event -> log -> render`
+
+For the first pass, that proof should stay anchored to one piece move between
+tiny map spaces rather than expanding into broader product scope.

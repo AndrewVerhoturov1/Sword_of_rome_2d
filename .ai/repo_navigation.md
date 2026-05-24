@@ -142,5 +142,7 @@
 Эти пути не надо считать публичным каноном проекта, пока человек отдельно не скажет обратное.
 ## Recent Additions
 
+- [`plans/master/pre_code_closure_and_first_execution_plan.md`](plans/master/pre_code_closure_and_first_execution_plan.md) вЂ” the short bridge from accepted planning canon to the first narrow product-code slice.
+
 - [`plans/master/module_product_ux_model.md`](plans/master/module_product_ux_model.md) — product-wide UX model: authoring, playtest, runtime/save flows, daily loop, mode transitions, and anti-confusion rules.
 - [`plans/master/prototype_integration_mapping.md`](plans/master/prototype_integration_mapping.md) — how to use the external `table-map-editor-canvas-local-fixed` prototype as a reference donor without turning it into the product foundation.

@@ -375,3 +375,16 @@ Editor surface.
 They should not steer the roadmap toward a prototype-first foundation. The
 roadmap remains platform-first, and the prototype is only a donor of specific
 UX and interaction ideas.
+
+## Execution Bridge To Code
+
+There is now an explicit bridge between accepted planning canon and the broader
+post-`0.1` roadmap:
+
+- short pre-code closure;
+- narrow first coding slice;
+- only then broader milestone growth.
+
+That bridge is defined in `pre_code_closure_and_first_execution_plan.md`.
+The roadmap begins after the first executable proof exists, not instead of that
+proof.

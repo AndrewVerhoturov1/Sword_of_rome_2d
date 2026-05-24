@@ -345,6 +345,51 @@ Treat it as:
 - product code still starts from canonical architecture and narrow slices;
 - controlled extraction is the default integration method.
 
+## `2026-05-24` — `Narrow-first execution start after short closure`
+
+### Контекст
+
+После readiness-аудита и детального execution-plan синтеза стало ясно, что
+архитектурная база уже достаточна для старта кода, но только если старт будет
+узким и жёстко зафиксированным. Broad implementation по-прежнему слишком легко
+размоет границы между canonical data, runtime, authoring и prototype inputs.
+
+### Решение
+
+Начинать product code только через короткий pre-code closure и затем через
+узкий `Table Sandbox 0.1` slice.
+
+Обязательные элементы closure:
+
+- first product-code brief;
+- technical shell decision;
+- tiny canonical fixture set;
+- fixed `move_piece_requested -> piece_moved` pair;
+- explicit acceptance checklist;
+- frozen prototype role.
+
+### Причины
+
+- это останавливает бесконечное broad planning;
+- это не даёт стартовать слишком широкой реализации;
+- это держит первый код вокруг одного проверяемого runtime proof;
+- это снижает риск того, что внешний prototype или test module станут скрытой
+  архитектурной основой.
+
+### Последствия
+
+- broad product-code start остаётся запрещённым;
+- первый implementation block должен идти через canonical fixtures и
+  `Action -> Event -> GameState -> log -> render`;
+- post-`0.1` roadmap считается следующим слоем только после первого
+  executable proof;
+- отдельный operational bridge-doc становится обязательной частью planning
+  canon.
+
+### Статус
+
+`Принято`
+
 ### Статус
 
 `Принято`

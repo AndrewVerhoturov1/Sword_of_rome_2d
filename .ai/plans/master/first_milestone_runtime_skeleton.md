@@ -217,3 +217,21 @@ signal is strictly sequencing:
 
 This knowledge belongs here because it refines the already accepted canon without
 changing layer boundaries or data contracts.
+
+## Execution Bridge
+
+This artifact no longer acts as the final planning stop before coding.
+
+The practical bridge from accepted planning canon to the first implementation
+block is now defined in `pre_code_closure_and_first_execution_plan.md`.
+
+The next real step is a short pre-code closure that freezes:
+
+- the first product-code brief;
+- the technical shell;
+- the tiny canonical fixture set;
+- the first action/event pair;
+- the first acceptance checklist.
+
+After that short closure, implementation should begin through the narrow
+`Table Sandbox 0.1` slice instead of another broad planning pass.
