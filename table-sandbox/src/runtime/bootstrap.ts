@@ -101,6 +101,7 @@ export function bootstrapGameState(): GameState {
     spaces: loadSpaces(),
     connections: loadConnections(),
     pieces: loadPieces(),
+    controlState: {},
     turn: loadTurn(),
     bootstrapMeta: buildBootstrapMeta(),
   };

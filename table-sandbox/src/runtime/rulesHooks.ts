@@ -39,6 +39,7 @@ export function validateAction(
   action: Action,
   state?: GameState
 ): ValidationResult {
+  // ---- move_piece_requested ----
   if (action.type === "move_piece_requested") {
     const { pieceId, fromLocationId, toLocationId } = action.payload;
     if (
@@ -114,6 +115,86 @@ export function validateAction(
     };
   }
 
+  // ---- create_piece_requested ----
+  if (action.type === "create_piece_requested") {
+    const { spaceId, pieceDefId, ownerId } = action.payload;
+    if (
+      typeof spaceId !== "string" ||
+      typeof pieceDefId !== "string" ||
+      typeof ownerId !== "string"
+    ) {
+      return {
+        status: "block",
+        reasonCode: "create_piece_requested_missing_payload",
+      };
+    }
+
+    if (!state) {
+      return { status: "allow", reasonCode: "create_piece_requested_permissive_allow" };
+    }
+
+    const spaceExists = state.spaces.some((s) => s.spaceId === spaceId);
+    if (!spaceExists) {
+      return {
+        status: "block",
+        reasonCode: "create_piece_requested_unknown_space",
+      };
+    }
+
+    return { status: "allow", reasonCode: "create_piece_requested_allow" };
+  }
+
+  // ---- delete_piece_requested ----
+  if (action.type === "delete_piece_requested") {
+    const { pieceId } = action.payload;
+    if (typeof pieceId !== "string") {
+      return {
+        status: "block",
+        reasonCode: "delete_piece_requested_missing_payload",
+      };
+    }
+
+    if (!state) {
+      return { status: "allow", reasonCode: "delete_piece_requested_permissive_allow" };
+    }
+
+    const piece = state.pieces.find((p) => p.pieceId === pieceId);
+    if (!piece) {
+      return {
+        status: "block",
+        reasonCode: "delete_piece_requested_unknown_piece",
+      };
+    }
+
+    return { status: "allow", reasonCode: "delete_piece_requested_allow" };
+  }
+
+  // ---- change_control_requested ----
+  if (action.type === "change_control_requested") {
+    const { spaceId } = action.payload;
+    if (typeof spaceId !== "string") {
+      return {
+        status: "block",
+        reasonCode: "change_control_requested_missing_payload",
+      };
+    }
+    // newOwnerId может быть null — это допустимо (сброс контроля)
+
+    if (!state) {
+      return { status: "allow", reasonCode: "change_control_requested_permissive_allow" };
+    }
+
+    const spaceExists = state.spaces.some((s) => s.spaceId === spaceId);
+    if (!spaceExists) {
+      return {
+        status: "block",
+        reasonCode: "change_control_requested_unknown_space",
+      };
+    }
+
+    return { status: "allow", reasonCode: "change_control_requested_allow" };
+  }
+
   // Все остальные типы — permissive allow
   return { status: "allow", reasonCode: "bootstrap_permissive" };
 }
@@ -143,6 +224,17 @@ export function resolveAction(
   switch (action.type) {
     case "move_piece_requested": {
       return [{ eventType: "piece_moved" }];
+    }
+    case "create_piece_requested": {
+      // pieceId генерируется снаружи (App), передаётся через payload
+      // rules layer не генерирует pieceId
+      return [{ eventType: "piece_created" }];
+    }
+    case "delete_piece_requested": {
+      return [{ eventType: "piece_deleted" }];
+    }
+    case "change_control_requested": {
+      return [{ eventType: "control_changed" }];
     }
     default:
       // Неизвестный action type — нет proposed events.

@@ -6,7 +6,7 @@
 
 ## Текущий этап
 
-`Table Sandbox 0.1: minimal runtime snapshot accepted baseline`
+`Table Sandbox 0.1: Manual Sandbox Action Pack 1 accepted baseline`
 
 ## Что уже принято
 
@@ -19,7 +19,8 @@
   - `0011` — first narrow Action/Event move slice;
   - `0012` — permissive RulesHooks shim;
   - direct graph-aware hardening for `move_piece_requested`;
-  - `0014` — minimal runtime snapshot save/load.
+  - `0014` — minimal runtime snapshot save/load;
+  - `0015` — Manual Sandbox Action Pack 1.
 
 ## Что уже работает в product code
 
@@ -45,6 +46,12 @@
   - `Загрузить` восстанавливает `GameState`
   - `Загрузить` восстанавливает `eventLog`
   - renderer redraw идёт из restored runtime state
+- Первый ручной sandbox action pack уже доказан:
+  - можно создать фишку через `create_piece_requested -> piece_created`
+  - можно удалить фишку через `delete_piece_requested -> piece_deleted`
+  - можно менять контроль точки через `change_control_requested -> control_changed`
+  - selected object panel показывает выбранную точку/фишку
+  - save/load переживает новые runtime-изменения, включая `controlState`
 - Rules boundary уже выделен:
   - runtime asks `validateAction`
   - runtime asks `resolveAction`
@@ -55,6 +62,9 @@
   - проверка `fromLocationId`
   - проверка `toLocationId`
   - проверка bidirectional connection между space
+- Runtime now also carries:
+  - `controlState` for per-space ownership
+  - human-readable Russian validation messages for sandbox actions
 
 ## Что зафиксировано в workflow
 
@@ -83,6 +93,7 @@
 Рабочая рамка:
 
 - идти поверх уже принятого move + rules + snapshot baseline;
+- идти поверх уже принятого move + rules + snapshot + manual sandbox actions baseline;
 - не возвращаться назад к bootstrap;
 - не расползаться сразу в broad rules, save architecture или editor breadth;
 - сначала взять grounded second opinion через `/v1` по следующему узкому шагу.

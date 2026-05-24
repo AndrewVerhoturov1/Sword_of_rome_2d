@@ -95,6 +95,9 @@ in_progress
 - `Session run: 014` - `/v1` answer `V1-20260524-233900` processed through local notebook pipeline; accepted local takeaway = next narrow step should be minimal local save/load snapshot for runtime state.
 - `Session run: 015` - handoff `0014_minimal_runtime_snapshot_save_load.md` prepared for the next narrow persistence step: localStorage snapshot for `GameState + eventLog`.
 - `Session run: 016` - `0014` reviewed by Codex; code path for save/load confirmed in repo, initial live confusion traced to wrong URL/port, final human confirmation received: save/load works.
+- `Session run: 017` - `/v1` answer `V1-20260525-005823` processed through local notebook pipeline; direction accepted = move from single-action demo toward a manual sandbox action set, but user explicitly wants the full `Manual Sandbox Action Pack 1` handoff rather than a narrower `change_control` slice.
+- `Session run: 018` - handoff `0015_manual_sandbox_action_pack_1.md` prepared for the next broader-but-bounded sandbox step: create piece, delete piece, change control, selected object panel, human-readable validation messages, and save/load verification for all added runtime changes.
+- `Session run: 019` - `0015` reviewed by Codex; two save/load identity issues were corrected, user confirmed manual browser checks, and the full `Manual Sandbox Action Pack 1` is accepted as the next sandbox baseline.
 
 ## User Overrides
 
@@ -105,6 +108,7 @@ in_progress
   - project-specific layer: конкретный модуль/проект, собираемый поверх editor capabilities.
 - Не переходить к широким изменениям кода без отдельного согласования и без следующего planning шага.
 - Пользователь отдельно попросил сохранить локальные planning-файлы и присылать только ссылки на них.
+- После `/v1` по следующему шагу пользователь явно выбрал полный `Manual Sandbox Action Pack 1`, а не более узкий `change_control`-only slice.
 
 ## Checkpoint State
 
@@ -187,9 +191,18 @@ in_progress
   - storage key `table-sandbox.snapshot.v1`;
   - safe no-crash behavior for missing/invalid snapshot;
   - runtime authority preserved through save/load.
-- Current next practical step is not frozen locally yet:
-  - ask `/v1` for the next narrow step after accepted snapshot baseline;
-  - keep the question grounded in the current repo, not in broad roadmap mode.
+- `/v1` follow-up guidance after accepted snapshot baseline:
+  - `V1-20260525-005823` recommends moving from single-action demo to a manual sandbox action set;
+  - suggested bundle includes create piece, delete piece, change control, selected object panel, human-readable validation messages, and save/load coverage for all new state changes.
+- Current next practical step is now fixed by explicit user override:
+  - prepare the full `Manual Sandbox Action Pack 1` handoff, not the narrower `change_control` slice;
+  - still keep scope bounded: no broad editor, no prototype migration, no large save/rules redesign.
+- `0015` is now accepted:
+  - manual sandbox actions now cover create piece, delete piece, and change control;
+  - runtime carries `controlState` and persists it through existing snapshot flow;
+  - selected object panel and Russian validation messages are now part of the visible sandbox baseline;
+  - compatibility fix exists for older snapshots without `controlState`;
+  - `nextPieceSeq` restore now scans both live pieces and historical `piece_created` events to avoid reused ids after load.
 - В repo уже принят framing: проект = browser-based 2D authoring tool / editor / tabletop sandbox, а Sword of Rome-like модуль = первый тестовый модуль.
 - По `/v1` уже получены и staged два external second opinion:
   - `V1-20260523-052756`

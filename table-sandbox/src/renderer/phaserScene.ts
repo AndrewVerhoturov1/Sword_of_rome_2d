@@ -14,8 +14,10 @@ import type { GameState } from "../runtime/GameState";
  */
 
 export interface SceneCallbacks {
-  /** Вызывается при клике на space — передаёт spaceId наружу */
+  /** Вызывается при ЛКМ на space — выбор space/piece */
   onSpaceClick: (spaceId: string) => void;
+  /** Вызывается при ПКМ на space — попытка перемещения */
+  onSpaceRightClick: (spaceId: string) => void;
 }
 
 /** Радиус попадания в space (пиксели) */
@@ -77,24 +79,39 @@ export class TableSandboxScene extends Phaser.Scene {
       .setOrigin(0.5, 1);
 
     // Обработка кликов — hit-test по spaces
+    // ЛКМ (button 0) — выбор space/piece
+    // ПКМ (button 2) — попытка перемещения
     this.input.on("pointerdown", (pointer: Phaser.Input.Pointer) => {
       const spaceId = this.findSpaceAt(pointer.x, pointer.y);
-      if (spaceId && this.callbacks) {
+      if (!spaceId || !this.callbacks) return;
+
+      if (pointer.button === 0) {
+        // Левая кнопка — выбор
         this.callbacks.onSpaceClick(spaceId);
+      } else if (pointer.button === 2) {
+        // Правая кнопка — перемещение
+        this.callbacks.onSpaceRightClick(spaceId);
       }
     });
+
+    // Запретить стандартное контекстное меню на canvas
+    this.input.mouse?.disableContextMenu();
   }
 
   /**
    * Обновить отрисовку из GameState.
    * Вызывается из React при каждом изменении GameState или selection.
    */
-  updateFromState(state: GameState, selectedPieceId: string | null): void {
+  updateFromState(
+    state: GameState,
+    selectedPieceId: string | null,
+    selectedSpaceId: string | null
+  ): void {
     this.clearAllDynamic();
     this.cachedSpaces = [];
 
     this.drawConnections(state);
-    this.drawSpaces(state);
+    this.drawSpaces(state, selectedSpaceId, state.controlState);
     this.drawPieces(state, selectedPieceId);
   }
 
@@ -147,7 +164,11 @@ export class TableSandboxScene extends Phaser.Scene {
 
   // ---- Рендер spaces ----
 
-  private drawSpaces(state: GameState): void {
+  private drawSpaces(
+    state: GameState,
+    selectedSpaceId: string | null,
+    controlState: Record<string, string | null>
+  ): void {
     for (const space of state.spaces) {
       this.cachedSpaces.push({
         spaceId: space.spaceId,
@@ -155,9 +176,30 @@ export class TableSandboxScene extends Phaser.Scene {
         y: space.y,
       });
 
+      const isSelected = space.spaceId === selectedSpaceId;
+      const controlOwner = controlState[space.spaceId] ?? null;
+
+      // Цвет круга зависит от контроля
+      let fillColor = 0x3a6b3a; // default green
+      let strokeColor = 0x8b7355;
+      let strokeWidth = 2;
+
+      if (controlOwner === "tiny-red") {
+        fillColor = 0x6b2a2a; // dark red
+        strokeColor = 0xcc4444;
+      } else if (controlOwner === "tiny-blue") {
+        fillColor = 0x2a3a6b; // dark blue
+        strokeColor = 0x4488cc;
+      }
+
+      if (isSelected) {
+        strokeColor = 0xf0c040;
+        strokeWidth = 3;
+      }
+
       // Круг space
-      const circle = this.add.circle(space.x, space.y, SPACE_RADIUS, 0x3a6b3a, 0.8);
-      circle.setStrokeStyle(2, 0x8b7355, 0.9);
+      const circle = this.add.circle(space.x, space.y, SPACE_RADIUS, fillColor, 0.8);
+      circle.setStrokeStyle(strokeWidth, strokeColor, 0.9);
       this.spaceCircles.set(space.spaceId, circle);
 
       // Подпись
@@ -175,7 +217,14 @@ export class TableSandboxScene extends Phaser.Scene {
   // ---- Рендер pieces ----
 
   private drawPieces(state: GameState, selectedPieceId: string | null): void {
-    for (const piece of state.pieces) {
+    // Сортируем: выбранная фишка — последней (сверху), остальные по порядку
+    const sorted = [...state.pieces].sort((a, b) => {
+      if (a.pieceId === selectedPieceId) return 1;
+      if (b.pieceId === selectedPieceId) return -1;
+      return 0;
+    });
+
+    for (const piece of sorted) {
       const space = state.spaces.find((s) => s.spaceId === piece.locationId);
       if (!space) continue;
 
@@ -186,21 +235,29 @@ export class TableSandboxScene extends Phaser.Scene {
       const px = space.x + offsetX;
       const py = space.y;
 
-      // Подсветка space, если piece на нём выбран
-      if (isSelected) {
-        const hl = this.add.circle(space.x, space.y, SPACE_RADIUS + 3, 0x000000, 0);
-        hl.setStrokeStyle(3, 0xf0c040, 1);
-        this.selectionHighlight = hl;
+      // Маркер piece — квадрат 28×28, цвет заливки по ownerId
+      // Выделение фишки НЕ влияет на круг точки — точка остаётся как есть.
+      let fillColor: number;
+      if (piece.ownerId === "tiny-red") {
+        fillColor = 0xcc3333; // красный
+      } else if (piece.ownerId === "tiny-blue") {
+        fillColor = 0x3366cc; // синий
+      } else {
+        fillColor = 0xe06030; // оранжевый — неизвестный
       }
 
-      // Маркер piece — маленький квадрат
-      const markerColor = isSelected ? 0xf0c040 : 0xe06030;
-      const rect = this.add.rectangle(0, 0, 14, 14, markerColor, 1);
-      rect.setStrokeStyle(1, 0xffffff, 0.6);
+      const rect = this.add.rectangle(0, 0, 28, 28, fillColor, 1);
+
+      // Выделение — только контур, без смены заливки
+      if (isSelected) {
+        rect.setStrokeStyle(3, 0xf0c040, 1); // толстый жёлтый контур
+      } else {
+        rect.setStrokeStyle(2, 0xffffff, 0.7); // тонкий белый контур
+      }
 
       // ID piece
       const idText = this.add
-        .text(0, -12, piece.pieceId, {
+        .text(0, -18, piece.pieceId, {
           fontSize: "10px",
           color: isSelected ? "#f0c040" : "#e0e0e0",
           fontFamily: "monospace",
@@ -210,7 +267,7 @@ export class TableSandboxScene extends Phaser.Scene {
       // Количество
       const countText = this.add
         .text(0, 2, String(piece.count), {
-          fontSize: "9px",
+          fontSize: "10px",
           color: "#ffffff",
           fontFamily: "monospace",
         })

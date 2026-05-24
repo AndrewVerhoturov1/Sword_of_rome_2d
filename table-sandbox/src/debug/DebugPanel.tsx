@@ -16,6 +16,7 @@ interface DebugPanelProps {
   lastAction: Action | null;
   eventLog: EventLog;
   selectedPieceId: string | null;
+  selectedSpaceId: string | null;
 }
 
 export function DebugPanel({
@@ -23,6 +24,7 @@ export function DebugPanel({
   lastAction,
   eventLog,
   selectedPieceId,
+  selectedSpaceId,
 }: DebugPanelProps) {
   return (
     <div
@@ -54,6 +56,11 @@ export function DebugPanel({
 
       {/* Selection */}
       <Section title="Выбор (Selection)">
+        {selectedSpaceId ? (
+          <KV label="selectedSpaceId" value={selectedSpaceId} important />
+        ) : (
+          <KV label="selectedSpaceId" value="— (ничего не выбрано)" />
+        )}
         {selectedPieceId ? (
           <KV label="selectedPieceId" value={selectedPieceId} important />
         ) : (
@@ -61,7 +68,7 @@ export function DebugPanel({
         )}
         <KV
           label="инструкция"
-          value="Кликни по space с фишкой → выбор. Кликни по другому space → move."
+          value="Кликни по точке на карте → выбор. Кнопки справа → действия."
         />
       </Section>
 
@@ -91,9 +98,19 @@ export function DebugPanel({
       </Section>
 
       {/* Pieces */}
-      <Section title="Piece Instances (из scenario.basic.json)">
+      <Section title="Piece Instances (из scenario.basic.json + runtime)">
         <KV label="pieces" value={gameState.pieces.length} />
         <PiecesList pieces={gameState.pieces} selectedPieceId={selectedPieceId} />
+      </Section>
+
+      {/* Control State */}
+      <Section title="Control State (runtime)">
+        <KV label="controlled spaces" value={Object.keys(gameState.controlState).filter((k) => gameState.controlState[k] !== null).length} />
+        <ControlStateList controlState={gameState.controlState} />
+        <KV
+          label="важно"
+          value="Control state живёт в runtime, не в map.json."
+        />
       </Section>
 
       {/* Turn / Phase */}
@@ -267,6 +284,44 @@ function PiecesList({
           </div>
         );
       })}
+    </div>
+  );
+}
+
+function ControlStateList({
+  controlState,
+}: {
+  controlState: Record<string, string | null>;
+}) {
+  const entries = Object.entries(controlState).filter(
+    ([, owner]) => owner !== null
+  );
+  if (entries.length === 0) {
+    return (
+      <div style={{ marginTop: "4px", color: "#6e7681", fontSize: "11px" }}>
+        — контроль не установлен ни для одной точки
+      </div>
+    );
+  }
+  return (
+    <div style={{ marginTop: "4px" }}>
+      {entries.map(([spaceId, owner]) => (
+        <div
+          key={spaceId}
+          style={{
+            marginBottom: "2px",
+            padding: "2px 6px",
+            background: "#161b22",
+            borderRadius: "3px",
+            fontSize: "11px",
+            color: owner === "tiny-red" ? "#f0883e" : "#58a6ff",
+          }}
+        >
+          <span style={{ color: "#79c0ff" }}>{spaceId}</span>
+          <span style={{ color: "#8b949e" }}> → </span>
+          <span>{owner ?? "нет"}</span>
+        </div>
+      ))}
     </div>
   );
 }

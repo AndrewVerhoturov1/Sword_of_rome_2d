@@ -60,6 +60,42 @@ export function createMovePieceAction(
   });
 }
 
+/** Создать Action типа create_piece_requested */
+export function createCreatePieceAction(
+  spaceId: string,
+  pieceDefId: string,
+  ownerId: string,
+  actorId: string
+): Action {
+  return createAction("create_piece_requested", actorId, {
+    spaceId,
+    pieceDefId,
+    ownerId,
+  });
+}
+
+/** Создать Action типа delete_piece_requested */
+export function createDeletePieceAction(
+  pieceId: string,
+  actorId: string
+): Action {
+  return createAction("delete_piece_requested", actorId, {
+    pieceId,
+  });
+}
+
+/** Создать Action типа change_control_requested */
+export function createChangeControlAction(
+  spaceId: string,
+  newOwnerId: string | null,
+  actorId: string
+): Action {
+  return createAction("change_control_requested", actorId, {
+    spaceId,
+    newOwnerId,
+  });
+}
+
 // ---- Event ----
 
 export interface Event {
@@ -140,6 +176,65 @@ export function reduceEvent(state: GameState, event: Event): GameState {
         ),
       };
     }
+
+    case "piece_created": {
+      const { pieceId, pieceDefId, locationId, ownerId, count } = event.payload;
+      if (
+        typeof pieceId !== "string" ||
+        typeof pieceDefId !== "string" ||
+        typeof locationId !== "string" ||
+        typeof ownerId !== "string"
+      ) {
+        return state;
+      }
+      const countNum = typeof count === "number" ? count : 1;
+      const newPiece = {
+        pieceId,
+        pieceDefId,
+        locationId,
+        ownerId,
+        count: countNum,
+      };
+      return {
+        ...state,
+        version: state.version + 1,
+        lastUpdated: Date.now(),
+        pieces: [...state.pieces, newPiece],
+      };
+    }
+
+    case "piece_deleted": {
+      const { pieceId } = event.payload;
+      if (typeof pieceId !== "string") {
+        return state;
+      }
+      return {
+        ...state,
+        version: state.version + 1,
+        lastUpdated: Date.now(),
+        pieces: state.pieces.filter((p) => p.pieceId !== pieceId),
+      };
+    }
+
+    case "control_changed": {
+      const { spaceId, newOwnerId } = event.payload;
+      if (typeof spaceId !== "string") {
+        return state;
+      }
+      // newOwnerId может быть null (сброс контроля)
+      const owner =
+        typeof newOwnerId === "string" ? newOwnerId : null;
+      return {
+        ...state,
+        version: state.version + 1,
+        lastUpdated: Date.now(),
+        controlState: {
+          ...state.controlState,
+          [spaceId]: owner,
+        },
+      };
+    }
+
     default:
       return state;
   }

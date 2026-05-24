@@ -16,13 +16,17 @@ import type { GameState } from "../runtime/GameState";
 interface PhaserStageProps {
   gameState: GameState;
   selectedPieceId: string | null;
+  selectedSpaceId: string | null;
   onSpaceClick: (spaceId: string) => void;
+  onSpaceRightClick: (spaceId: string) => void;
 }
 
 export function PhaserStage({
   gameState,
   selectedPieceId,
+  selectedSpaceId,
   onSpaceClick,
+  onSpaceRightClick,
 }: PhaserStageProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const gameRef = useRef<Phaser.Game | null>(null);
@@ -46,6 +50,7 @@ export function PhaserStage({
 
     const callbacks: SceneCallbacks = {
       onSpaceClick,
+      onSpaceRightClick,
     };
 
     const config: Phaser.Types.Core.GameConfig = {
@@ -77,7 +82,7 @@ export function PhaserStage({
         scene.setCallbacks(callbacks);
         sceneRef.current = scene;
         // Первый рендер из state
-        scene.updateFromState(gameState, selectedPieceId);
+        scene.updateFromState(gameState, selectedPieceId, selectedSpaceId);
       }
     });
 
@@ -96,9 +101,9 @@ export function PhaserStage({
       "TableSandboxScene"
     ) as TableSandboxScene;
     if (scene && scene.scene.isActive()) {
-      scene.setCallbacks({ onSpaceClick });
+      scene.setCallbacks({ onSpaceClick, onSpaceRightClick });
     }
-  }, [onSpaceClick]);
+  }, [onSpaceClick, onSpaceRightClick]);
 
   // ---- Обновление рендера при изменении GameState или selection ----
 
@@ -108,9 +113,9 @@ export function PhaserStage({
       "TableSandboxScene"
     ) as TableSandboxScene;
     if (scene && scene.scene.isActive()) {
-      scene.updateFromState(gameState, selectedPieceId);
+      scene.updateFromState(gameState, selectedPieceId, selectedSpaceId);
     }
-  }, [gameState, selectedPieceId]);
+  }, [gameState, selectedPieceId, selectedSpaceId]);
 
   return (
     <div

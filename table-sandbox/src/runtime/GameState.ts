@@ -54,6 +54,15 @@ export interface BootstrapMeta {
   loadedFiles: string[];
 }
 
+// ---- Control state ----
+
+/**
+ * Control state — runtime ownership of spaces.
+ * Живёт в runtime, не в map.json.
+ * Ключ: spaceId, значение: ownerId или null (нет контроля).
+ */
+export type ControlState = Record<string, string | null>;
+
 // ---- Core GameState ----
 
 export interface GameState {
@@ -76,6 +85,9 @@ export interface GameState {
   /** Current piece instances (from scenario.basic.json setup) */
   pieces: PieceState[];
 
+  /** Runtime control state: spaceId → ownerId (null = no control) */
+  controlState: ControlState;
+
   /** Current turn/phase info */
   turn: TurnState;
 
@@ -95,6 +107,7 @@ export function createEmptyGameState(): GameState {
     spaces: [],
     connections: [],
     pieces: [],
+    controlState: {},
     turn: { round: 0, phaseId: "", activeActorId: "" },
     bootstrapMeta: {
       source: "empty-placeholder",
