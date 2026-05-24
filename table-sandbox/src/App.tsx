@@ -1,10 +1,8 @@
 import { useState, useCallback } from "react";
 import { PhaserStage } from "./renderer/PhaserStage";
 import { DebugPanel } from "./debug/DebugPanel";
-import {
-  createInitialGameState,
-  type GameState,
-} from "./runtime/GameState";
+import { type GameState } from "./runtime/GameState";
+import { bootstrapGameState } from "./runtime/bootstrap";
 import {
   createAction,
   createEvent,
@@ -24,13 +22,14 @@ import "./App.css";
  *   - Action/Event pipeline
  *   - EventLog
  *
+ * GameState инициализируется из canonical fixtures
+ * (table-sandbox/src/fixtures/tiny-module/), не из placeholder.
+ *
  * PhaserStage — только renderer/input, не владеет состоянием.
  */
 
 export default function App() {
-  const [gameState, setGameState] = useState<GameState>(
-    createInitialGameState
-  );
+  const [gameState, setGameState] = useState<GameState>(bootstrapGameState);
   const [lastAction, setLastAction] = useState<Action | null>(null);
   const [eventLog, setEventLog] = useState<EventLog>(createEventLog);
   const [lastClick, setLastClick] = useState<{
@@ -42,6 +41,9 @@ export default function App() {
    * Обработчик клика из Phaser.
    * Phaser ТОЛЬКО передаёт координаты.
    * Runtime (этот код) создаёт Action → валидирует → коммитит Event.
+   *
+   * При обновлении GameState сохраняются все bootstrap-поля
+   * (projectId, spaces, pieces, turn и т.д.).
    */
   const handleTableClick = useCallback(
     (x: number, y: number) => {
@@ -71,11 +73,11 @@ export default function App() {
       });
 
       // 5. Обновляем GameState (авторитетно, вне Phaser)
+      // Сохраняем все bootstrap-поля, инкрементируем только version/lastUpdated.
       setGameState((prev) => ({
         ...prev,
         version: prev.version + 1,
         lastUpdated: Date.now(),
-        description: `Table Sandbox 0.1 — клик в (${Math.round(x)}, ${Math.round(y)}). State v${prev.version + 1}`,
       }));
 
       setLastAction(action);
@@ -87,7 +89,9 @@ export default function App() {
     <div className="app-shell">
       <header className="app-header">
         <h1>Table Sandbox 0.1</h1>
-        <span className="app-badge">Technical Bootstrap</span>
+        <span className="app-badge">
+          {gameState.projectId}/{gameState.scenarioId}
+        </span>
       </header>
 
       <main className="app-main">
@@ -113,11 +117,14 @@ export default function App() {
       <footer className="app-footer">
         <span>GameState version: {gameState.version}</span>
         <span className="footer-sep">|</span>
+        <span>
+          {gameState.projectId}/{gameState.moduleId}/{gameState.mapId}/
+          {gameState.scenarioId}
+        </span>
+        <span className="footer-sep">|</span>
         <span>Events: {eventLog.events.length}</span>
         <span className="footer-sep">|</span>
-        <span>
-          Источник истины: Runtime (React state), НЕ Phaser
-        </span>
+        <span>Источник истины: Runtime (React state), НЕ Phaser</span>
       </footer>
     </div>
   );

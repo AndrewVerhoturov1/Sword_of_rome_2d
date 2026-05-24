@@ -22,11 +22,17 @@ export function PhaserStage({ onTableClick }: PhaserStageProps) {
 
   useEffect(() => {
     const container = containerRef.current;
-    if (!container || gameRef.current) return;
+    if (!container) return;
 
-    // StrictMode guard: если Phaser уже вмонтировал canvas в контейнер —
-    // значит это повторный mount после simulated unmount, не бутстрапим заново.
-    if (container.querySelector("canvas")) return;
+    // StrictMode-safe: всегда удаляем остатки предыдущего game instance.
+    if (gameRef.current) {
+      gameRef.current.destroy(true);
+      gameRef.current = null;
+    }
+
+    // Синхронно удаляем оставшийся canvas (StrictMode double-mount fix).
+    const leftoverCanvas = container.querySelector("canvas");
+    if (leftoverCanvas) leftoverCanvas.remove();
 
     const callbacks: SceneCallbacks = {
       onTableClick,

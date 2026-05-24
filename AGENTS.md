@@ -9,6 +9,72 @@
 - `arena-prototype-launcher/`, `_local/` и `output/Arena tests/` считаются local-only слоями. Их не публикуем в GitHub без отдельного явного решения.
 - Если агенту нужен быстрый вход в проект, сначала читать `README.md`, `.ai/repo_navigation.md`, `.ai/project_state.md`, затем `canon/context/`.
 
+## Language Policy
+
+User-facing UI is Russian.
+
+Internal technical identifiers must be English:
+
+- code identifiers;
+- file/folder names;
+- JSON keys;
+- IDs;
+- action/event types;
+- schema/type names.
+
+Russian is allowed for:
+
+- UI labels;
+- visible names;
+- tooltips;
+- user-facing messages;
+- planning docs.
+
+Do not transliterate Russian technical terms. Use canonical English terms:
+`piece`, `space`, `connection`, `zone`, `map`, `scenario`, `savegame`, `GameState`, `Action`, `Event`.
+
+See `.ai/policies/language_policy.md`.
+
+## Human Review Policy
+
+Agents must follow `.ai/policies/human_review_policy.md`.
+
+For every implementation result, include a `Human Check` section with one of:
+
+- `required`
+- `suggested`
+- `not needed`
+
+If human review is required or suggested, explain it in simple Russian:
+
+- what the user should open;
+- what to click or look at;
+- what should happen;
+- what answer the user should send back.
+
+The user is not assumed to be a programmer.
+
+Do not use complex developer jargon in human check instructions.
+
+## Bug Tracking Policy
+
+Agents must follow `.ai/policies/bug_tracking_policy.md`.
+
+Every implementation, QA, Kilo, or Codex report must include a section:
+
+`Баги и сложности`
+
+The section must say whether bugs/difficulties were:
+
+- not found;
+- found and fixed;
+- still open;
+- pending human check.
+
+Important or repeatable bugs must be added to `.ai/logs/bug_journal.md`.
+
+Bug explanations for the user must be written in simple Russian.
+
 Этот репозиторий использует workflow `Codex + Kilo Code`.
 
 - Codex является оркестратором: изучает контекст, планирует, готовит handoff, проверяет report и diff, предлагает решение.

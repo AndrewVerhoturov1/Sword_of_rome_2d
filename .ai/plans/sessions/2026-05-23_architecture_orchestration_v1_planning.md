@@ -83,6 +83,7 @@ in_progress
 - `Session run: 002` - handoff `0009_canonical_fixture_seed.md` prepared for next Kilo execution.
 - `Session run: 003` - `0009` reviewed by Codex; rejected for correction because `module.json` is corrupted and report claims do not match actual files.
 - `Session run: 004` - corrected `0009` reviewed by Codex and accepted; fixture seed is now internally consistent and scope-clean.
+- `Session run: 005` - handoff `0010_runtime_data_bootstrap.md` prepared for next Kilo execution.
 
 ## User Overrides
 
@@ -111,6 +112,11 @@ in_progress
   - `table-sandbox/src/fixtures/tiny-module/` contains the full requested 7-file tiny fixture set;
   - direct Codex re-check confirmed all required cross-file references resolve;
   - no runtime/Phaser/prototype scope creep detected.
+- Workflow checkpoint for accepted `0009` completed by Codex commit `9a61926` (`Workflow: accept Kilo task 0009`).
+- Current next practical step is fixed locally, without new `/v1`:
+  - `Phase 3 - Runtime/Data Bootstrap`
+  - load accepted tiny fixtures into minimal runtime-owned `GameState`
+  - keep `move_piece_requested -> piece_moved` for the following handoff, not this one.
 - В repo уже принят framing: проект = browser-based 2D authoring tool / editor / tabletop sandbox, а Sword of Rome-like модуль = первый тестовый модуль.
 - По `/v1` уже получены и staged два external second opinion:
   - `V1-20260523-052756`

@@ -80,6 +80,103 @@ Keep these responsibilities separate:
 - `RulesHooks` shim;
 - event log.
 
+## Language Policy For This Block
+
+Use English for:
+
+- TypeScript identifiers;
+- JSON keys;
+- IDs;
+- action/event types;
+- filenames.
+
+Use Russian for:
+
+- UI labels;
+- visible display names;
+- user-facing debug labels when needed.
+
+Examples:
+
+- action type: `move_piece_requested`
+- event type: `piece_moved`
+- piece id: `piece-1`
+- visible name: `Пехота`
+
+Do not transliterate technical names.
+
+Do not mass-translate older planning docs for this block.
+
+## Human Check Policy For This Block
+
+Follow `.ai/policies/human_review_policy.md`.
+
+Human review is required for:
+
+- Phaser stage visibility;
+- clicking on the table;
+- drag/drop behavior;
+- visible layout changes;
+- visible event log/debug updates;
+- Russian UI text visible to the user.
+
+Human review is not required for pure JSON fixture creation unless the task also changes visible UI.
+
+Every Kilo/Codex result for this block must include:
+
+```markdown
+### Human Check
+
+Status: required / suggested / not needed
+```
+
+If `required` or `suggested`, provide simple Russian steps for the user.
+
+Example:
+
+```markdown
+### Human Check
+
+Status: required
+
+Please check:
+1. Открой приложение.
+2. Посмотри, видно ли зелёное поле.
+3. Кликни по полю.
+
+Expected result:
+После клика справа меняются координаты.
+
+Please reply:
+"Видно, клик работает" or describe what failed.
+```
+
+## Bug Tracking For This Block
+
+Follow `.ai/policies/bug_tracking_policy.md`.
+
+Every implementation result must include:
+
+```markdown
+### Баги и сложности
+
+Status: none / fixed / open / pending human check
+```
+
+For this first block, especially record problems with:
+
+- Vite startup;
+- TypeScript typecheck;
+- Phaser stage visibility;
+- React/Phaser mounting;
+- double boot / double render;
+- layout problems;
+- click/input not reaching runtime;
+- JSON fixture consistency;
+- GameState and Action/Event boundary.
+
+Important or repeated issues must be added to `.ai/logs/bug_journal.md`.
+
 ## Tiny Fixture Set
 
 Required fixture files:

@@ -91,6 +91,10 @@
 
 ### Ключевые Файлы
 
+- [`logs/bug_journal.md`](logs/bug_journal.md) — shared project journal of important/repeated bugs and fixes.
+- [`policies/bug_tracking_policy.md`](policies/bug_tracking_policy.md) — project policy for required bug/difficulty reporting and bug journal usage.
+- [`policies/human_review_policy.md`](policies/human_review_policy.md) — project policy for mandatory/suggested human review, plain Russian user checks, and `pending human check` status.
+- [`policies/language_policy.md`](policies/language_policy.md) — project language policy: English technical identifiers, Russian user-facing UI/docs.
 - [`rules/agent_protocol.md`](rules/agent_protocol.md) — агентный протокол.
 - [`rules/codex_orchestrator.md`](rules/codex_orchestrator.md) — правила Codex-оркестратора.
 - [`rules/model_roster.md`](rules/model_roster.md) — политика выбора моделей.
