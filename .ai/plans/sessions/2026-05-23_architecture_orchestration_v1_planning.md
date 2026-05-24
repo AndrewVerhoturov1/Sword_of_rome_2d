@@ -98,6 +98,9 @@ in_progress
 - `Session run: 017` - `/v1` answer `V1-20260525-005823` processed through local notebook pipeline; direction accepted = move from single-action demo toward a manual sandbox action set, but user explicitly wants the full `Manual Sandbox Action Pack 1` handoff rather than a narrower `change_control` slice.
 - `Session run: 018` - handoff `0015_manual_sandbox_action_pack_1.md` prepared for the next broader-but-bounded sandbox step: create piece, delete piece, change control, selected object panel, human-readable validation messages, and save/load verification for all added runtime changes.
 - `Session run: 019` - `0015` reviewed by Codex; two save/load identity issues were corrected, user confirmed manual browser checks, and the full `Manual Sandbox Action Pack 1` is accepted as the next sandbox baseline.
+- `Session run: 020` - `/v1` answer `V1-20260525-033837` processed through local notebook pipeline; user accepted the recommendation to pivot the next significant step toward `Manual Sandbox Interaction Pack 1 - Smart Drag Move`, with bounded 6-space fixture expansion inside the same handoff and prototype used only as UX donor/reference.
+- `Session run: 021` - handoff `0016_manual_sandbox_interaction_pack_1_smart_drag_move.md` prepared for the next interaction-oriented step: 6-space tiny map expansion, left-button smart drag move, source tail, nearest-target highlight, snap/magnet, release through existing runtime pipeline, rollback on invalid drop, and save/load verification.
+- `Session run: 022` - `0016` reviewed by Codex; one fixture/bootstrap consistency issue was corrected, build/typecheck passed, user confirmed live browser behavior, and the smart drag move pack is accepted as the next interaction baseline.
 
 ## User Overrides
 
@@ -203,6 +206,19 @@ in_progress
   - selected object panel and Russian validation messages are now part of the visible sandbox baseline;
   - compatibility fix exists for older snapshots without `controlState`;
   - `nextPieceSeq` restore now scans both live pieces and historical `piece_created` events to avoid reused ids after load.
+- `/v1` follow-up guidance after accepted `0015` baseline:
+  - `V1-20260525-033837` recommends `Manual Sandbox Interaction Pack 1 - Smart Drag Move`;
+  - include tiny map expansion to about 6 spaces as bounded prep inside the same handoff;
+  - keep prototype role strictly reference/donor only for drag feel;
+  - keep runtime authority outside Phaser and reuse existing `move_piece_requested -> RulesHooks -> Event -> reducer -> GameState` path.
+- `0016` is now accepted:
+  - tiny fixture map is expanded to a small multi-space graph suitable for interaction checks;
+  - left-button smart drag is now the primary move UX;
+  - drag shows source tail/line, nearest-target highlight, and snap/magnet behavior;
+  - release still goes through existing `move_piece_requested -> RulesHooks -> Event -> reducer -> GameState` pipeline;
+  - invalid/no-target drop rolls back without mutating committed state and shows a short Russian message;
+  - fixture-driven `controlBySpace` is now loaded into runtime bootstrap instead of being dead data;
+  - save/load survives committed drag move.
 - В repo уже принят framing: проект = browser-based 2D authoring tool / editor / tabletop sandbox, а Sword of Rome-like модуль = первый тестовый модуль.
 - По `/v1` уже получены и staged два external second opinion:
   - `V1-20260523-052756`

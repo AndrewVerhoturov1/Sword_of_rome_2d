@@ -3,8 +3,8 @@
   "scenarioId": "basic",
   "moduleId": "tiny-module",
   "mapId": "tiny-map",
-  "name": "Basic Scenario",
-  "version": "0.1.0",
+  "name": "Basic Scenario (6 spaces)",
+  "version": "0.1.1",
   "setup": {
     "turnState": {
       "round": 1,
@@ -18,11 +18,22 @@
         "locationId": "space-a",
         "ownerId": "tiny-red",
         "count": 1
+      },
+      {
+        "pieceId": "piece-2",
+        "pieceDefId": "infantry",
+        "locationId": "space-b",
+        "ownerId": "tiny-blue",
+        "count": 1
       }
     ],
     "controlBySpace": {
       "space-a": "tiny-red",
-      "space-b": null
+      "space-b": "tiny-blue",
+      "space-c": null,
+      "space-d": null,
+      "space-e": null,
+      "space-f": null
     },
     "variables": {}
   }

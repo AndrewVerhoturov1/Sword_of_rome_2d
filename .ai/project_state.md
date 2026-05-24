@@ -6,7 +6,7 @@
 
 ## Текущий этап
 
-`Table Sandbox 0.1: Manual Sandbox Action Pack 1 accepted baseline`
+`Table Sandbox 0.1: Smart Drag Move accepted baseline`
 
 ## Что уже принято
 
@@ -20,7 +20,8 @@
   - `0012` — permissive RulesHooks shim;
   - direct graph-aware hardening for `move_piece_requested`;
   - `0014` — minimal runtime snapshot save/load;
-  - `0015` — Manual Sandbox Action Pack 1.
+  - `0015` — Manual Sandbox Action Pack 1;
+  - `0016` — Manual Sandbox Interaction Pack 1 / Smart Drag Move.
 
 ## Что уже работает в product code
 
@@ -32,9 +33,9 @@
   - `tiny-module`
   - `tiny-map`
   - `basic`
-  - 2 spaces
-  - 1 connection
-  - 1 piece instance
+  - около 6 spaces
+  - простой connected graph
+  - multiple piece instances
 - Первый узкий move pipeline уже доказан:
   - `move_piece_requested`
   - `piece_moved`
@@ -52,6 +53,13 @@
   - можно менять контроль точки через `change_control_requested -> control_changed`
   - selected object panel показывает выбранную точку/фишку
   - save/load переживает новые runtime-изменения, включая `controlState`
+- Первый interaction-oriented move pack уже доказан:
+  - existing piece можно тянуть левой кнопкой
+  - во время drag виден source tail/line
+  - ближайший target space подсвечивается
+  - release идёт через existing `move_piece_requested -> piece_moved`
+  - invalid drop не мутирует `GameState` и даёт понятное русское сообщение
+  - save/load переживает committed drag move
 - Rules boundary уже выделен:
   - runtime asks `validateAction`
   - runtime asks `resolveAction`
@@ -65,6 +73,8 @@
 - Runtime now also carries:
   - `controlState` for per-space ownership
   - human-readable Russian validation messages for sandbox actions
+- Runtime/bootstrap now also honors:
+  - fixture-driven initial `controlBySpace`
 
 ## Что зафиксировано в workflow
 
@@ -82,7 +92,6 @@
 
 - Нет mature save system beyond one narrow local snapshot.
 - Нет broad rules engine.
-- Нет drag/drop system.
 - Нет authoring surfaces product-level breadth.
 - Нет mature module package loading beyond tiny local fixture slice.
 

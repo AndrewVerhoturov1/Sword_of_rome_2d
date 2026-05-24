@@ -53,7 +53,7 @@ export default function App() {
   const [validationMessage, setValidationMessage] = useState<string | null>(null);
 
   /** Монотонный счётчик для генерации pieceId */
-  const nextPieceSeqRef = useRef<number>(2);
+  const nextPieceSeqRef = useRef<number>(3);
 
   /** Русский текст для reasonCode */
   const getValidationMessage = useCallback((reasonCode: string): string => {
@@ -249,7 +249,53 @@ export default function App() {
   );
 
   /**
-   * ПКМ по space — попытка перемещения выбранной фишки.
+   * Drag release — завершение smart drag левой кнопкой.
+   *
+   * Вызывается из Phaser при отпускании piece после drag.
+   * Если targetSpaceId не null — создаём move_piece_requested Action
+   * и пропускаем через существующий pipeline.
+   * Если targetSpaceId null (invalid/no-target) — показываем сообщение,
+   * GameState не мутируется.
+   */
+  const handlePieceDragRelease = useCallback(
+    (pieceId: string, targetSpaceId: string | null) => {
+      if (!targetSpaceId) {
+        // Invalid/no-target drop — rollback, GameState не меняется
+        setValidationMessage("Перемещение: не удалось определить целевую точку. Отпусти фишку над точкой на карте.");
+        return;
+      }
+
+      const piece = gameState.pieces.find((p) => p.pieceId === pieceId);
+      if (!piece) {
+        setValidationMessage("Перемещение: перетаскиваемая фишка больше не существует.");
+        return;
+      }
+
+      if (piece.locationId === targetSpaceId) {
+        // Drag на ту же точку — не ошибка, просто бездействие
+        setValidationMessage(null);
+        return;
+      }
+
+      const action = createMovePieceAction(
+        piece.pieceId,
+        piece.locationId,
+        targetSpaceId,
+        "user"
+      );
+
+      const ok = commitAction(action);
+      if (ok) {
+        setSelectedPieceId(null);
+        setValidationMessage(null);
+      }
+      // Если blocked — commitAction уже выставил validationMessage
+    },
+    [gameState.pieces, commitAction]
+  );
+
+  /**
+   * ПКМ по space — попытка перемещения выбранной фишки (fallback).
    * Если фишка не выбрана — показывает подсказку.
    */
   const handleSpaceRightClick = useCallback(
@@ -378,7 +424,7 @@ export default function App() {
   return (
     <div className="app-shell">
       <header className="app-header">
-        <h1>Table Sandbox 0.1 — Manual Sandbox Action Pack 1</h1>
+        <h1>Table Sandbox 0.1 — Smart Drag Move (0016)</h1>
         <span className="app-badge">
           {gameState.projectId}/{gameState.scenarioId}
         </span>
@@ -393,13 +439,14 @@ export default function App() {
             selectedSpaceId={selectedSpaceId}
             onSpaceClick={handleSpaceClick}
             onSpaceRightClick={handleSpaceRightClick}
+            onPieceDragRelease={handlePieceDragRelease}
           />
           <p className="area-hint">
             {selectedPieceId
-              ? `Выбрана фишка: ${selectedPieceId} в точке «${getSpaceName(gameState.pieces.find(p => p.pieceId === selectedPieceId)?.locationId ?? "")}». ПКМ по другой точке — переместить.`
+              ? `Выбрана фишка: ${selectedPieceId} в точке «${getSpaceName(gameState.pieces.find(p => p.pieceId === selectedPieceId)?.locationId ?? "")}». Тяни левой кнопкой — переместить. ПКМ по точке — тоже переместить.`
               : selectedSpaceId
-                ? `Выбрана точка: «${getSpaceName(selectedSpaceId)}». ЛКМ — выбрать, ПКМ — переместить.`
-                : "ЛКМ по точке — выбрать. ПКМ по точке — переместить выбранную фишку."}
+                ? `Выбрана точка: «${getSpaceName(selectedSpaceId)}». ЛКМ — выбрать, тяни фишку — переместить.`
+                : "ЛКМ по точке — выбрать. Зажми фишку левой кнопкой и тяни — переместить."}
           </p>
         </div>
 

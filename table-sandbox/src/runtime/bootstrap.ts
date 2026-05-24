@@ -63,6 +63,13 @@ function loadTurn(): TurnState {
   };
 }
 
+/** Загрузить начальный control state из scenario setup */
+function loadControlState(): Record<string, string | null> {
+  const raw = (scenarioData.setup as Record<string, unknown>).controlBySpace;
+  if (raw === null || typeof raw !== "object") return {};
+  return { ...(raw as Record<string, string | null>) };
+}
+
 /** Собрать bootstrap metadata */
 function buildBootstrapMeta(): BootstrapMeta {
   return {
@@ -101,7 +108,7 @@ export function bootstrapGameState(): GameState {
     spaces: loadSpaces(),
     connections: loadConnections(),
     pieces: loadPieces(),
-    controlState: {},
+    controlState: loadControlState(),
     turn: loadTurn(),
     bootstrapMeta: buildBootstrapMeta(),
   };

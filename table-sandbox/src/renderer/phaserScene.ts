@@ -2,12 +2,13 @@ import Phaser from "phaser";
 import type { GameState } from "../runtime/GameState";
 
 /**
- * TableSandboxScene — Phaser-сцена для первого Action/Event Spine slice (0011).
+ * TableSandboxScene — Phaser-сцена для Action/Event Spine + Smart Drag Move (0016).
  *
  * ПРАВИЛО: Эта сцена НЕ хранит authoritative runtime state.
  * Она только:
  *   - рендерит spaces, connections и pieces из GameState;
  *   - принимает pointer input;
+ *   - обрабатывает left-button drag для pieces;
  *   - передаёт structured input наружу через callback (не мутируя GameState).
  *
  * Source of truth — GameState вне Phaser.
@@ -18,6 +19,8 @@ export interface SceneCallbacks {
   onSpaceClick: (spaceId: string) => void;
   /** Вызывается при ПКМ на space — попытка перемещения */
   onSpaceRightClick: (spaceId: string) => void;
+  /** Вызывается при отпускании drag — pieceId + targetSpaceId (null если invalid/no-target) */
+  onPieceDragRelease: (pieceId: string, targetSpaceId: string | null) => void;
 }
 
 /** Радиус попадания в space (пиксели) */
@@ -25,6 +28,30 @@ const SPACE_HIT_RADIUS = 35;
 
 /** Радиус отрисовки space-круга */
 const SPACE_RADIUS = 24;
+
+/** Порог начала drag (пиксели) — чтобы отличить клик от перетаскивания */
+const DRAG_THRESHOLD = 5;
+
+/** Snap-радиус: если курсор ближе этого расстояния к центру space — магнит */
+const SNAP_RADIUS = 48;
+
+/** Размер piece-прямоугольника */
+const PIECE_SIZE = 28;
+
+/** Смещение piece относительно центра space */
+const PIECE_OFFSET_X = 18;
+
+// ---- Drag state (transient, lives in Phaser only) ----
+
+interface DragState {
+  pieceId: string;
+  sourceSpaceId: string;
+  startX: number;
+  startY: number;
+  /** Координаты source space (для tail line) */
+  sourceSpaceX: number;
+  sourceSpaceY: number;
+}
 
 export class TableSandboxScene extends Phaser.Scene {
   private callbacks: SceneCallbacks | null = null;
@@ -34,8 +61,32 @@ export class TableSandboxScene extends Phaser.Scene {
   private pieceMarkers: Map<string, Phaser.GameObjects.Container> = new Map();
   private selectionHighlight: Phaser.GameObjects.Arc | null = null;
 
-  /** Кэшированное состояние для hit-теста */
+  /** Кэшированное состояние для hit-теста spaces */
   private cachedSpaces: { spaceId: string; x: number; y: number }[] = [];
+
+  /** Кэшированные bounding-boxes pieces для drag hit-теста */
+  private cachedPieceBoxes: { pieceId: string; x: number; y: number; w: number; h: number }[] = [];
+
+  /** pieceId → spaceId mapping (для selected-piece-aware drag) */
+  private pieceSpaceMap: Map<string, string> = new Map();
+
+  /** Текущий selectedPieceId из React (для drag-target resolution) */
+  private currentSelectedPieceId: string | null = null;
+
+  // ---- Drag transient state ----
+  private dragState: DragState | null = null;
+  /** true когда реально начали drag (превысили порог) */
+  private isDragging: boolean = false;
+  /** Потенциальный drag начат, но ещё не превысили порог */
+  private dragPending: boolean = false;
+  /** Координаты pointerdown для проверки порога */
+  private dragPendingX: number = 0;
+  private dragPendingY: number = 0;
+
+  // ---- Drag visual objects ----
+  private dragGhost: Phaser.GameObjects.Container | null = null;
+  private dragTailLine: Phaser.GameObjects.Graphics | null = null;
+  private snapHighlightRing: Phaser.GameObjects.Arc | null = null;
 
   constructor() {
     super({ key: "TableSandboxScene" });
@@ -54,7 +105,7 @@ export class TableSandboxScene extends Phaser.Scene {
 
     // Заголовок внутри canvas
     this.add
-      .text(width / 2, 16, "Table Sandbox 0.1 — Action/Event Spine", {
+      .text(width / 2, 16, "Table Sandbox 0.1 — Smart Drag Move", {
         fontSize: "13px",
         color: "#cccccc",
         fontFamily: "monospace",
@@ -78,19 +129,113 @@ export class TableSandboxScene extends Phaser.Scene {
       )
       .setOrigin(0.5, 1);
 
-    // Обработка кликов — hit-test по spaces
-    // ЛКМ (button 0) — выбор space/piece
-    // ПКМ (button 2) — попытка перемещения
+    // ---- Pointer handlers ----
+
+    // pointerdown: определяем hit (piece → потенциальный drag / space → click)
     this.input.on("pointerdown", (pointer: Phaser.Input.Pointer) => {
-      const spaceId = this.findSpaceAt(pointer.x, pointer.y);
-      if (!spaceId || !this.callbacks) return;
+      if (!this.callbacks) return;
 
       if (pointer.button === 0) {
-        // Левая кнопка — выбор
-        this.callbacks.onSpaceClick(spaceId);
+        // Левая кнопка
+        const pieceHit = this.findPieceAt(pointer.x, pointer.y);
+        if (pieceHit) {
+          // Попали в piece — начинаем потенциальный drag.
+          // НЕ вызываем onSpaceClick — даём жесту разрешиться:
+          //   без движения → click (циклический выбор)
+          //   с движением → drag (перетаскивание)
+
+          // Определяем source space
+          const space = this.findSpaceAt(pointer.x, pointer.y);
+          const sourceSpaceId = space ?? this.pieceSpaceMap.get(pieceHit) ?? "";
+
+          // Selected-piece-aware drag target:
+          // если selectedPieceId в том же sourceSpaceId — тянем выбранную фишку,
+          // иначе тянем ту, по которой попали (верхнюю).
+          let dragPieceId = pieceHit;
+          if (this.currentSelectedPieceId) {
+            const selPieceSpace = this.pieceSpaceMap.get(this.currentSelectedPieceId);
+            if (selPieceSpace && selPieceSpace === sourceSpaceId) {
+              dragPieceId = this.currentSelectedPieceId;
+            }
+          }
+
+          this.dragPending = true;
+          this.dragPendingX = pointer.x;
+          this.dragPendingY = pointer.y;
+          this.dragState = {
+            pieceId: dragPieceId,
+            sourceSpaceId: sourceSpaceId,
+            startX: pointer.x,
+            startY: pointer.y,
+            sourceSpaceX: 0, // будет уточнено при начале drag
+            sourceSpaceY: 0,
+          };
+
+          // Ждём pointerup (click) или pointermove (drag)
+          return;
+        }
+
+        // Не piece — обычный клик по space
+        const spaceId = this.findSpaceAt(pointer.x, pointer.y);
+        if (spaceId) {
+          this.callbacks.onSpaceClick(spaceId);
+        }
       } else if (pointer.button === 2) {
-        // Правая кнопка — перемещение
-        this.callbacks.onSpaceRightClick(spaceId);
+        // Правая кнопка — перемещение (fallback)
+        const spaceId = this.findSpaceAt(pointer.x, pointer.y);
+        if (spaceId) {
+          this.callbacks.onSpaceRightClick(spaceId);
+        }
+      }
+    });
+
+    // pointermove: drag tracking
+    this.input.on("pointermove", (pointer: Phaser.Input.Pointer) => {
+      if (!this.dragPending || !this.dragState) return;
+
+      const dx = pointer.x - this.dragPendingX;
+      const dy = pointer.y - this.dragPendingY;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+
+      if (!this.isDragging && dist >= DRAG_THRESHOLD) {
+        // Переход в реальный drag
+        this.isDragging = true;
+        this.beginDragVisuals();
+      }
+
+      if (this.isDragging) {
+        this.updateDragVisuals(pointer.x, pointer.y);
+      }
+    });
+
+    // pointerup: завершение drag или click
+    this.input.on("pointerup", (pointer: Phaser.Input.Pointer) => {
+      if (pointer.button !== 0) return;
+
+      if (this.isDragging && this.dragState && this.callbacks) {
+        // Drag завершён — ищем nearest space для snap
+        const nearest = this.findNearestSpace(pointer.x, pointer.y);
+        let targetSpaceId: string | null = null;
+        if (nearest) {
+          const d = Math.sqrt(
+            (pointer.x - nearest.x) ** 2 + (pointer.y - nearest.y) ** 2
+          );
+          if (d <= SNAP_RADIUS) {
+            targetSpaceId = nearest.spaceId;
+          }
+        }
+        this.callbacks.onPieceDragRelease(this.dragState.pieceId, targetSpaceId);
+        this.clearDrag();
+        return;
+      }
+
+      if (this.dragPending && !this.isDragging) {
+        // Был pointerdown на piece, но не двигали → это клик
+        const spaceId = this.findSpaceAt(pointer.x, pointer.y);
+        if (spaceId && this.callbacks) {
+          this.callbacks.onSpaceClick(spaceId);
+        }
+        this.clearDrag();
       }
     });
 
@@ -107,15 +252,49 @@ export class TableSandboxScene extends Phaser.Scene {
     selectedPieceId: string | null,
     selectedSpaceId: string | null
   ): void {
+    // Сохраняем selectedPieceId для drag-target resolution
+    this.currentSelectedPieceId = selectedPieceId;
+
+    // Если drag активен — не сбрасываем его и не перерисовываем.
+    // Перерисовка случится после commit (drag уже будет сброшен к тому моменту).
+    if (this.isDragging && this.dragState) {
+      const pieceStillExists = state.pieces.some(
+        (p) => p.pieceId === this.dragState!.pieceId
+      );
+      if (!pieceStillExists) {
+        // Dragged piece исчезла — сбрасываем drag
+        this.clearDrag();
+      }
+      // В любом случае не перерисовываем во время активного drag
+      return;
+    }
+
+    // Штатный путь: сброс и полная перерисовка
+    this.clearDrag();
     this.clearAllDynamic();
-    this.cachedSpaces = [];
 
     this.drawConnections(state);
     this.drawSpaces(state, selectedSpaceId, state.controlState);
     this.drawPieces(state, selectedPieceId);
   }
 
-  // ---- Hit test ----
+  // ---- Hit test: pieces ----
+
+  private findPieceAt(x: number, y: number): string | null {
+    for (const box of this.cachedPieceBoxes) {
+      if (
+        x >= box.x &&
+        x <= box.x + box.w &&
+        y >= box.y &&
+        y <= box.y + box.h
+      ) {
+        return box.pieceId;
+      }
+    }
+    return null;
+  }
+
+  // ---- Hit test: spaces ----
 
   private findSpaceAt(x: number, y: number): string | null {
     for (const s of this.cachedSpaces) {
@@ -126,6 +305,156 @@ export class TableSandboxScene extends Phaser.Scene {
       }
     }
     return null;
+  }
+
+  // ---- Nearest space (для snap) ----
+
+  private findNearestSpace(
+    x: number,
+    y: number
+  ): { spaceId: string; x: number; y: number } | null {
+    let nearest: { spaceId: string; x: number; y: number } | null = null;
+    let nearestDist = Infinity;
+    for (const s of this.cachedSpaces) {
+      const d = Math.sqrt((x - s.x) ** 2 + (y - s.y) ** 2);
+      if (d < nearestDist) {
+        nearestDist = d;
+        nearest = s;
+      }
+    }
+    return nearest;
+  }
+
+  // ---- Drag visuals ----
+
+  private beginDragVisuals(): void {
+    if (!this.dragState) return;
+
+    // Уточняем sourceSpaceX/Y из cachedSpaces
+    const srcSpace = this.cachedSpaces.find(
+      (s) => s.spaceId === this.dragState!.sourceSpaceId
+    );
+    if (srcSpace) {
+      this.dragState.sourceSpaceX = srcSpace.x;
+      this.dragState.sourceSpaceY = srcSpace.y;
+    }
+
+    // Делаем оригинальный piece полупрозрачным
+    const origMarker = this.pieceMarkers.get(this.dragState.pieceId);
+    if (origMarker) {
+      origMarker.setAlpha(0.3);
+    }
+
+    // Создаём ghost (копию piece, следующую за курсором)
+    this.dragGhost = this.createDragGhost();
+    // Ставим ghost на текущую позицию
+    if (this.dragGhost) {
+      this.dragGhost.setPosition(this.dragState.startX, this.dragState.startY);
+    }
+
+    // Создаём tail line (от source space к текущей позиции)
+    this.dragTailLine = this.add.graphics();
+    this.dragTailLine.setDepth(10);
+
+    // Создаём snap highlight ring (пока скрыт)
+    this.snapHighlightRing = this.add.circle(0, 0, SPACE_RADIUS + 10);
+    this.snapHighlightRing.setStrokeStyle(3, 0xf0c040, 0.8);
+    this.snapHighlightRing.setFillStyle(0xf0c040, 0.1);
+    this.snapHighlightRing.setDepth(9);
+    this.snapHighlightRing.setVisible(false);
+  }
+
+  private createDragGhost(): Phaser.GameObjects.Container | null {
+    // Нам нужен цвет piece. Мы не храним ownerId в cachedPieceBoxes,
+    // поэтому создаём простой ghost-прямоугольник нейтрального цвета.
+    // Приоритет — square 28×28 с жёлтой обводкой и текстом pieceId.
+    const rect = this.add.rectangle(0, 0, PIECE_SIZE, PIECE_SIZE, 0x888888, 0.9);
+    rect.setStrokeStyle(3, 0xf0c040, 1);
+
+    const idText = this.add
+      .text(0, -18, this.dragState!.pieceId, {
+        fontSize: "10px",
+        color: "#f0c040",
+        fontFamily: "monospace",
+      })
+      .setOrigin(0.5, 1);
+
+    const countText = this.add
+      .text(0, 2, "1", {
+        fontSize: "10px",
+        color: "#ffffff",
+        fontFamily: "monospace",
+      })
+      .setOrigin(0.5);
+
+    const container = this.add.container(0, 0, [rect, idText, countText]);
+    container.setDepth(20);
+    return container;
+  }
+
+  private updateDragVisuals(pointerX: number, pointerY: number): void {
+    // Обновляем позицию ghost
+    if (this.dragGhost) {
+      this.dragGhost.setPosition(pointerX, pointerY);
+    }
+
+    // Обновляем tail line
+    if (this.dragTailLine && this.dragState) {
+      this.dragTailLine.clear();
+      this.dragTailLine.lineStyle(2, 0xf0c040, 0.6);
+      this.dragTailLine.lineBetween(
+        this.dragState.sourceSpaceX,
+        this.dragState.sourceSpaceY,
+        pointerX,
+        pointerY
+      );
+    }
+
+    // Обновляем snap highlight
+    if (this.snapHighlightRing && this.cachedSpaces.length > 0) {
+      const nearest = this.findNearestSpace(pointerX, pointerY);
+      if (nearest) {
+        const d = Math.sqrt(
+          (pointerX - nearest.x) ** 2 + (pointerY - nearest.y) ** 2
+        );
+        if (d <= SNAP_RADIUS) {
+          this.snapHighlightRing.setPosition(nearest.x, nearest.y);
+          this.snapHighlightRing.setVisible(true);
+        } else {
+          this.snapHighlightRing.setVisible(false);
+        }
+      } else {
+        this.snapHighlightRing.setVisible(false);
+      }
+    }
+  }
+
+  private clearDrag(): void {
+    // Восстановить alpha оригинального piece
+    if (this.dragState) {
+      const origMarker = this.pieceMarkers.get(this.dragState.pieceId);
+      if (origMarker) {
+        origMarker.setAlpha(1);
+      }
+    }
+
+    // Уничтожить drag visuals
+    if (this.dragGhost) {
+      this.dragGhost.destroy();
+      this.dragGhost = null;
+    }
+    if (this.dragTailLine) {
+      this.dragTailLine.destroy();
+      this.dragTailLine = null;
+    }
+    if (this.snapHighlightRing) {
+      this.snapHighlightRing.destroy();
+      this.snapHighlightRing = null;
+    }
+
+    this.dragState = null;
+    this.isDragging = false;
+    this.dragPending = false;
   }
 
   // ---- Очистка ----
@@ -141,6 +470,8 @@ export class TableSandboxScene extends Phaser.Scene {
     this.spaceCircles.clear();
     this.spaceLabels.clear();
     this.pieceMarkers.clear();
+    this.cachedPieceBoxes = [];
+    this.pieceSpaceMap.clear();
     if (this.connectionLines) {
       this.connectionLines.clear();
     }
@@ -231,12 +562,22 @@ export class TableSandboxScene extends Phaser.Scene {
       const isSelected = piece.pieceId === selectedPieceId;
 
       // Смещение относительно центра space — чтобы piece был виден рядом
-      const offsetX = 18;
-      const px = space.x + offsetX;
+      const px = space.x + PIECE_OFFSET_X;
       const py = space.y;
 
+      // Кэшируем bounding box для drag hit-теста
+      this.cachedPieceBoxes.push({
+        pieceId: piece.pieceId,
+        x: px - PIECE_SIZE / 2,
+        y: py - PIECE_SIZE / 2,
+        w: PIECE_SIZE,
+        h: PIECE_SIZE,
+      });
+
+      // Кэшируем piece → space для selected-piece-aware drag
+      this.pieceSpaceMap.set(piece.pieceId, space.spaceId);
+
       // Маркер piece — квадрат 28×28, цвет заливки по ownerId
-      // Выделение фишки НЕ влияет на круг точки — точка остаётся как есть.
       let fillColor: number;
       if (piece.ownerId === "tiny-red") {
         fillColor = 0xcc3333; // красный
@@ -246,7 +587,7 @@ export class TableSandboxScene extends Phaser.Scene {
         fillColor = 0xe06030; // оранжевый — неизвестный
       }
 
-      const rect = this.add.rectangle(0, 0, 28, 28, fillColor, 1);
+      const rect = this.add.rectangle(0, 0, PIECE_SIZE, PIECE_SIZE, fillColor, 1);
 
       // Выделение — только контур, без смены заливки
       if (isSelected) {

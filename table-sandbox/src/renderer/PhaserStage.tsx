@@ -11,7 +11,9 @@ import type { GameState } from "../runtime/GameState";
  * Никакой Phaser-объект не пролезает в остальной React shell.
  *
  * Принимает GameState для рендера и selection для подсветки.
- * Передаёт клики по spaces наружу через onSpaceClick.
+ * Передаёт клики по spaces и drag release наружу через callbacks.
+ *
+ * Handoff 0016: добавлен onPieceDragRelease для smart drag move.
  */
 interface PhaserStageProps {
   gameState: GameState;
@@ -19,6 +21,7 @@ interface PhaserStageProps {
   selectedSpaceId: string | null;
   onSpaceClick: (spaceId: string) => void;
   onSpaceRightClick: (spaceId: string) => void;
+  onPieceDragRelease: (pieceId: string, targetSpaceId: string | null) => void;
 }
 
 export function PhaserStage({
@@ -27,6 +30,7 @@ export function PhaserStage({
   selectedSpaceId,
   onSpaceClick,
   onSpaceRightClick,
+  onPieceDragRelease,
 }: PhaserStageProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const gameRef = useRef<Phaser.Game | null>(null);
@@ -51,6 +55,7 @@ export function PhaserStage({
     const callbacks: SceneCallbacks = {
       onSpaceClick,
       onSpaceRightClick,
+      onPieceDragRelease,
     };
 
     const config: Phaser.Types.Core.GameConfig = {
@@ -101,9 +106,9 @@ export function PhaserStage({
       "TableSandboxScene"
     ) as TableSandboxScene;
     if (scene && scene.scene.isActive()) {
-      scene.setCallbacks({ onSpaceClick, onSpaceRightClick });
+      scene.setCallbacks({ onSpaceClick, onSpaceRightClick, onPieceDragRelease });
     }
-  }, [onSpaceClick, onSpaceRightClick]);
+  }, [onSpaceClick, onSpaceRightClick, onPieceDragRelease]);
 
   // ---- Обновление рендера при изменении GameState или selection ----
 

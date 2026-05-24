@@ -2,8 +2,8 @@
   "schemaVersion": "0.1",
   "mapId": "tiny-map",
   "moduleId": "tiny-module",
-  "version": "0.1.0",
-  "name": "Tiny Map",
+  "version": "0.1.1",
+  "name": "Tiny Map (6 spaces)",
   "coordinateSystem": {
     "type": "pixel",
     "width": 800,
@@ -13,15 +13,43 @@
     {
       "spaceId": "space-a",
       "name": "Space A",
-      "x": 200,
-      "y": 250,
+      "x": 180,
+      "y": 200,
       "type": "region"
     },
     {
       "spaceId": "space-b",
       "name": "Space B",
-      "x": 600,
-      "y": 250,
+      "x": 500,
+      "y": 140,
+      "type": "region"
+    },
+    {
+      "spaceId": "space-c",
+      "name": "Space C",
+      "x": 650,
+      "y": 320,
+      "type": "region"
+    },
+    {
+      "spaceId": "space-d",
+      "name": "Space D",
+      "x": 500,
+      "y": 450,
+      "type": "region"
+    },
+    {
+      "spaceId": "space-e",
+      "name": "Space E",
+      "x": 180,
+      "y": 380,
+      "type": "region"
+    },
+    {
+      "spaceId": "space-f",
+      "name": "Space F",
+      "x": 380,
+      "y": 280,
       "type": "region"
     }
   ],
@@ -30,6 +58,54 @@
       "connectionId": "connection-a-b",
       "fromSpaceId": "space-a",
       "toSpaceId": "space-b",
+      "type": "land"
+    },
+    {
+      "connectionId": "connection-a-e",
+      "fromSpaceId": "space-a",
+      "toSpaceId": "space-e",
+      "type": "land"
+    },
+    {
+      "connectionId": "connection-a-f",
+      "fromSpaceId": "space-a",
+      "toSpaceId": "space-f",
+      "type": "land"
+    },
+    {
+      "connectionId": "connection-b-c",
+      "fromSpaceId": "space-b",
+      "toSpaceId": "space-c",
+      "type": "land"
+    },
+    {
+      "connectionId": "connection-b-f",
+      "fromSpaceId": "space-b",
+      "toSpaceId": "space-f",
+      "type": "land"
+    },
+    {
+      "connectionId": "connection-c-d",
+      "fromSpaceId": "space-c",
+      "toSpaceId": "space-d",
+      "type": "land"
+    },
+    {
+      "connectionId": "connection-c-f",
+      "fromSpaceId": "space-c",
+      "toSpaceId": "space-f",
+      "type": "land"
+    },
+    {
+      "connectionId": "connection-d-e",
+      "fromSpaceId": "space-d",
+      "toSpaceId": "space-e",
+      "type": "land"
+    },
+    {
+      "connectionId": "connection-d-f",
+      "fromSpaceId": "space-d",
+      "toSpaceId": "space-f",
       "type": "land"
     }
   ],
