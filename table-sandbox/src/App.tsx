@@ -4,9 +4,10 @@ import { DebugPanel } from "./debug/DebugPanel";
 import { type GameState } from "./runtime/GameState";
 import { bootstrapGameState } from "./runtime/bootstrap";
 import {
-  createAction,
+  createMovePieceAction,
   createEvent,
   validateAction,
+  reduceEvent,
   createEventLog,
   appendEvent,
   type Action,
@@ -15,80 +16,109 @@ import {
 import "./App.css";
 
 /**
- * App — корневой React-компонент Table Sandbox 0.1.
+ * App — корневой React-компонент Table Sandbox 0.1 (Action/Event Spine).
  *
  * Владеет:
  *   - GameState (authoritative runtime state)
  *   - Action/Event pipeline
  *   - EventLog
+ *   - Selection state (selectedPieceId)
  *
  * GameState инициализируется из canonical fixtures
  * (table-sandbox/src/fixtures/tiny-module/), не из placeholder.
  *
  * PhaserStage — только renderer/input, не владеет состоянием.
+ *
+ * Первый move slice UX:
+ *   1. Клик по space с фишкой → выбор фишки (подсветка)
+ *   2. Клик по другому space → move_piece_requested → piece_moved → redraw
  */
 
 export default function App() {
   const [gameState, setGameState] = useState<GameState>(bootstrapGameState);
   const [lastAction, setLastAction] = useState<Action | null>(null);
   const [eventLog, setEventLog] = useState<EventLog>(createEventLog);
-  const [lastClick, setLastClick] = useState<{
-    x: number;
-    y: number;
-  } | null>(null);
+  const [selectedPieceId, setSelectedPieceId] = useState<string | null>(null);
 
   /**
-   * Обработчик клика из Phaser.
-   * Phaser ТОЛЬКО передаёт координаты.
-   * Runtime (этот код) создаёт Action → валидирует → коммитит Event.
+   * Обработчик клика по space из Phaser.
    *
-   * При обновлении GameState сохраняются все bootstrap-поля
-   * (projectId, spaces, pieces, turn и т.д.).
+   * Двухшаговый UX:
+   *   Шаг 1 — если фишка не выбрана и кликнутый space содержит фишку:
+   *            выбрать эту фишку.
+   *   Шаг 2 — если фишка уже выбрана и кликнут другой space:
+   *            создать move_piece_requested → провалидировать →
+   *            скоммитить piece_moved → reduce GameState → обновить event log.
+   *
+   * Phaser НЕ мутирует GameState. Только runtime коммитит события.
    */
-  const handleTableClick = useCallback(
-    (x: number, y: number) => {
-      setLastClick({ x: Math.round(x), y: Math.round(y) });
-
-      // 1. Runtime создаёт Action (НЕ Phaser)
-      const action = createAction("table_click", "user", {
-        x: Math.round(x),
-        y: Math.round(y),
-      });
-
-      // 2. Валидация
-      const validation = validateAction(action);
-      if (validation.status === "block") {
-        setLastAction(action);
-        return; // Заблокировано — не коммитим
+  const handleSpaceClick = useCallback(
+    (spaceId: string) => {
+      // Шаг 1: ничего не выбрано — проверить, есть ли фишка в этом space
+      if (!selectedPieceId) {
+        const pieceOnSpace = gameState.pieces.find(
+          (p) => p.locationId === spaceId
+        );
+        if (pieceOnSpace) {
+          setSelectedPieceId(pieceOnSpace.pieceId);
+        }
+        return;
       }
 
-      // 3. Runtime коммитит Event
-      const event = createEvent(action, "table_clicked");
+      // Шаг 2: фишка выбрана
+      const piece = gameState.pieces.find(
+        (p) => p.pieceId === selectedPieceId
+      );
+      if (!piece) {
+        setSelectedPieceId(null);
+        return;
+      }
 
-      // 4. Обновляем EventLog
+      // Клик по тому же space — отмена выбора
+      if (piece.locationId === spaceId) {
+        setSelectedPieceId(null);
+        return;
+      }
+
+      // Создать move_piece_requested Action
+      const action = createMovePieceAction(
+        piece.pieceId,
+        piece.locationId,
+        spaceId,
+        "user"
+      );
+
+      // Валидация
+      const validation = validateAction(action, gameState);
+      if (validation.status === "block") {
+        setLastAction(action);
+        setSelectedPieceId(null);
+        return;
+      }
+
+      // Коммитим piece_moved Event
+      const event = createEvent(action, "piece_moved");
+
+      // Обновляем EventLog
       setEventLog((prev) => {
         const updated = { events: [...prev.events] };
         appendEvent(updated, event);
         return updated;
       });
 
-      // 5. Обновляем GameState (авторитетно, вне Phaser)
-      // Сохраняем все bootstrap-поля, инкрементируем только version/lastUpdated.
-      setGameState((prev) => ({
-        ...prev,
-        version: prev.version + 1,
-        lastUpdated: Date.now(),
-      }));
+      // Reducer: применяем event к GameState (единственный путь мутации)
+      setGameState((prev) => reduceEvent(prev, event));
 
       setLastAction(action);
+      setSelectedPieceId(null);
     },
-    []
+    [gameState, selectedPieceId]
   );
 
   return (
     <div className="app-shell">
       <header className="app-header">
-        <h1>Table Sandbox 0.1</h1>
+        <h1>Table Sandbox 0.1 — Action/Event Spine</h1>
         <span className="app-badge">
           {gameState.projectId}/{gameState.scenarioId}
         </span>
@@ -97,10 +127,15 @@ export default function App() {
       <main className="app-main">
         <div className="table-area">
           <h2 className="area-label">Table Surface (Phaser Renderer)</h2>
-          <PhaserStage onTableClick={handleTableClick} />
+          <PhaserStage
+            gameState={gameState}
+            selectedPieceId={selectedPieceId}
+            onSpaceClick={handleSpaceClick}
+          />
           <p className="area-hint">
-            Кликни по таблице — runtime создаст Action, скоммитит Event и
-            обновит GameState. Всё вне Phaser.
+            {selectedPieceId
+              ? `Выбрана фишка: ${selectedPieceId}. Кликни по другому space для перемещения.`
+              : "Кликни по space с фишкой, чтобы выбрать её, затем по целевому space для перемещения."}
           </p>
         </div>
 
@@ -109,7 +144,7 @@ export default function App() {
             gameState={gameState}
             lastAction={lastAction}
             eventLog={eventLog}
-            lastClick={lastClick}
+            selectedPieceId={selectedPieceId}
           />
         </aside>
       </main>

@@ -2,30 +2,74 @@
 
 ## Дата обновления
 
-`2026-05-22`
+`2026-05-24`
 
 ## Текущий этап
 
-`Bootstrap workflow + normalizing repository structure for future GitHub publication`
+`Table Sandbox 0.1: first move slice accepted baseline`
 
-## Что уже сделано
+## Что уже принято
 
-- Разложен базовый публичный контекст по `canon/`, `references/`, `docs/`.
-- Установлен workflow `Codex + Kilo Code` из central `ai-workflow-core`.
-- Выделены local-only зоны: `arena-prototype-launcher/`, `_local/`, `output/Arena tests/`.
+- Проектовый canon: это browser-based authoring tool / tabletop sandbox для 2D counter-based варгеймов.
+- `Sword of Rome-like` модуль здесь = первый тестовый модуль, не весь продукт.
+- Первый product-code путь уже прошёл через:
+  - `0008` — technical bootstrap shell;
+  - `0009` — canonical fixture seed;
+  - `0010` — runtime/data bootstrap from fixtures;
+  - `0011` — first narrow Action/Event move slice.
 
-## Что внедряется сейчас
+## Что уже работает в product code
 
-- Публичная навигация repo для внешних чатов.
-- Подготовка репозитория к первой нормальной публикации в GitHub.
+- Отдельный `table-sandbox/` shell на `Vite + React + TypeScript + Phaser`.
+- Authoritative `GameState` живёт вне Phaser.
+- Tiny fixtures грузятся из `table-sandbox/src/fixtures/tiny-module/`.
+- Runtime знает:
+  - `tiny-project`
+  - `tiny-module`
+  - `tiny-map`
+  - `basic`
+  - 2 spaces
+  - 1 connection
+  - 1 piece instance
+- Первый узкий move pipeline уже доказан:
+  - `move_piece_requested`
+  - `piece_moved`
+  - reducer updates `GameState`
+  - event log grows
+  - renderer redraws piece from updated runtime state
+
+## Что зафиксировано в workflow
+
+- Repo-level policy layer добавлен:
+  - language policy
+  - human review policy
+  - bug tracking policy
+- Эти политики уже вшиты не только в repo docs, но и в Kilo process layer:
+  - handoff creation
+  - Kilo rules
+  - report templates
+  - review prompts
+
+## Текущие ограничения
+
+- Нет save/load slice.
+- Нет broad rules engine.
+- Нет drag/drop system.
+- Нет authoring surfaces product-level breadth.
+- Нет mature module package loading beyond tiny local fixture slice.
+
+## Ближайший practical next step
+
+Следующий шаг должен оставаться узким и идти поверх уже принятого move slice.
+
+Рабочее направление:
+
+- следующий runtime step после `0011`, без перепридумывания архитектуры;
+- не возвращаться назад к bootstrap;
+- не расползаться сразу в save/load, broad rules или editor breadth.
 
 ## Текущие риски
 
-- Часть прототипов всё ещё лежит в `output/Arena tests/`; это локальный архив, не канон проекта.
-- Архитектура самого игрового/editor runtime ещё не разложена на product-code модули, потому что repo пока содержит в основном контекст и прототипные материалы.
-
-## Следующие задачи
-
-1. Зафиксировать, какие материалы становятся каноном, а какие остаются идеями.
-2. Инициализировать Git-репозиторий и опубликовать публичный слой.
-3. Начать формировать первый product-code block для editor sandbox.
+- Легко расползти следующий handoff в несколько систем сразу: runtime, rules, persistence и UI.
+- Легко начать чинить “на будущее” вместо следующего узкого slice.
+- Bundle warning от Phaser/Vite остаётся, но пока не blocker.

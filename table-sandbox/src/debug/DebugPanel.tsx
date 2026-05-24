@@ -7,22 +7,22 @@ import type { EventLog, Action } from "../runtime/actionEvent";
  * Это доказательство, что GameState, Action/Event pipeline и Event Log
  * живут ВНЕ Phaser. Phaser не имеет к ним доступа.
  *
- * Phase 3 (Runtime/Data Bootstrap): добавлены секции с evidence,
- * что данные пришли из canonical fixtures, а не из hardcoded placeholder.
+ * Handoff 0011 (Action/Event Spine): добавлена секция Selection,
+ * убраны последние координаты клика, обновлён показ Action/Event.
  */
 
 interface DebugPanelProps {
   gameState: GameState;
   lastAction: Action | null;
   eventLog: EventLog;
-  lastClick: { x: number; y: number } | null;
+  selectedPieceId: string | null;
 }
 
 export function DebugPanel({
   gameState,
   lastAction,
   eventLog,
-  lastClick,
+  selectedPieceId,
 }: DebugPanelProps) {
   return (
     <div
@@ -52,6 +52,19 @@ export function DebugPanel({
         Все данные ниже живут в React runtime, ВНЕ Phaser.
       </p>
 
+      {/* Selection */}
+      <Section title="Выбор (Selection)">
+        {selectedPieceId ? (
+          <KV label="selectedPieceId" value={selectedPieceId} important />
+        ) : (
+          <KV label="selectedPieceId" value="— (ничего не выбрано)" />
+        )}
+        <KV
+          label="инструкция"
+          value="Кликни по space с фишкой → выбор. Кликни по другому space → move."
+        />
+      </Section>
+
       {/* Bootstrap Identity */}
       <Section title="Bootstrap Identity (из fixtures)">
         <KV label="projectId" value={gameState.projectId} important />
@@ -80,7 +93,7 @@ export function DebugPanel({
       {/* Pieces */}
       <Section title="Piece Instances (из scenario.basic.json)">
         <KV label="pieces" value={gameState.pieces.length} />
-        <PiecesList pieces={gameState.pieces} />
+        <PiecesList pieces={gameState.pieces} selectedPieceId={selectedPieceId} />
       </Section>
 
       {/* Turn / Phase */}
@@ -93,28 +106,12 @@ export function DebugPanel({
       {/* Bootstrap Metadata */}
       <BootstrapMetaSection meta={gameState.bootstrapMeta} />
 
-      {/* Last click from Phaser */}
-      <Section title="Phaser Input (последний клик)">
-        {lastClick ? (
-          <KV
-            label="coords"
-            value={`x=${lastClick.x}, y=${lastClick.y}`}
-          />
-        ) : (
-          <KV label="coords" value="— (нет кликов)" />
-        )}
-        <KV
-          label="важно"
-          value="Phaser только передал input. State не мутировал."
-        />
-      </Section>
-
       {/* Last Action */}
       <Section title="Action (последний запрос)">
         {lastAction ? (
           <>
             <KV label="actionId" value={lastAction.actionId} />
-            <KV label="type" value={lastAction.type} />
+            <KV label="type" value={lastAction.type} important />
             <KV label="actorId" value={lastAction.actorId} />
             <KV
               label="payload"
@@ -229,32 +226,47 @@ function ConnectionsList({ connections }: { connections: ConnectionState[] }) {
   );
 }
 
-function PiecesList({ pieces }: { pieces: PieceState[] }) {
+function PiecesList({
+  pieces,
+  selectedPieceId,
+}: {
+  pieces: PieceState[];
+  selectedPieceId: string | null;
+}) {
   return (
     <div style={{ marginTop: "4px" }}>
-      {pieces.map((p) => (
-        <div
-          key={p.pieceId}
-          style={{
-            marginBottom: "2px",
-            padding: "4px 6px",
-            background: "#161b22",
-            borderRadius: "3px",
-            fontSize: "11px",
-          }}
-        >
-          <div>
-            <span style={{ color: "#f0883e" }}>{p.pieceId}</span>{" "}
-            <span style={{ color: "#8b949e" }}>{p.pieceDefId}</span>
+      {pieces.map((p) => {
+        const isSelected = p.pieceId === selectedPieceId;
+        return (
+          <div
+            key={p.pieceId}
+            style={{
+              marginBottom: "2px",
+              padding: "4px 6px",
+              background: isSelected ? "#1a2a1a" : "#161b22",
+              borderRadius: "3px",
+              fontSize: "11px",
+              border: isSelected ? "1px solid #f0c040" : "none",
+            }}
+          >
+            <div>
+              <span style={{ color: isSelected ? "#f0c040" : "#f0883e" }}>
+                {p.pieceId}
+              </span>{" "}
+              <span style={{ color: "#8b949e" }}>{p.pieceDefId}</span>
+              {isSelected && (
+                <span style={{ color: "#f0c040", marginLeft: "4px" }}>← выбрана</span>
+              )}
+            </div>
+            <div style={{ color: "#6e7681", marginTop: "1px" }}>
+              location:{" "}
+              <span style={{ color: "#79c0ff" }}>{p.locationId}</span> | owner:{" "}
+              <span style={{ color: "#79c0ff" }}>{p.ownerId}</span> | count:{" "}
+              <span style={{ color: "#79c0ff" }}>{p.count}</span>
+            </div>
           </div>
-          <div style={{ color: "#6e7681", marginTop: "1px" }}>
-            location:{" "}
-            <span style={{ color: "#79c0ff" }}>{p.locationId}</span> | owner:{" "}
-            <span style={{ color: "#79c0ff" }}>{p.ownerId}</span> | count:{" "}
-            <span style={{ color: "#79c0ff" }}>{p.count}</span>
-          </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }

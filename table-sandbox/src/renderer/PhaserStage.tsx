@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import Phaser from "phaser";
 import { TableSandboxScene, SceneCallbacks } from "./phaserScene";
+import type { GameState } from "../runtime/GameState";
 
 /**
  * PhaserStage — React-компонент, который монтирует Phaser game instance
@@ -9,16 +10,25 @@ import { TableSandboxScene, SceneCallbacks } from "./phaserScene";
  * Phaser живёт ТОЛЬКО внутри этого компонента.
  * Никакой Phaser-объект не пролезает в остальной React shell.
  *
- * Props:
- *   onTableClick — callback при клике внутри Phaser canvas
+ * Принимает GameState для рендера и selection для подсветки.
+ * Передаёт клики по spaces наружу через onSpaceClick.
  */
 interface PhaserStageProps {
-  onTableClick: (x: number, y: number) => void;
+  gameState: GameState;
+  selectedPieceId: string | null;
+  onSpaceClick: (spaceId: string) => void;
 }
 
-export function PhaserStage({ onTableClick }: PhaserStageProps) {
+export function PhaserStage({
+  gameState,
+  selectedPieceId,
+  onSpaceClick,
+}: PhaserStageProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const gameRef = useRef<Phaser.Game | null>(null);
+  const sceneRef = useRef<TableSandboxScene | null>(null);
+
+  // ---- Mount / unmount ----
 
   useEffect(() => {
     const container = containerRef.current;
@@ -35,7 +45,7 @@ export function PhaserStage({ onTableClick }: PhaserStageProps) {
     if (leftoverCanvas) leftoverCanvas.remove();
 
     const callbacks: SceneCallbacks = {
-      onTableClick,
+      onSpaceClick,
     };
 
     const config: Phaser.Types.Core.GameConfig = {
@@ -49,7 +59,6 @@ export function PhaserStage({ onTableClick }: PhaserStageProps) {
         mode: Phaser.Scale.FIT,
         autoCenter: Phaser.Scale.CENTER_BOTH,
       },
-      // Никакого physics — чистый рендеринг
       physics: {
         default: "arcade",
         arcade: { gravity: { x: 0, y: 0 } },
@@ -59,32 +68,49 @@ export function PhaserStage({ onTableClick }: PhaserStageProps) {
     const game = new Phaser.Game(config);
     gameRef.current = game;
 
-    // Передать callbacks в сцену после её создания
+    // Передать callbacks и дождаться создания сцены
     game.events.on("ready", () => {
       const scene = game.scene.getScene(
         "TableSandboxScene"
       ) as TableSandboxScene;
       if (scene && scene.scene.isActive()) {
         scene.setCallbacks(callbacks);
+        sceneRef.current = scene;
+        // Первый рендер из state
+        scene.updateFromState(gameState, selectedPieceId);
       }
     });
 
     return () => {
+      sceneRef.current = null;
       game.destroy(true);
       gameRef.current = null;
     };
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Обновление callback при перерендере
+  // ---- Обновление callbacks при перерендере ----
+
   useEffect(() => {
     if (!gameRef.current) return;
     const scene = gameRef.current.scene.getScene(
       "TableSandboxScene"
     ) as TableSandboxScene;
     if (scene && scene.scene.isActive()) {
-      scene.setCallbacks({ onTableClick });
+      scene.setCallbacks({ onSpaceClick });
     }
-  }, [onTableClick]);
+  }, [onSpaceClick]);
+
+  // ---- Обновление рендера при изменении GameState или selection ----
+
+  useEffect(() => {
+    if (!gameRef.current) return;
+    const scene = gameRef.current.scene.getScene(
+      "TableSandboxScene"
+    ) as TableSandboxScene;
+    if (scene && scene.scene.isActive()) {
+      scene.updateFromState(gameState, selectedPieceId);
+    }
+  }, [gameState, selectedPieceId]);
 
   return (
     <div
