@@ -6,7 +6,7 @@
 
 ## Текущий этап
 
-`Table Sandbox 0.1: Smart Drag Move accepted baseline`
+`Table Sandbox 0.1: Play Sandbox Ready accepted baseline`
 
 ## Что уже принято
 
@@ -21,7 +21,8 @@
   - direct graph-aware hardening for `move_piece_requested`;
   - `0014` — minimal runtime snapshot save/load;
   - `0015` — Manual Sandbox Action Pack 1;
-  - `0016` — Manual Sandbox Interaction Pack 1 / Smart Drag Move.
+  - `0016` — Manual Sandbox Interaction Pack 1 / Smart Drag Move;
+  - `0017` — Play Sandbox Readiness Pack.
 
 ## Что уже работает в product code
 
@@ -60,6 +61,14 @@
   - release идёт через existing `move_piece_requested -> piece_moved`
   - invalid drop не мутирует `GameState` и даёт понятное русское сообщение
   - save/load переживает committed drag move
+- Play Sandbox readiness pack уже доказан:
+  - несколько фишек на одной точке выбираются предсказуемо
+  - selected object panel показывает stack/selection state
+  - выбранную фишку из stack можно drag-нуть отдельно
+  - есть явный `Сброс` к исходному fixture-based scenario setup
+  - reset очищает transient selection/messages/event log по зафиксированному правилу
+  - есть bounded sanity check для ключевых bootstrap/runtime reference cases
+  - save/load переживает move/drag/create/delete/change control/reset
 - Rules boundary уже выделен:
   - runtime asks `validateAction`
   - runtime asks `resolveAction`
@@ -97,15 +106,14 @@
 
 ## Ближайший practical next step
 
-Следующий шаг пока не зафиксирован локально окончательно.
+Следующий шаг пока не зафиксирован локально окончательно, но после accepted `0017` рабочее направление уже сужено сильнее.
 
 Рабочая рамка:
 
-- идти поверх уже принятого move + rules + snapshot baseline;
-- идти поверх уже принятого move + rules + snapshot + manual sandbox actions baseline;
-- не возвращаться назад к bootstrap;
-- не расползаться сразу в broad rules, save architecture или editor breadth;
-- сначала взять grounded second opinion через `/v1` по следующему узкому шагу.
+- идти поверх уже принятого play-ready sandbox baseline;
+- не возвращаться назад к bootstrap / runtime hardening, которые уже закрыты;
+- не расползаться сразу в broad rules, save architecture или full editor breadth;
+- естественный следующий branch теперь ближе к `Map Authoring 0.1`, а не к новым sandbox-only readiness fixups.
 
 ## Текущие риски
 

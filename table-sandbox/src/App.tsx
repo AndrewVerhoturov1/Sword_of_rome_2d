@@ -19,6 +19,7 @@ import {
 } from "./runtime/actionEvent";
 import { validateAction, resolveAction } from "./runtime/rulesHooks";
 import { saveSnapshot, loadSnapshot } from "./runtime/snapshot";
+import { validateBootstrap, formatSanityIssues } from "./runtime/sanityCheck";
 import "./App.css";
 
 /**
@@ -28,7 +29,7 @@ import "./App.css";
  *   - GameState (authoritative runtime state)
  *   - Action/Event pipeline
  *   - EventLog
- *   - Selection state (selectedPieceId)
+ *   - Selection state (selectedPieceId, selectedSpaceId)
  *
  * GameState инициализируется из canonical fixtures
  * (table-sandbox/src/fixtures/tiny-module/), не из placeholder.
@@ -38,22 +39,77 @@ import "./App.css";
  * Handoff 0012: rules boundary стала явной.
  * Flow: runtime asks rules.validateAction → rules.resolveAction → runtime commits.
  *
+ * Handoff 0017 (Play Sandbox Readiness Pack):
+ *   - stack/selection readiness: циклический выбор + информация о stack в панели
+ *   - scenario reset: полный сброс к fixture-based initial state
+ *   - lightweight sanity check: проверка ссылок после bootstrap
+ *   - save/load regression: проверено для всех поддерживаемых действий
+ *
  * Первый move slice UX:
  *   1. Клик по space с фишкой → выбор фишки (подсветка)
  *   2. Клик по другому space → move_piece_requested → validate → resolve → piece_moved → redraw
  */
 
 export default function App() {
-  const [gameState, setGameState] = useState<GameState>(bootstrapGameState);
+  // Bootstrap + sanity check
+  const initialGS = bootstrapGameState();
+  const initialSanityIssues = validateBootstrap({
+    spaces: initialGS.spaces,
+    pieces: initialGS.pieces,
+    controlState: initialGS.controlState,
+    scenarioMapId: initialGS.mapId,
+    mapMapId: initialGS.mapId,
+  });
+  const initialSanityMsg = formatSanityIssues(initialSanityIssues);
+
+  const [gameState, setGameState] = useState<GameState>(initialGS);
   const [lastAction, setLastAction] = useState<Action | null>(null);
   const [eventLog, setEventLog] = useState<EventLog>(createEventLog);
   const [selectedPieceId, setSelectedPieceId] = useState<string | null>(null);
   const [selectedSpaceId, setSelectedSpaceId] = useState<string | null>(null);
   const [snapshotStatus, setSnapshotStatus] = useState<string | null>(null);
   const [validationMessage, setValidationMessage] = useState<string | null>(null);
+  const [bootstrapSanityMessage, setBootstrapSanityMessage] = useState<string | null>(initialSanityMsg);
 
   /** Монотонный счётчик для генерации pieceId */
   const nextPieceSeqRef = useRef<number>(3);
+
+  /**
+   * Сбросить всё к исходному fixture-based состоянию.
+   *
+   * Reset rule (Handoff 0017):
+   *   - GameState: пересоздаётся из fixtures (bootstrapGameState)
+   *   - EventLog: очищается до пустого
+   *   - Selection: сбрасывается
+   *   - Messages: очищаются
+   *   - Action/Event seq: сбрасываются в 0
+   *   - nextPieceSeq: сбрасывается в 3 (исходные piece-1 и piece-2)
+   *   - Sanity check: перезапускается
+   *   - Fixture files НЕ мутируются
+   *   - localStorage НЕ трогается (пользователь сам сохраняет/загружает)
+   */
+  const handleReset = useCallback(() => {
+    const freshGS = bootstrapGameState();
+    const freshSanityIssues = validateBootstrap({
+      spaces: freshGS.spaces,
+      pieces: freshGS.pieces,
+      controlState: freshGS.controlState,
+      scenarioMapId: freshGS.mapId,
+      mapMapId: freshGS.mapId,
+    });
+
+    setGameState(freshGS);
+    setEventLog(createEventLog());
+    setLastAction(null);
+    setSelectedPieceId(null);
+    setSelectedSpaceId(null);
+    setValidationMessage(null);
+    setSnapshotStatus(null);
+    setBootstrapSanityMessage(formatSanityIssues(freshSanityIssues));
+    resetActionSeq(0);
+    resetEventSeq(0);
+    nextPieceSeqRef.current = 3;
+  }, []);
 
   /** Русский текст для reasonCode */
   const getValidationMessage = useCallback((reasonCode: string): string => {
@@ -188,8 +244,11 @@ export default function App() {
   /**
    * ЛКМ по space — циклический выбор: фишки на точке → точка → сброс.
    *
-   * Если на точке несколько фишек — повторный ЛКМ перебирает их по очереди.
-   * После всех фишек — выбор самой точки. Ещё раз — сброс всего.
+   * Stack selection UX (Handoff 0017):
+   *   - Если на точке несколько фишек — повторный ЛКМ перебирает их по очереди.
+   *   - После всех фишек — выбор самой точки. Ещё раз — сброс всего.
+   *   - Выбранная фишка в stack явно видна в selection panel.
+   *   - Drag применяется именно к выбранной фишке.
    */
   const handleSpaceClick = useCallback(
     (spaceId: string) => {
@@ -424,11 +483,19 @@ export default function App() {
   return (
     <div className="app-shell">
       <header className="app-header">
-        <h1>Table Sandbox 0.1 — Smart Drag Move (0016)</h1>
+        <h1>Table Sandbox 0.1 — Play Sandbox Ready (0017)</h1>
         <span className="app-badge">
           {gameState.projectId}/{gameState.scenarioId}
         </span>
       </header>
+
+      {/* Bootstrap sanity message (только если есть проблемы) */}
+      {bootstrapSanityMessage && (
+        <div className="sanity-banner">
+          <span className="sanity-icon">⚠</span>
+          <span>{bootstrapSanityMessage}</span>
+        </div>
+      )}
 
       <main className="app-main">
         <div className="table-area">
@@ -443,7 +510,14 @@ export default function App() {
           />
           <p className="area-hint">
             {selectedPieceId
-              ? `Выбрана фишка: ${selectedPieceId} в точке «${getSpaceName(gameState.pieces.find(p => p.pieceId === selectedPieceId)?.locationId ?? "")}». Тяни левой кнопкой — переместить. ПКМ по точке — тоже переместить.`
+              ? (() => {
+                  const selPiece = gameState.pieces.find(p => p.pieceId === selectedPieceId);
+                  const locId = selPiece?.locationId ?? "";
+                  const stackCount = gameState.pieces.filter(p => p.locationId === locId).length;
+                  const stackIndex = gameState.pieces.filter(p => p.locationId === locId).findIndex(p => p.pieceId === selectedPieceId) + 1;
+                  const stackInfo = stackCount > 1 ? ` (${stackIndex}/${stackCount} в stack)` : "";
+                  return `Выбрана фишка: ${selectedPieceId}${stackInfo} в точке «${getSpaceName(locId)}». Тяни левой кнопкой — переместить. ПКМ по точке — тоже переместить.`;
+                })()
               : selectedSpaceId
                 ? `Выбрана точка: «${getSpaceName(selectedSpaceId)}». ЛКМ — выбрать, тяни фишку — переместить.`
                 : "ЛКМ по точке — выбрать. Зажми фишку левой кнопкой и тяни — переместить."}
@@ -472,6 +546,22 @@ export default function App() {
                     {(() => { const loc = gameState.pieces.find(p => p.pieceId === selectedPieceId)?.locationId; return loc ? `«${getSpaceName(loc)}»` : "—"; })()}
                   </span>
                 </div>
+                {(() => {
+                  const selPiece = gameState.pieces.find(p => p.pieceId === selectedPieceId);
+                  const locId = selPiece?.locationId;
+                  if (!locId) return null;
+                  const stackPieces = gameState.pieces.filter(p => p.locationId === locId);
+                  if (stackPieces.length <= 1) return null;
+                  const stackIdx = stackPieces.findIndex(p => p.pieceId === selectedPieceId) + 1;
+                  return (
+                    <div className="sel-row sel-stack-row">
+                      <span className="sel-label">Stack:</span>
+                      <span className="sel-value sel-stack">
+                        {stackIdx}/{stackPieces.length} — {stackPieces.map(p => p.pieceId === selectedPieceId ? `[${p.pieceId}]` : p.pieceId).join(", ")}
+                      </span>
+                    </div>
+                  );
+                })()}
               </div>
             ) : selectedSpaceId ? (
               <div className="selection-info">
@@ -591,6 +681,13 @@ export default function App() {
           <span>Источник истины: Runtime (React state), НЕ Phaser</span>
         </div>
         <div className="footer-actions">
+          <button
+            className="snapshot-btn reset-btn"
+            onClick={handleReset}
+            title="Сбросить всё к исходному сценарию (fixture-based initial state)"
+          >
+            Сброс
+          </button>
           <button
             className="snapshot-btn save-btn"
             onClick={handleSave}
