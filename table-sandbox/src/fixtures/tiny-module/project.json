@@ -1,0 +1,12 @@
+{
+  "schemaVersion": "0.1",
+  "projectId": "tiny-project",
+  "name": "Tiny Project",
+  "activeModuleId": "tiny-module",
+  "modules": [
+    {
+      "moduleId": "tiny-module",
+      "path": "modules/tiny-module/module.json"
+    }
+  ]
+}

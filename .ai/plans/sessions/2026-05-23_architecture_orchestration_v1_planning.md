@@ -1,0 +1,206 @@
+# Session: architecture_orchestration_v1_planning
+
+## Latest Accepted Synthesis
+
+- Accepted UX-model synthesis from the latest `/v1` answer:
+  - one product shell with explicit modes;
+  - clear split between `authoring`, `playtest preview`, and `runtime/save`
+    workflows;
+  - minimal `0.1` UX loop = edit -> validate -> preview -> inspect -> save
+    snapshot -> return;
+  - dedicated master doc `.ai/plans/master/module_product_ux_model.md`;
+  - synced authoring workflow, package model, roadmap, and `0.1` milestone
+    plan around this UX language.
+
+- Accepted prototype-integration synthesis from `V1-20260523-161245`:
+  - external prototype is a reference prototype and selective donor;
+  - main use is for future Map Editor surface;
+  - controlled extraction is preferred;
+  - dedicated master doc `.ai/plans/master/prototype_integration_mapping.md`.
+- Accepted execution-plan synthesis from `V1-20260524-003946`:
+  - broad product-code start stays blocked;
+  - next step is short pre-code closure;
+  - first implementation starts through a narrow `Table Sandbox 0.1` slice;
+  - dedicated master doc
+    `.ai/plans/master/pre_code_closure_and_first_execution_plan.md`.
+- Accepted single-next-step synthesis from `V1-20260524-005734`:
+  - first priority step is to create and accept
+    `.ai/plans/implementation/first_product_code_block.md`;
+  - that file freezes shell, fixtures, first action/event, acceptance checklist,
+    prototype role, and non-goals;
+  - immediate next step after acceptance is technical bootstrap.
+- Accepted fixture-step decomposition from `V1-20260524-184203`:
+  - next narrow implementation step after accepted bootstrap is
+    `Canonical Fixture Seed`;
+  - scope stays data-only under `table-sandbox/src/fixtures/tiny-module/`;
+  - target file set = `project.json`, `module.json`, `map.json`,
+    `scenario.basic.json`, `rules.metadata.json`, `savegame.empty.json`,
+    `README.md`;
+  - loader/runtime/Phaser/prototype migration stay out of this handoff.
+
+## Session ID
+
+`2026-05-23_architecture_orchestration_v1_planning`
+
+## Status
+
+in_progress
+
+## Goal
+
+Собрать и уточнить архитектурный план для browser-based 2D authoring tool / editor, определить основные модули проекта, разделить universal editor layer и project-specific layer, и подготовить последовательность следующих шагов с максимальным использованием `/v1` для внешнего архитектурного осмысления.
+
+## Approved Plan
+
+### P1: Frame Architecture Scope
+
+- Status: completed.
+- Зафиксировать рабочую framing-модель проекта как universal authoring tool, а не одну конкретную игру.
+- Проверить и уточнить границу между editor/runtime capabilities и Sword of Rome-like test module.
+- Сформулировать кандидатный модульный состав верхнего уровня без перехода к product-code реализации.
+
+### P2: Prepare External V1 Research Tracks
+
+- Status: completed.
+- Сформулировать несколько разных `/v1` вопросов для внешнего чата.
+- Развести вопросы по типам: архитектурная декомпозиция, domain model / data model, roadmap / delivery sequence.
+- Выбрать первый `/v1` маршрут только после явного решения человека.
+
+### P3: Consolidate Architecture And Next Steps
+
+- Status: in_progress.
+- После возврата ответов `/v1` сверить их с локальным canon.
+- Синтезировать рабочую архитектурную схему проекта и список ближайших шагов.
+- При необходимости подготовить следующий planning-only артефакт или downstream handoff в рамках session.
+
+## Active Plan Item
+
+`P3: Consolidate Architecture And Next Steps`
+
+## Runs
+
+- `Session run: 001` - handoff `0008_first_product_code_technical_bootstrap.md` executed, corrected, reviewed by Codex and accepted.
+- `Session run: 002` - handoff `0009_canonical_fixture_seed.md` prepared for next Kilo execution.
+- `Session run: 003` - `0009` reviewed by Codex; rejected for correction because `module.json` is corrupted and report claims do not match actual files.
+- `Session run: 004` - corrected `0009` reviewed by Codex and accepted; fixture seed is now internally consistent and scope-clean.
+
+## User Overrides
+
+- Этот чат про orchestration, architecture planning и planning next steps, а не про прямую реализацию product code.
+- По возможности использовать `/v1` как основной внешний мозг для архитектурного осмысления.
+- Пользователь уже видит два главных слоя:
+  - universal editor layer: карта, области, колоды, фишки, базовые сущности и инструменты;
+  - project-specific layer: конкретный модуль/проект, собираемый поверх editor capabilities.
+- Не переходить к широким изменениям кода без отдельного согласования и без следующего planning шага.
+- Пользователь отдельно попросил сохранить локальные planning-файлы и присылать только ссылки на них.
+
+## Checkpoint State
+
+- `0008` result reviewed and accepted: narrow bootstrap shell exists in `table-sandbox/`, build and typecheck pass, live page opens.
+- `0008` correction verified:
+  - `tsconfig.tsbuildinfo` no longer appears after build/typecheck;
+  - duplicate Phaser boot log under `StrictMode` no longer reproduces in live dev verification.
+- User visual confirmation received:
+  - green Phaser field is visible;
+  - clicking now produces runtime/debug updates on screen.
+- Workflow checkpoint for accepted `0008` completed by Codex commit `b566427` (`Workflow: accept Kilo task 0008`).
+- `0009` not accepted yet:
+  - initial attempt had corrupted `module.json` and false-positive report claims;
+  - corrected attempt fixed `module.json` and restored full cross-file consistency.
+- `0009` result now accepted:
+  - `table-sandbox/src/fixtures/tiny-module/` contains the full requested 7-file tiny fixture set;
+  - direct Codex re-check confirmed all required cross-file references resolve;
+  - no runtime/Phaser/prototype scope creep detected.
+- В repo уже принят framing: проект = browser-based 2D authoring tool / editor / tabletop sandbox, а Sword of Rome-like модуль = первый тестовый модуль.
+- По `/v1` уже получены и staged два external second opinion:
+  - `V1-20260523-052756`
+  - `V1-20260523-052757`
+- Оба external ответа сошлись на том, что 2-layer framing недостаточен и нужен `4-layer` product architecture.
+- Локальный синтез этих ответов зафиксирован в `.ai/architecture.md`.
+- Decision по `4-layer product architecture` и `RulesHooksInterface` boundary зафиксирован в `.ai/decisions.md`.
+- В `.ai/decisions.md` уже принято решение `Authoring tool first`.
+- В `.ai/project_state.md` указано, что product-code architecture ещё не разложена на реальные модули; repo пока mostly про public context и workflow layer.
+- В `.ai/external_chats/V1_navigation.md` уже есть staged `/v1`-ответы не только про public context repo, но и про архитектурную декомпозицию будущего продукта.
+- По domain-model вопросу уже есть staged два `/v1`-ответа:
+  - `V1-20260523-055021`
+  - `V1-20260523-055021-2`
+- По next-step decomposition вопросу уже есть staged `/v1`-ответ:
+  - `V1-20260524-184203`
+- Его полезное знание принято как handoff target:
+  - `Canonical Fixture Seed`
+  - `table-sandbox/src/fixtures/tiny-module/`
+  - data-only fixture scope without loader/runtime/Phaser changes.
+- На их основе созданы локальные planning artifacts:
+  - `.ai/plans/master/domain_schemas_contract.md`
+  - `.ai/plans/master/rules_hooks_interface.md`
+- Главные выводы из этих planning artifacts подняты в `.ai/architecture.md` и `.ai/decisions.md`:
+  - canonical split `definitions / runtime state / module rules`
+  - canonical file set
+  - minimal runtime-facing rules hook contract
+- По `/v1` вопросу `V1-20260523-062449` получен staged ответ по `RulesHooksInterface`.
+- На его основе создан следующий planning artifact:
+  - `.ai/plans/master/action_event_contract.md`
+- Для следующего шага planning подготовлен skeleton milestone artifact:
+  - `.ai/plans/master/first_milestone_runtime_skeleton.md`
+- По `/v1` вопросу `V1-20260523-124734` получен staged sequencing answer по `Table Sandbox 0.1`.
+- Его полезное знание перенесено в planning layer как:
+  - `.ai/plans/master/table_sandbox_0_1_milestone_plan.md`
+  - `.ai/plans/master/first_vertical_slice_spec.md`
+- По `/v1` вопросу `V1-20260523-130238` получен staged ответ по минимальным canonical file schemas.
+- Его полезное знание перенесено в planning layer как:
+  - `.ai/plans/master/minimal_canonical_file_schemas.md`
+- Current schema-level emphasis:
+  - `project.json` = workspace index only;
+  - `module.json` = manifest only;
+  - `map.json` = topology only;
+  - `scenario.json` = initial setup only;
+  - `rules.metadata.json` = declarative rules capabilities only;
+  - `savegame.json` = mutable runtime state only;
+  - temporary compact `pieceDefinitions[]` / `factions[]` in `module.json` is acceptable for `0.1`, but not final target.
+- Shared vocabulary aligned across planning docs:
+  - workspace index;
+  - module manifest;
+  - board topology;
+  - initial setup;
+  - rules capabilities metadata;
+  - mutable runtime snapshot.
+- Stack model verdict:
+  - safe default now is derived stack by shared `locationId`;
+  - `Stack` is not a canonical entity for `0.1`;
+  - `stackId` and `stackPosition` stay out of the first save format;
+  - advanced stack model remains later work.
+- По `/v1` вопросу `V1-20260523-141825` получен staged ответ по трём оставшимся вопросам для `Table Sandbox 0.1`.
+- Его полезное знание принято в planning layer как:
+  - save compatibility for `0.1` = block structural incompatibility, warn on minor safe mismatch, no migration engine yet;
+  - authoring changes and runtime changes must stay separated by explicit modes;
+  - small `PieceDefinition[]` / `FactionDefinition[]` inside `module.json` remain acceptable as temporary compact `0.1` layout only.
+- По `/v1` вопросу `V1-20260523-142942` получен staged ответ по developer-side authoring workflow.
+- Его полезное знание принято в planning layer как:
+  - hybrid Module Authoring Workspace;
+  - specialized surfaces inside workspace;
+  - explicit Play Sandbox Preview for runtime proof;
+  - authoring creates module package, runtime executes it through `GameState` and `Action/Event`.
+- Current working emphasis:
+  - minimal canonical data seed;
+  - `GameState` bootstrap;
+  - `Action/Event` pipeline;
+  - permissive `RulesHooks`;
+  - first thin vertical slice: move one piece between two spaces.
+- РџРѕ `/v1` РІРѕРїСЂРѕСЃСѓ `V1-20260523-150830` РїРѕР»СѓС‡РµРЅ staged macro-roadmap answer
+  РїРѕСЃР»Рµ `Table Sandbox 0.1`.
+- Р•РіРѕ РїРѕР»РµР·РЅРѕРµ Р·РЅР°РЅРёРµ РїСЂРёРЅСЏС‚Рѕ РІ planning layer РєР°Рє:
+  - platform-first ladder `0.2 -> 0.3 -> 0.4 -> 0.5 -> 1.0`;
+  - hardening before breadth, breadth before assisted rules, assisted rules
+    before richer content subsystems;
+  - Sword of Rome-like module stays reference/test module, not lower-layer
+    driver.
+- РќР° РµРіРѕ РѕСЃРЅРѕРІРµ СЃРѕР·РґР°РЅ РЅРѕРІС‹Р№ master planning artifact:
+  - `.ai/plans/master/post_0_1_platform_roadmap.md`
+- РџРѕ `/v1` РІРѕРїСЂРѕСЃСѓ `V1-20260523-152316` РїРѕР»СѓС‡РµРЅ staged ответ про
+  mature `module package` model.
+- Р•РіРѕ РїРѕР»РµР·РЅРѕРµ Р·РЅР°РЅРёРµ РїСЂРёРЅСЏС‚Рѕ РІ planning layer РєР°Рє:
+  - `module package` РґРѕР»Р¶РµРЅ РѕСЃС‚Р°С‚СЊСЃСЏ product bundle СЃ required/optional
+    package parts;
+  - `module.json` stays manifest, not content dump;
+  - `savegame.json` stays runtime artifact, not canonical module content;
+  - mature shape is documented in `.ai/plans/master/module_package_model.md`.

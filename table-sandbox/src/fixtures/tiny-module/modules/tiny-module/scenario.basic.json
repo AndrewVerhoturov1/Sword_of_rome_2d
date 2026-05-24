@@ -1,0 +1,29 @@
+{
+  "schemaVersion": "0.1",
+  "scenarioId": "basic",
+  "moduleId": "tiny-module",
+  "mapId": "tiny-map",
+  "name": "Basic Scenario",
+  "version": "0.1.0",
+  "setup": {
+    "turnState": {
+      "round": 1,
+      "phaseId": "manual",
+      "activeActorId": "designer"
+    },
+    "pieces": [
+      {
+        "pieceId": "piece-1",
+        "pieceDefId": "infantry",
+        "locationId": "space-a",
+        "ownerId": "tiny-red",
+        "count": 1
+      }
+    ],
+    "controlBySpace": {
+      "space-a": "tiny-red",
+      "space-b": null
+    },
+    "variables": {}
+  }
+}

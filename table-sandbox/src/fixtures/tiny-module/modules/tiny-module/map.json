@@ -1,0 +1,37 @@
+{
+  "schemaVersion": "0.1",
+  "mapId": "tiny-map",
+  "moduleId": "tiny-module",
+  "version": "0.1.0",
+  "name": "Tiny Map",
+  "coordinateSystem": {
+    "type": "pixel",
+    "width": 800,
+    "height": 500
+  },
+  "spaces": [
+    {
+      "spaceId": "space-a",
+      "name": "Space A",
+      "x": 200,
+      "y": 250,
+      "type": "region"
+    },
+    {
+      "spaceId": "space-b",
+      "name": "Space B",
+      "x": 600,
+      "y": 250,
+      "type": "region"
+    }
+  ],
+  "connections": [
+    {
+      "connectionId": "connection-a-b",
+      "fromSpaceId": "space-a",
+      "toSpaceId": "space-b",
+      "type": "land"
+    }
+  ],
+  "zones": []
+}

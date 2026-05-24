@@ -1,0 +1,19 @@
+{
+  "schemaVersion": "0.1",
+  "rulesVersion": "0.1.0",
+  "hookContractVersion": "0.1",
+  "automationLevel": "manual",
+  "supportedActionTypes": [
+    "move_piece_requested"
+  ],
+  "supportedEventTypes": [
+    "piece_moved"
+  ],
+  "phases": [
+    {
+      "phaseId": "manual",
+      "name": "Manual Sandbox",
+      "description": "Single manual phase where the designer has full freedom to issue actions."
+    }
+  ]
+}

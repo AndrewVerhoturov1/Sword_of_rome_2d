@@ -1,0 +1,32 @@
+{
+  "schemaVersion": "0.1",
+  "saveId": "tiny-empty-save",
+  "engineVersion": "0.1.0",
+  "moduleId": "tiny-module",
+  "moduleVersion": "0.1.0",
+  "mapId": "tiny-map",
+  "mapVersion": "0.1.0",
+  "scenarioId": "basic",
+  "scenarioVersion": "0.1.0",
+  "gameState": {
+    "turnState": {
+      "round": 1,
+      "phaseId": "manual",
+      "activeActorId": "designer"
+    },
+    "pieces": [
+      {
+        "pieceId": "piece-1",
+        "pieceDefId": "infantry",
+        "locationId": "space-a",
+        "ownerId": "tiny-red",
+        "count": 1
+      }
+    ],
+    "controlBySpace": {
+      "space-a": "tiny-red",
+      "space-b": null
+    }
+  },
+  "eventLog": []
+}

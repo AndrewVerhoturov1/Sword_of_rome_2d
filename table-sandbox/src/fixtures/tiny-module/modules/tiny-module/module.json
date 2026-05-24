@@ -1,0 +1,43 @@
+{
+  "schemaVersion": "0.1",
+  "moduleId": "tiny-module",
+  "name": "Tiny Module",
+  "version": "0.1.0",
+  "engineCompatibility": "0.1",
+  "defaultMapId": "tiny-map",
+  "defaultScenarioId": "basic",
+  "files": {
+    "map": "map.json",
+    "scenarios": [
+      {
+        "scenarioId": "basic",
+        "path": "scenario.basic.json"
+      }
+    ],
+    "rulesMetadata": "rules.metadata.json"
+  },
+  "rules": {
+    "hookContractVersion": "0.1",
+    "automationLevel": "manual"
+  },
+  "factions": [
+    {
+      "factionId": "tiny-red",
+      "name": "Tiny Red",
+      "color": "#cc4444"
+    },
+    {
+      "factionId": "tiny-blue",
+      "name": "Tiny Blue",
+      "color": "#4444cc"
+    }
+  ],
+  "pieceDefinitions": [
+    {
+      "pieceDefId": "infantry",
+      "name": "Infantry",
+      "type": "unit",
+      "defaultCount": 1
+    }
+  ]
+}
