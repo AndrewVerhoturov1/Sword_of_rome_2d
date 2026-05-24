@@ -93,6 +93,11 @@ Handoff обязан содержать:
 - цель;
 - контекст;
 - `Required Inputs`;
+- `Policy Inputs`;
+- `Language Policy Expectation`;
+- `Human Check Expectation`;
+- `Bug Tracking Expectation`;
+- `Required Report Sections`;
 - `Lookup Inputs`;
 - `Do Not Read Unless Blocked`;
 - `Context Budget`;
@@ -223,6 +228,38 @@ fast_model / fast_coding_model / strong_model
 ## Required Inputs
 
 - ...
+
+## Policy Inputs
+
+- `.ai/policies/language_policy.md`
+- `.ai/policies/human_review_policy.md`
+- `.ai/policies/bug_tracking_policy.md`
+- `.ai/logs/bug_journal.md`, if task includes bugfix, debugger work, repeated issue, or visible regression
+
+## Language Policy Expectation
+
+- internal technical identifiers in English
+- user-facing UI text may be Russian
+- no transliterated technical names
+
+## Human Check Expectation
+
+required / suggested / not needed
+
+If `required` or `suggested`, handoff must say what user should open, what to click or look at, expected result, and what reply to send back.
+
+## Bug Tracking Expectation
+
+- report must include `Баги и сложности`
+- debugger and repeated-issue tasks must check `.ai/logs/bug_journal.md` first
+- failed human check must be treated as real bug/difficulty state
+- verification must be concrete, not vague
+
+## Required Report Sections
+
+- `Баги и сложности`
+- `Human Check`
+- `Runtime metadata`
 
 ## Lookup Inputs
 

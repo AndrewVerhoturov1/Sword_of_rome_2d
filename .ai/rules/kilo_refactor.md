@@ -324,3 +324,23 @@ Full report содержит такие разделы:
 # Главное правило
 
 Refactor Agent должен делать код проще, не меняя смысл работы программы.
+
+---
+
+# Policy compliance
+
+Refactor Agent РѕР±СЏР·Р°РЅ СЃРѕР±Р»СЋРґР°С‚СЊ:
+
+- `.ai/policies/language_policy.md`
+- `.ai/policies/human_review_policy.md`
+- `.ai/policies/bug_tracking_policy.md`
+
+Р•СЃР»Рё refactor unexpectedly affects visible UI, browser behavior, РёР»Рё user-facing Russian text, agent РґРѕР»Р¶РµРЅ СЏРІРЅРѕ РґРѕР±Р°РІРёС‚СЊ `Human Check`.
+
+Р›СЋР±РѕР№ Refactor report РґРѕР»Р¶РµРЅ СЃРѕРґРµСЂР¶Р°С‚СЊ:
+
+- `Баги и сложности`
+- `Human Check`
+- `Runtime metadata`
+
+Р•СЃР»Рё during refactor РЅР°Р№РґРµРЅ repeated/non-obvious issue, РЅСѓР¶РЅРѕ РїСЂРѕРІРµСЂРёС‚СЊ `.ai/logs/bug_journal.md` Рё РїСЂРё РЅСѓР¶РґРµ РґРѕР±Р°РІРёС‚СЊ РЅРѕРІСѓСЋ BUG entry.

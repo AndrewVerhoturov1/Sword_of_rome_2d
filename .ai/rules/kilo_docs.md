@@ -332,3 +332,23 @@ Full report содержит такие разделы:
 # Главное правило
 
 Лучше честно написать “неизвестно”, чем придумать красивую, но неверную инструкцию.
+
+---
+
+# Policy compliance
+
+Docs Agent РѕР±СЏР·Р°РЅ СЃРѕР±Р»СЋРґР°С‚СЊ:
+
+- `.ai/policies/language_policy.md`
+- `.ai/policies/human_review_policy.md`
+- `.ai/policies/bug_tracking_policy.md`
+
+Р”Р»СЏ docs-only work human check usually `suggested` РёР»Рё `not needed`, РµСЃР»Рё acceptance РЅРµ Р·Р°РІРёСЃРёС‚ РѕС‚ exact user-facing wording.
+
+Р›СЋР±РѕР№ Docs report РґРѕР»Р¶РµРЅ СЃРѕРґРµСЂР¶Р°С‚СЊ:
+
+- `Баги и сложности`
+- `Human Check`
+- `Runtime metadata`
+
+Р•СЃР»Рё docs task РѕРїРёСЃС‹РІР°РµС‚ visible product behavior, agent РЅРµ РґРѕР»Р¶РµРЅ РІС‹РґСѓРјС‹РІР°С‚СЊ human verification. РќСѓР¶РЅРѕ СЏРІРЅРѕ РїРѕРјРµС‡Р°С‚СЊ, С‡С‚Рѕ РѕСЃС‚Р°Р»РѕСЃСЊ РЅР° human check.

@@ -59,6 +59,47 @@
 
 Указание по экономии контекста: какие файлы читать частично, какие разделы наиболее релевантны.
 
+## Policy Inputs
+
+РџРѕР»РёС‚РёРєРё, РєРѕС‚РѕСЂС‹Рµ СЂР°Р±РѕС‡РёР№ С‡Р°С‚ РґРѕР»Р¶РµРЅ СЃС‡РёС‚Р°С‚СЊ source of truth РґР»СЏ language / human review / bug reporting.
+
+- `.ai/policies/language_policy.md`
+- `.ai/policies/human_review_policy.md`
+- `.ai/policies/bug_tracking_policy.md`
+- `.ai/logs/bug_journal.md`, РµСЃР»Рё Р·Р°РґР°С‡Р° СЃРІСЏР·Р°РЅР° СЃ bugfix / debugger / repeated issue / visible regression
+
+## Language Policy Expectation
+
+РљСЂР°С‚РєРѕРµ РїСЂР°РІРёР»Рѕ РґР»СЏ СЌС‚РѕРіРѕ chunk:
+
+- internal technical identifiers = English
+- user-facing UI text may be Russian
+- no transliterated technical names
+
+## Human Check Expectation
+
+`required` / `suggested` / `not needed`
+
+Р•СЃР»Рё `required` РёР»Рё `suggested`, chunk РґРѕР»Р¶РµРЅ СЏРІРЅРѕ Р·Р°С„РёРєСЃРёСЂРѕРІР°С‚СЊ:
+
+- С‡С‚Рѕ РѕС‚РєСЂС‹С‚СЊ;
+- РєСѓРґР° РЅР°Р¶Р°С‚СЊ РёР»Рё С‡С‚Рѕ РїРѕСЃРјРѕС‚СЂРµС‚СЊ;
+- С‡С‚Рѕ РґРѕР»Р¶РЅРѕ Р±С‹С‚СЊ РІРёРґРЅРѕ;
+- С‡С‚Рѕ РґРѕР»Р¶РµРЅ РѕС‚РІРµС‚РёС‚СЊ С‡РµР»РѕРІРµРє.
+
+## Bug Tracking Expectation
+
+- report РѕР±СЏР·Р°РЅ СЃРѕРґРµСЂР¶Р°С‚СЊ `Баги и сложности`
+- debugger / bugfix / repeated issue chunks РґРѕР»Р¶РЅС‹ СЃРЅР°С‡Р°Р»Р° СЃРјРѕС‚СЂРµС‚СЊ `.ai/logs/bug_journal.md`
+- failed human check = real bug/difficulty state
+- verification РґРѕР»Р¶РЅР° Р±С‹С‚СЊ concrete
+
+## Required Report Sections
+
+- `Баги и сложности`
+- `Human Check`
+- `Runtime metadata`
+
 ## Execution Mandate
 
 `agent-first`

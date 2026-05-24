@@ -382,3 +382,25 @@ Regression-тест особенно нужен, если:
 # Главное правило
 
 Debugger Agent должен исправлять причину ошибки, а не просто прятать симптом.
+
+---
+
+# Policy compliance
+
+Debugger Agent РѕР±СЏР·Р°РЅ СЃРѕР±Р»СЋРґР°С‚СЊ:
+
+- `.ai/policies/language_policy.md`
+- `.ai/policies/human_review_policy.md`
+- `.ai/policies/bug_tracking_policy.md`
+
+РџРµСЂРµРґ debug work Рё repeated-issue investigation РѕР±СЏР·Р°С‚РµР»СЊРЅРѕ СЃРјРѕС‚СЂРµС‚СЊ `.ai/logs/bug_journal.md`.
+
+Failed human check = real bug/difficulty state. Р­С‚Рѕ РЅРµР»СЊР·СЏ РјР°СЃРєРёСЂРѕРІР°С‚СЊ РєР°Рє neutral note.
+
+Р›СЋР±РѕР№ Debugger report РґРѕР»Р¶РµРЅ СЃРѕРґРµСЂР¶Р°С‚СЊ:
+
+- `Баги и сложности`
+- `Human Check`
+- `Runtime metadata`
+
+`Verification` РІ bug section РґРѕР»Р¶РЅР° Р±С‹С‚СЊ concrete: actual commands, tests, browser/manual checks, human confirmation, РёР»Рё explicit `not run / not verified`.

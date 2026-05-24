@@ -48,6 +48,11 @@
   - Старший оркестратор (`Main Execution Orchestrator Chat`) не дублировал ход младшего и не вмешивался до escalation / user request / review-point.
   - `Block Orchestrator Chat` использовал `direct canonical dependencies` в рамках разрешённых границ.
   - `Block Orchestrator Chat` при проблемах сразу вернул `Blocked / Clarification Request`, а не откладывал escalation.
+- если внутри блока были Kilo reports, у них есть `Баги и сложности`, `Human Check`, `Runtime metadata`;
+- если внутри блока были visual/UI/browser changes, `Human Check` не пропущен формально;
+- если внутри блока были bug/debug/repeated issue tasks, отражён ли bug journal lookup/update;
+- concrete ли `Verification` в bug sections подзадач;
+- нет ли нарушений language policy в новых technical identifiers.
 
 ## Типы проблем
 
@@ -102,6 +107,15 @@ accepted / accepted_with_warnings / needs_revision / blocked
 ## Проверка Kilo subtasks (если есть)
 
 - ...
+
+## Проверка policy compliance
+
+- [ ] В relevant Kilo reports есть `Баги и сложности`.
+- [ ] В relevant Kilo reports есть `Human Check`.
+- [ ] `Human Check` не пропущен для visual/UI/browser work.
+- [ ] `Verification` в bug sections concrete.
+- [ ] Bug journal lookup / update отражен там, где это нужно.
+- [ ] Нет нарушений language policy в новых technical identifiers.
 
 ## Проверка agent-first execution
 

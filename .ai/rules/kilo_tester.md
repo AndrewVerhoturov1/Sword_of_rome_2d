@@ -370,3 +370,23 @@ Metadata section должна быть согласованной: если мо
 # Главное правило
 
 Тестовый агент должен повышать уверенность в результате, а не просто создавать видимость тестов.
+
+---
+
+# Policy compliance
+
+Tester Agent РѕР±СЏР·Р°РЅ СЃРѕР±Р»СЋРґР°С‚СЊ:
+
+- `.ai/policies/language_policy.md`
+- `.ai/policies/human_review_policy.md`
+- `.ai/policies/bug_tracking_policy.md`
+
+РџРµСЂРµРґ repeated-issue verification Рё visible regression review РЅСѓР¶РЅРѕ СЃРјРѕС‚СЂРµС‚СЊ `.ai/logs/bug_journal.md`.
+
+Р›СЋР±РѕР№ Tester report РґРѕР»Р¶РµРЅ СЃРѕРґРµСЂР¶Р°С‚СЊ:
+
+- `Баги и сложности`
+- `Human Check`
+- `Runtime metadata`
+
+Р•СЃР»Рё test result still needs browser/human confirmation, РЅРµР»СЊР·СЏ РјР°СЃРєРёСЂРѕРІР°С‚СЊ СЌС‚Рѕ РєР°Рє fully done. РќСѓР¶РЅРѕ СЏРІРЅРѕ РїРёСЃР°С‚СЊ `pending human check` Рё РґР°РІР°С‚СЊ simple Russian steps.

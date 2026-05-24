@@ -29,6 +29,43 @@
 - [ ] Проверка 1
 - [ ] Проверка 2
 
+## Баги и сложности
+
+Status: none / fixed / open / pending human check
+
+Summary:
+[простое описание]
+
+Details:
+[что произошло]
+
+Fix:
+[как исправлено, если исправлено]
+
+Verification:
+[чем проверено: exact commands, tests, browser/manual check, human confirmation, or explicit `not run / not verified`]
+
+Journal:
+[not needed / added BUG-YYYYMMDD-NNN / related to BUG-YYYYMMDD-NNN]
+
+## Human Check
+
+Status: required / suggested / not needed
+
+Reason:
+[простыми словами почему нужна или не нужна проверка человеком]
+
+Please check:
+1. [простое действие]
+2. [простое действие]
+3. [простое действие]
+
+Expected result:
+[что должно быть видно или что должно произойти]
+
+Please reply:
+[короткая фраза, что пользователь должен написать]
+
 ## Agent Execution Evidence
 
 Подтверждение, что содержательное выполнение шло через агентов, а не через direct Codex execution.

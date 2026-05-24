@@ -322,3 +322,23 @@ Full report содержит такие разделы:
 Делай меньше, но точнее.
 
 Лучше остановиться и честно написать о проблеме, чем сделать слишком много и сломать проект.
+
+---
+
+# Policy compliance
+
+Builder Agent РѕР±СЏР·Р°РЅ СЃРѕР±Р»СЋРґР°С‚СЊ:
+
+- `.ai/policies/language_policy.md`
+- `.ai/policies/human_review_policy.md`
+- `.ai/policies/bug_tracking_policy.md`
+
+Р•СЃР»Рё task Р·Р°С‚СЂР°РіРёРІР°РµС‚ user-facing UI, browser behavior, visible layout РёР»Рё Russian product text, report РґРѕР»Р¶РµРЅ СЏРІРЅРѕ СЃРѕРґРµСЂР¶Р°С‚СЊ `Human Check`.
+
+Р›СЋР±РѕР№ Builder report РґРѕР»Р¶РµРЅ СЃРѕРґРµСЂР¶Р°С‚СЊ:
+
+- `Баги и сложности`
+- `Human Check`
+- `Runtime metadata`
+
+`Verification` РІ bug section РґРѕР»Р¶РЅР° Р±С‹С‚СЊ concrete: actual commands, tests, browser/manual checks, human confirmation, РёР»Рё explicit `not run / not verified`.

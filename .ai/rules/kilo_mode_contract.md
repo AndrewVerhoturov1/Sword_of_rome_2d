@@ -134,6 +134,24 @@
 
 Фактическое добавление режима `Kilo Notebook` в интерфейс выполняется человеком вручную через интерфейс Kilo. Этот шаг меняет только repo-level contract и launch/handoff rules.
 
+## Repo-wide policy inheritance
+
+Р’СЃРµ ordinary Kilo modes, РєСЂРѕРјРµ mode-specific exceptions РІСЂРѕРґРµ `kilo-recorder` Рё `kilo-notebook`, РЅР°СЃР»РµРґСѓСЋС‚ repo-level policy layer:
+
+- `.ai/policies/language_policy.md`
+- `.ai/policies/human_review_policy.md`
+- `.ai/policies/bug_tracking_policy.md`
+
+Р•СЃР»Рё task РЅРµ Явно exempted mode-specific contract-РѕРј, report РґРѕР»Р¶РµРЅ СЃРѕРґРµСЂР¶Р°С‚СЊ:
+
+- `Баги и сложности`
+- `Human Check`
+- `Runtime metadata`
+
+Debugger / bugfix / repeated-issue runs РґРѕР»Р¶РЅС‹ СЃРЅР°С‡Р°Р»Р° СЃРјРѕС‚СЂРµС‚СЊ `.ai/logs/bug_journal.md`.
+
+Failed human check С‡РёС‚Р°РµС‚СЃСЏ real bug/difficulty state, Р° РЅРµ С„РѕСЂРјР°Р»СЊРЅРѕР№ РїРѕРјРµС‚РєРѕР№.
+
 ## Preflight-check
 
 Перед выдачей `/kilo` Codex обязан:

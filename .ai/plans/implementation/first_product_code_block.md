@@ -96,6 +96,10 @@ Use Russian for:
 - visible display names;
 - user-facing debug labels when needed.
 
+Keep internal debug identifiers, machine-readable log fields, JSON keys, and IDs in English.
+
+Fixture display fields such as `name` may be Russian when they are shown to the user.
+
 Examples:
 
 - action type: `move_piece_requested`
@@ -122,6 +126,8 @@ Human review is required for:
 
 Human review is not required for pure JSON fixture creation unless the task also changes visible UI.
 
+Ordinary docs-only Russian wording is usually `suggested` or `not needed` unless acceptance depends on exact wording.
+
 Every Kilo/Codex result for this block must include:
 
 ```markdown
@@ -131,6 +137,8 @@ Status: required / suggested / not needed
 ```
 
 If `required` or `suggested`, provide simple Russian steps for the user.
+
+If the user reports that the human check failed, treat the step as not accepted and return to bug-fix or follow-up handling.
 
 Example:
 
@@ -176,6 +184,12 @@ For this first block, especially record problems with:
 - GameState and Action/Event boundary.
 
 Important or repeated issues must be added to `.ai/logs/bug_journal.md`.
+
+Before debugging a repeated issue in this block, check `.ai/logs/bug_journal.md` for similar symptoms.
+
+`Verification` in the bug section must be concrete: actual commands, tests, browser/manual checks, human confirmation, or explicit `not run / not verified`.
+
+`Human Check` and `Баги и сложности` are related but not identical sections.
 
 ## Tiny Fixture Set
 

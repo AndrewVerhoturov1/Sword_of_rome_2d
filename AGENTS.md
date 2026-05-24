@@ -33,6 +33,13 @@ Russian is allowed for:
 Do not transliterate Russian technical terms. Use canonical English terms:
 `piece`, `space`, `connection`, `zone`, `map`, `scenario`, `savegame`, `GameState`, `Action`, `Event`.
 
+Gray zones:
+
+- comments may be Russian;
+- fixture display fields such as `name` may be Russian;
+- user-visible debug labels may be Russian;
+- internal debug identifiers, JSON keys, IDs, and machine-readable log fields must stay English.
+
 See `.ai/policies/language_policy.md`.
 
 ## Human Review Policy
@@ -56,6 +63,10 @@ The user is not assumed to be a programmer.
 
 Do not use complex developer jargon in human check instructions.
 
+Required human review for Russian text means app-visible product text first. Ordinary docs-only wording is usually `suggested` or `not needed` unless acceptance depends on exact wording.
+
+If the user reports that a human check failed, the task is not accepted and must return to bug-fix or follow-up handling.
+
 ## Bug Tracking Policy
 
 Agents must follow `.ai/policies/bug_tracking_policy.md`.
@@ -74,6 +85,12 @@ The section must say whether bugs/difficulties were:
 Important or repeatable bugs must be added to `.ai/logs/bug_journal.md`.
 
 Bug explanations for the user must be written in simple Russian.
+
+Before debugging a bug or repeated difficulty, check `.ai/logs/bug_journal.md` for similar symptoms.
+
+`Verification` in bug reports must be concrete: actual commands, tests, browser/manual checks, human confirmation, or explicit `not run / not verified`.
+
+`Human Check` and `Баги и сложности` are related but not identical sections.
 
 Этот репозиторий использует workflow `Codex + Kilo Code`.
 

@@ -19,7 +19,7 @@ Human review is required for:
 - click, drag, zoom, pan, selection, or other browser interaction;
 - demo/public page checks;
 - anything where "it looks correct" matters;
-- user-facing Russian labels, messages, tooltips, and instructions;
+- app-visible user-facing Russian labels, messages, tooltips, and instructions;
 - accepting a visual or UX checkpoint;
 - cases where automated checks pass but the user must confirm the real browser result.
 
@@ -39,6 +39,8 @@ Human review is suggested when the user can check faster than the agent, for exa
 - checking whether a screen is understandable;
 - confirming visual polish.
 
+Ordinary docs-only Russian wording is usually suggested or not needed, unless acceptance depends on exact wording or the user explicitly asked for wording review.
+
 ## When human review is usually not needed
 
 Human review is usually not needed for purely internal changes that automated checks can verify:
@@ -50,6 +52,8 @@ Human review is usually not needed for purely internal changes that automated ch
 - lint;
 - unit tests;
 - internal refactor with no visible behavior change.
+
+It is also usually not needed for ordinary docs-only wording in planning docs, README text, or internal notes when no visible product behavior depends on it.
 
 But if the change affects user-facing text or visible behavior, human review may still be required.
 
@@ -139,6 +143,8 @@ If the agent cannot get human confirmation in the current run, it must mark the 
 `pending human check`
 
 and clearly explain what remains to be checked.
+
+If the user reports that the human check failed, the task must not be treated as accepted. The result must clearly say what failed, and the task must return to bug-fix or follow-up handling.
 
 ## Do not overuse
 

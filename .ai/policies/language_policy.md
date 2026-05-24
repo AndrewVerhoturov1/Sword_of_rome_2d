@@ -86,6 +86,22 @@ Example:
 
 Состояние игры (`GameState`) не должно храниться в Phaser.
 
+## Gray Zones
+
+Code comments may be Russian when they help the Russian-speaking project owner or make a non-obvious block easier to read.
+
+Do not invent transliterated technical vocabulary inside comments. Keep canonical technical terms in English when they matter.
+
+User-visible debug labels may be Russian.
+
+Internal debug identifiers, console keys, payload keys, and machine-readable log fields must stay English.
+
+Fixture display fields such as `name`, `title`, and `description` may be Russian when they are meant to be shown to the user.
+
+The field names themselves and all IDs must stay English.
+
+Test names should prefer canonical English technical terms. A short Russian explanation is allowed if it improves readability, but avoid mixed/transliterated identifiers.
+
 ## No Transliteration
 
 Avoid mixed/transliterated names like:
