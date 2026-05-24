@@ -139,3 +139,7 @@ considered closed:
 
 This role freeze belongs to the short pre-code closure, so that the first
 implementation slice does not drift into prototype-led architecture.
+
+The freeze should be repeated explicitly inside
+`../implementation/first_product_code_block.md`, so the first coding brief does
+not silently reopen the prototype question.

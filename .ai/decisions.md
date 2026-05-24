@@ -393,3 +393,44 @@ Treat it as:
 ### Статус
 
 `Принято`
+## `2026-05-24` — `First coding starts from first_product_code_block.md`
+
+### Контекст
+
+После уточняющего `/v1` про единственный ближайший шаг стало ясно, что short
+closure должен быть зафиксирован не только как общая фаза, но и как один
+конкретный implementation brief.
+
+### Решение
+
+Первый приоритетный шаг перед coding phase:
+
+- создать и принять `first_product_code_block.md`.
+
+Этот файл должен заморозить:
+
+- technical shell;
+- tiny fixture set;
+- first action/event pair;
+- runtime rule;
+- acceptance checklist;
+- prototype role;
+- explicit non-goals.
+
+### Причины
+
+- это превращает общий bridge-plan в один конкретный handoff target;
+- это снижает implementation drift в самом первом coding block;
+- это не даёт silently расширить первый scope до editor migration, full rules
+  или prototype-led architecture.
+
+### Последствия
+
+- первый coding block не должен стартовать без этого brief;
+- immediate next step после принятия brief = technical bootstrap;
+- first vertical slice должен исполняться через этот brief, а не напрямую из
+  broad planning canon.
+
+### Статус
+
+`Принято`

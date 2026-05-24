@@ -41,6 +41,9 @@ That brief should lock:
 - `move_piece_requested -> piece_moved` as the first action/event pair;
 - the first observable acceptance checklist.
 
+That brief is now materialized as
+`../implementation/first_product_code_block.md`.
+
 ## Phase 0 - Pre-Code Closure
 
 Goal:
@@ -68,6 +71,10 @@ Dependencies:
 
 Done condition:
 All six items above are explicit and no longer treated as open planning topics.
+
+Primary artifact:
+
+- `../implementation/first_product_code_block.md`
 
 ## Phase 1 - Technical Bootstrap
 
@@ -227,6 +234,10 @@ are explicit:
 - the prototype role is frozen as reference-only input.
 
 At that point, more broad planning is lower-value than implementation.
+
+Operationally, this threshold is reached when
+`first_product_code_block.md` is accepted as the exact handoff target for the
+first coding block.
 
 ## Anti-Overplanning Guardrail
 

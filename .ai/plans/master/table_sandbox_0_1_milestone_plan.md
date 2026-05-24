@@ -298,6 +298,12 @@ closure sequence:
 This is not another broad planning loop. It is the final narrowing step before
 the first real coding block.
 
+The concrete closure artifact is:
+
+- `../implementation/first_product_code_block.md`
+
+Without that file, the first coding block should not start.
+
 ## Next Artifact
 
 After this plan, the natural follow-up is `first_vertical_slice_spec.md`.

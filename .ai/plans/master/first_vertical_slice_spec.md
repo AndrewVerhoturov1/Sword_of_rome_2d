@@ -119,6 +119,13 @@ This slice assumes that a short pre-code closure has already frozen:
 The slice should not be treated as an open-ended implementation start. It is a
 specific proof target after those decisions are explicit.
 
+The execution handoff for this slice is:
+
+- `../implementation/first_product_code_block.md`
+
+That brief freezes the first action, first event, tiny fixtures, acceptance
+checklist, and non-goals before coding begins.
+
 ## Done Signal
 
 The first coding proof is complete when the following loop is visible and

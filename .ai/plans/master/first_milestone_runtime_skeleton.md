@@ -233,5 +233,8 @@ The next real step is a short pre-code closure that freezes:
 - the first action/event pair;
 - the first acceptance checklist.
 
+The concrete artifact for that closure is
+`../implementation/first_product_code_block.md`.
+
 After that short closure, implementation should begin through the narrow
 `Table Sandbox 0.1` slice instead of another broad planning pass.

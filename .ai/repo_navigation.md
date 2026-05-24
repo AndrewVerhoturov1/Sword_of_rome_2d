@@ -142,6 +142,8 @@
 Эти пути не надо считать публичным каноном проекта, пока человек отдельно не скажет обратное.
 ## Recent Additions
 
+- [`plans/implementation/first_product_code_block.md`](plans/implementation/first_product_code_block.md) — the concrete implementation brief that freezes the first coding block before technical bootstrap begins.
+
 - [`plans/master/pre_code_closure_and_first_execution_plan.md`](plans/master/pre_code_closure_and_first_execution_plan.md) вЂ” the short bridge from accepted planning canon to the first narrow product-code slice.
 
 - [`plans/master/module_product_ux_model.md`](plans/master/module_product_ux_model.md) — product-wide UX model: authoring, playtest, runtime/save flows, daily loop, mode transitions, and anti-confusion rules.
