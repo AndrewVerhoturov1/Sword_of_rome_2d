@@ -41,30 +41,76 @@ export function validateAction(
 ): ValidationResult {
   if (action.type === "move_piece_requested") {
     const { pieceId, fromLocationId, toLocationId } = action.payload;
-    if (!pieceId || !fromLocationId || !toLocationId) {
+    if (
+      typeof pieceId !== "string" ||
+      typeof fromLocationId !== "string" ||
+      typeof toLocationId !== "string"
+    ) {
       return {
         status: "block",
         reasonCode: "move_piece_requested_missing_payload",
       };
     }
-    if (state) {
-      const piece = state.pieces.find((p) => p.pieceId === pieceId);
-      if (!piece) {
-        return {
-          status: "block",
-          reasonCode: "move_piece_requested_unknown_piece",
-        };
-      }
-      if (piece.locationId !== fromLocationId) {
-        return {
-          status: "warn",
-          reasonCode: "move_piece_requested_location_mismatch",
-        };
-      }
+
+    if (!state) {
+      return {
+        status: "allow",
+        reasonCode: "move_piece_requested_permissive_allow",
+      };
     }
+
+    const piece = state.pieces.find((p) => p.pieceId === pieceId);
+    if (!piece) {
+      return {
+        status: "block",
+        reasonCode: "move_piece_requested_unknown_piece",
+      };
+    }
+
+    if (piece.locationId !== fromLocationId) {
+      return {
+        status: "block",
+        reasonCode: "move_piece_requested_location_mismatch",
+      };
+    }
+
+    const fromSpaceExists = state.spaces.some(
+      (space) => space.spaceId === fromLocationId
+    );
+    if (!fromSpaceExists) {
+      return {
+        status: "block",
+        reasonCode: "move_piece_requested_unknown_from_space",
+      };
+    }
+
+    const toSpaceExists = state.spaces.some(
+      (space) => space.spaceId === toLocationId
+    );
+    if (!toSpaceExists) {
+      return {
+        status: "block",
+        reasonCode: "move_piece_requested_unknown_to_space",
+      };
+    }
+
+    const hasConnection = state.connections.some(
+      (connection) =>
+        (connection.fromSpaceId === fromLocationId &&
+          connection.toSpaceId === toLocationId) ||
+        (connection.fromSpaceId === toLocationId &&
+          connection.toSpaceId === fromLocationId)
+    );
+    if (!hasConnection) {
+      return {
+        status: "block",
+        reasonCode: "move_piece_requested_no_connection",
+      };
+    }
+
     return {
       status: "allow",
-      reasonCode: "move_piece_requested_permissive_allow",
+      reasonCode: "move_piece_requested_graph_allow",
     };
   }
 

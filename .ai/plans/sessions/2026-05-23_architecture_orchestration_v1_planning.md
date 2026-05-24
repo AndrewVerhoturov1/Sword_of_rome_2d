@@ -90,6 +90,8 @@ in_progress
 - `Session run: 009` - handoff `0012_permissive_rules_hooks_shim.md` prepared for the next narrow boundary step: runtime asks, rules answer, runtime commits.
 - `Session run: 010` - `0012` reviewed by Codex: code and checks look clean, verdict = pending human check because the browser move loop must still be confirmed after the boundary extraction.
 - `Session run: 011` - user confirmed real browser behavior for `0012`; Codex accepts the permissive RulesHooks shim as the next runtime baseline.
+- `Session run: 012` - handoff `0013_graph_aware_move_validation.md` prepared for the next narrow hardening step: graph-aware validation for `move_piece_requested`.
+- `Session run: 013` - tiny graph-aware validation fix applied directly by Codex at explicit user request; build and typecheck passed locally.
 
 ## User Overrides
 
@@ -158,6 +160,14 @@ in_progress
   - permissive `RulesHooks` lives in `table-sandbox/src/runtime/rulesHooks.ts`;
   - current move behavior is preserved for the user;
   - runtime/rules boundary is cleaner without expanding rules breadth yet.
+- Current next practical step is fixed locally, without new `/v1`:
+  - strengthen `RulesHooks.validateAction(...)` for `move_piece_requested`;
+  - add first graph-aware checks against spaces and connections in `GameState`;
+  - keep the current move behavior and runtime authority unchanged.
+- Direct tiny fix baseline update:
+  - `RulesHooks.validateAction(...)` now checks source/target spaces and bidirectional connection existence;
+  - `move_piece_requested_location_mismatch` now blocks instead of warns;
+  - current positive path `space-a -> space-b` remains valid.
 - В repo уже принят framing: проект = browser-based 2D authoring tool / editor / tabletop sandbox, а Sword of Rome-like модуль = первый тестовый модуль.
 - По `/v1` уже получены и staged два external second opinion:
   - `V1-20260523-052756`
