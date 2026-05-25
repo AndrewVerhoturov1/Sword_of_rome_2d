@@ -101,6 +101,10 @@ in_progress
 - `Session run: 020` - `/v1` answer `V1-20260525-033837` processed through local notebook pipeline; user accepted the recommendation to pivot the next significant step toward `Manual Sandbox Interaction Pack 1 - Smart Drag Move`, with bounded 6-space fixture expansion inside the same handoff and prototype used only as UX donor/reference.
 - `Session run: 021` - handoff `0016_manual_sandbox_interaction_pack_1_smart_drag_move.md` prepared for the next interaction-oriented step: 6-space tiny map expansion, left-button smart drag move, source tail, nearest-target highlight, snap/magnet, release through existing runtime pipeline, rollback on invalid drop, and save/load verification.
 - `Session run: 022` - `0016` reviewed by Codex; one fixture/bootstrap consistency issue was corrected, build/typecheck passed, user confirmed live browser behavior, and the smart drag move pack is accepted as the next interaction baseline.
+- `Session run: 023` - `/v1` answer `V1-20260525-042226` accepted by user; handoff `0017_play_sandbox_readiness_pack.md` prepared for the next bounded readiness step: stack/selection readiness, scenario reset, lightweight map/scenario sanity check, and save/load regression across all already-supported manual actions.
+- `Session run: 024` - `0017` reviewed by Codex: build/typecheck passed, visual human check passed, stack/selection/reset/save-load behavior confirmed, and the `Play Sandbox Readiness Pack` is accepted as the next stable play-preview baseline.
+- `Session run: 025` - `/v1` answer `V1-20260525-051950` accepted by user; handoff `0018_map_authoring_0_1_spaces_and_connections_slice.md` prepared for the first bounded editor branch step: `Map Authoring 0.1` with spaces/connections editing, object list, inspector, validation, preview integration, and aggressive prototype borrowing from `table-map-editor-canvas-local-fixed` without wholesale migration.
+- `Session run: 026` - `0018` reviewed by Codex, two editor rendering/layout issues were fixed directly by Codex (`crop` and `zoom pixelation`), build/typecheck passed, human visual check passed, and `Map Authoring 0.1 - Spaces and Connections Slice` is accepted as the first editor baseline.
 
 ## User Overrides
 
@@ -219,6 +223,37 @@ in_progress
   - invalid/no-target drop rolls back without mutating committed state and shows a short Russian message;
   - fixture-driven `controlBySpace` is now loaded into runtime bootstrap instead of being dead data;
   - save/load survives committed drag move.
+- `/v1` follow-up guidance after accepted `0016` baseline:
+  - `V1-20260525-042226` recommends one bounded `Play Sandbox Readiness Pack` before editor branching;
+  - scope = stack/selection readiness, scenario reset, lightweight map/scenario sanity check, save/load regression;
+  - after this pack, natural next branch becomes `Map Authoring 0.1`, not bigger rules/save/prototype work.
+- Current next practical step is now fixed locally by accepted `/v1` guidance and explicit user approval:
+  - prepare `0017_play_sandbox_readiness_pack.md`;
+  - do not jump yet to broad editor breadth;
+  - do not expand into full rules engine or mature save system.
+- `0017` is now accepted:
+  - stack/selection readiness is present in the visible sandbox baseline;
+  - selected piece in a stack remains individually drag-able;
+  - reset returns runtime to fixture-based initial scenario state without mutating fixture files;
+  - bounded sanity-check messaging exists for key bootstrap/runtime reference problems;
+  - save/load regression survives move, drag, create, delete, change control, and reset.
+- Current baseline is now good enough to stop readiness-focused sandbox work and branch toward first bounded authoring/editor slices.
+- `/v1` follow-up guidance after accepted `0017` baseline:
+  - `V1-20260525-051950` says yes, it is time to branch into editor work;
+  - recommended next significant step = `Map Authoring 0.1 - Spaces and Connections Slice`;
+  - `table-map-editor-canvas-local-fixed` should be used aggressively as UX donor/reference;
+  - but authoring `MapDefinition` and runtime `GameState` must stay explicitly separated.
+- Current next practical step is now fixed locally by accepted `/v1` guidance and explicit user emphasis:
+  - prepare `0018_map_authoring_0_1_spaces_and_connections_slice.md`;
+  - prototype borrowing should be maximized where it fits first-slice scope;
+  - do not fall back to generic fresh editor UX if prototype already covers the interaction.
+- `0018` is now accepted:
+  - editor mode and play mode now coexist in one product shell;
+  - tiny map loads into a separate editable `MapDraft`;
+  - spaces and connections can be created, moved, renamed, and deleted in authoring mode;
+  - object list, inspector, context menu, validation, and preview loop now exist in the editor branch;
+  - preview uses draft-derived runtime state without making editor draft or Phaser the runtime source of truth;
+  - editor surface layout/rendering was hardened after Kilo run: no cropped lower canvas, no CSS-scale blur under zoom.
 - В repo уже принят framing: проект = browser-based 2D authoring tool / editor / tabletop sandbox, а Sword of Rome-like модуль = первый тестовый модуль.
 - По `/v1` уже получены и staged два external second opinion:
   - `V1-20260523-052756`

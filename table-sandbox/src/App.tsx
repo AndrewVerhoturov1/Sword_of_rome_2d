@@ -21,6 +21,10 @@ import { validateAction, resolveAction } from "./runtime/rulesHooks";
 import { saveSnapshot, loadSnapshot } from "./runtime/snapshot";
 import { validateBootstrap, formatSanityIssues } from "./runtime/sanityCheck";
 import "./App.css";
+import EditorSurface from "./editor/EditorSurface";
+import { type MapDraft, loadMapDraft } from "./editor/MapDraft";
+import { type SpaceState, type ConnectionState } from "./runtime/GameState";
+import mapData from "./fixtures/tiny-module/modules/tiny-module/map.json";
 
 /**
  * App — корневой React-компонент Table Sandbox 0.1 (Action/Event Spine).
@@ -71,8 +75,66 @@ export default function App() {
   const [validationMessage, setValidationMessage] = useState<string | null>(null);
   const [bootstrapSanityMessage, setBootstrapSanityMessage] = useState<string | null>(initialSanityMsg);
 
+  /** Режим приложения: editor или play */
+  const [appMode, setAppMode] = useState<"editor" | "play">("editor");
+
+  /** Editor draft — живёт в App, переживает переключение режимов */
+  const [editorDraft, setEditorDraft] = useState<MapDraft>(() => loadMapDraft(mapData));
+
   /** Монотонный счётчик для генерации pieceId */
   const nextPieceSeqRef = useRef<number>(3);
+
+  /**
+   * Конвертирует MapDraft в GameState для preview.
+   * Draft НЕ мутируется. GameState НЕ пишет обратно в draft.
+   */
+  const draftToGameState = useCallback((draft: MapDraft): GameState => {
+    const spaces: SpaceState[] = draft.spaces.map((s) => ({
+      spaceId: s.spaceId,
+      name: s.name,
+      x: s.x,
+      y: s.y,
+      type: s.type,
+    }));
+    const connections: ConnectionState[] = draft.connections.map((c) => ({
+      connectionId: c.connectionId,
+      fromSpaceId: c.fromSpaceId,
+      toSpaceId: c.toSpaceId,
+      type: c.type,
+    }));
+    return {
+      ...initialGS,
+      version: 0,
+      lastUpdated: Date.now(),
+      mapId: draft.mapId,
+      spaces,
+      connections,
+      pieces: [],
+      controlState: {},
+      turn: { round: 0, phaseId: "setup", activeActorId: "none" },
+      bootstrapMeta: {
+        ...initialGS.bootstrapMeta,
+        source: "editor-preview",
+        mapId: draft.mapId,
+      },
+    };
+  }, [initialGS]);
+
+  /** Переход из редактора в preview: устанавливает GameState из draft */
+  const handlePreview = useCallback((draft: MapDraft) => {
+    const gs = draftToGameState(draft);
+    setGameState(gs);
+    setEventLog(createEventLog());
+    setLastAction(null);
+    setAppMode("play");
+    setSelectedPieceId(null);
+    setSelectedSpaceId(null);
+    setValidationMessage(null);
+    setSnapshotStatus(null);
+    resetActionSeq(0);
+    resetEventSeq(0);
+    nextPieceSeqRef.current = 3;
+  }, [draftToGameState]);
 
   /**
    * Сбросить всё к исходному fixture-based состоянию.
@@ -481,232 +543,196 @@ export default function App() {
   };
 
   return (
-    <div className="app-shell">
+    <div className={`app-shell ${appMode === "editor" ? "editor-mode" : ""}`}>
       <header className="app-header">
-        <h1>Table Sandbox 0.1 — Play Sandbox Ready (0017)</h1>
+        <h1>
+          {appMode === "editor"
+            ? "Редактор карты 0.1 — Spaces & Connections"
+            : "Table Sandbox 0.1 — Play Sandbox Ready (0017)"}
+        </h1>
         <span className="app-badge">
-          {gameState.projectId}/{gameState.scenarioId}
+          {appMode === "editor" ? "editor" : `${gameState.projectId}/${gameState.scenarioId}`}
         </span>
+        <button
+          className="mode-switch-btn"
+          onClick={() => {
+            if (appMode === "editor") {
+              setAppMode("play");
+            } else {
+              setAppMode("editor");
+            }
+          }}
+          title={appMode === "editor" ? "Перейти в песочницу (текущий fixture state)" : "Вернуться в редактор карты"}
+        >
+          {appMode === "editor" ? "🎮 Играть (fixture)" : "✏ Редактор"}
+        </button>
       </header>
 
-      {/* Bootstrap sanity message (только если есть проблемы) */}
-      {bootstrapSanityMessage && (
-        <div className="sanity-banner">
-          <span className="sanity-icon">⚠</span>
-          <span>{bootstrapSanityMessage}</span>
-        </div>
-      )}
+      {appMode === "editor" ? (
+        <EditorSurface
+          draft={editorDraft}
+          onDraftChange={setEditorDraft}
+          onPreview={handlePreview}
+        />
+      ) : (
+        <>
+          {bootstrapSanityMessage && (
+            <div className="sanity-banner">
+              <span className="sanity-icon">⚠</span>
+              <span>{bootstrapSanityMessage}</span>
+            </div>
+          )}
 
-      <main className="app-main">
-        <div className="table-area">
-          <h2 className="area-label">Table Surface (Phaser Renderer)</h2>
-          <PhaserStage
-            gameState={gameState}
-            selectedPieceId={selectedPieceId}
-            selectedSpaceId={selectedSpaceId}
-            onSpaceClick={handleSpaceClick}
-            onSpaceRightClick={handleSpaceRightClick}
-            onPieceDragRelease={handlePieceDragRelease}
-          />
-          <p className="area-hint">
-            {selectedPieceId
-              ? (() => {
-                  const selPiece = gameState.pieces.find(p => p.pieceId === selectedPieceId);
-                  const locId = selPiece?.locationId ?? "";
-                  const stackCount = gameState.pieces.filter(p => p.locationId === locId).length;
-                  const stackIndex = gameState.pieces.filter(p => p.locationId === locId).findIndex(p => p.pieceId === selectedPieceId) + 1;
-                  const stackInfo = stackCount > 1 ? ` (${stackIndex}/${stackCount} в stack)` : "";
-                  return `Выбрана фишка: ${selectedPieceId}${stackInfo} в точке «${getSpaceName(locId)}». Тяни левой кнопкой — переместить. ПКМ по точке — тоже переместить.`;
-                })()
-              : selectedSpaceId
-                ? `Выбрана точка: «${getSpaceName(selectedSpaceId)}». ЛКМ — выбрать, тяни фишку — переместить.`
-                : "ЛКМ по точке — выбрать. Зажми фишку левой кнопкой и тяни — переместить."}
-          </p>
-        </div>
+          <main className="app-main">
+            <div className="table-area">
+              <h2 className="area-label">Table Surface (Phaser Renderer)</h2>
+              <PhaserStage
+                gameState={gameState}
+                selectedPieceId={selectedPieceId}
+                selectedSpaceId={selectedSpaceId}
+                onSpaceClick={handleSpaceClick}
+                onSpaceRightClick={handleSpaceRightClick}
+                onPieceDragRelease={handlePieceDragRelease}
+              />
+              <p className="area-hint">
+                {selectedPieceId
+                  ? (() => {
+                      const selPiece = gameState.pieces.find(p => p.pieceId === selectedPieceId);
+                      const locId = selPiece?.locationId ?? "";
+                      const stackCount = gameState.pieces.filter(p => p.locationId === locId).length;
+                      const stackIndex = gameState.pieces.filter(p => p.locationId === locId).findIndex(p => p.pieceId === selectedPieceId) + 1;
+                      const stackInfo = stackCount > 1 ? ` (${stackIndex}/${stackCount} в stack)` : "";
+                      return `Выбрана фишка: ${selectedPieceId}${stackInfo} в точке «${getSpaceName(locId)}». Тяни левой кнопкой — переместить. ПКМ по точке — тоже переместить.`;
+                    })()
+                  : selectedSpaceId
+                    ? `Выбрана точка: «${getSpaceName(selectedSpaceId)}». ЛКМ — выбрать, тяни фишку — переместить.`
+                    : "ЛКМ по точке — выбрать. Зажми фишку левой кнопкой и тяни — переместить."}
+              </p>
+            </div>
 
-        <aside className="sidebar-area">
-          {/* Панель выбранного объекта — либо фишка, либо точка */}
-          <div className="selection-panel">
-            <h3 className="panel-title">Выбранный объект</h3>
-            {selectedPieceId ? (
-              <div className="selection-info">
-                <div className="sel-row">
-                  <span className="sel-label">Фишка:</span>
-                  <span className="sel-value sel-piece">{selectedPieceId}</span>
-                </div>
-                <div className="sel-row">
-                  <span className="sel-label">Владелец:</span>
-                  <span className={`sel-value ${gameState.pieces.find(p => p.pieceId === selectedPieceId)?.ownerId === "tiny-red" ? "sel-owner" : "sel-owner-blue"}`}>
-                    {gameState.pieces.find(p => p.pieceId === selectedPieceId)?.ownerId ?? "—"}
-                  </span>
-                </div>
-                <div className="sel-row">
-                  <span className="sel-label">На точке:</span>
-                  <span className="sel-value">
-                    {(() => { const loc = gameState.pieces.find(p => p.pieceId === selectedPieceId)?.locationId; return loc ? `«${getSpaceName(loc)}»` : "—"; })()}
-                  </span>
-                </div>
-                {(() => {
-                  const selPiece = gameState.pieces.find(p => p.pieceId === selectedPieceId);
-                  const locId = selPiece?.locationId;
-                  if (!locId) return null;
-                  const stackPieces = gameState.pieces.filter(p => p.locationId === locId);
-                  if (stackPieces.length <= 1) return null;
-                  const stackIdx = stackPieces.findIndex(p => p.pieceId === selectedPieceId) + 1;
-                  return (
-                    <div className="sel-row sel-stack-row">
-                      <span className="sel-label">Stack:</span>
-                      <span className="sel-value sel-stack">
-                        {stackIdx}/{stackPieces.length} — {stackPieces.map(p => p.pieceId === selectedPieceId ? `[${p.pieceId}]` : p.pieceId).join(", ")}
+            <aside className="sidebar-area">
+              <div className="selection-panel">
+                <h3 className="panel-title">Выбранный объект</h3>
+                {selectedPieceId ? (
+                  <div className="selection-info">
+                    <div className="sel-row">
+                      <span className="sel-label">Фишка:</span>
+                      <span className="sel-value sel-piece">{selectedPieceId}</span>
+                    </div>
+                    <div className="sel-row">
+                      <span className="sel-label">Владелец:</span>
+                      <span className={`sel-value ${gameState.pieces.find(p => p.pieceId === selectedPieceId)?.ownerId === "tiny-red" ? "sel-owner" : "sel-owner-blue"}`}>
+                        {gameState.pieces.find(p => p.pieceId === selectedPieceId)?.ownerId ?? "—"}
                       </span>
                     </div>
-                  );
-                })()}
+                    <div className="sel-row">
+                      <span className="sel-label">На точке:</span>
+                      <span className="sel-value">
+                        {(() => { const loc = gameState.pieces.find(p => p.pieceId === selectedPieceId)?.locationId; return loc ? `«${getSpaceName(loc)}»` : "—"; })()}
+                      </span>
+                    </div>
+                    {(() => {
+                      const selPiece = gameState.pieces.find(p => p.pieceId === selectedPieceId);
+                      const locId = selPiece?.locationId;
+                      if (!locId) return null;
+                      const stackPieces = gameState.pieces.filter(p => p.locationId === locId);
+                      if (stackPieces.length <= 1) return null;
+                      const stackIdx = stackPieces.findIndex(p => p.pieceId === selectedPieceId) + 1;
+                      return (
+                        <div className="sel-row sel-stack-row">
+                          <span className="sel-label">Stack:</span>
+                          <span className="sel-value sel-stack">
+                            {stackIdx}/{stackPieces.length} — {stackPieces.map(p => p.pieceId === selectedPieceId ? `[${p.pieceId}]` : p.pieceId).join(", ")}
+                          </span>
+                        </div>
+                      );
+                    })()}
+                  </div>
+                ) : selectedSpaceId ? (
+                  <div className="selection-info">
+                    <div className="sel-row">
+                      <span className="sel-label">Точка:</span>
+                      <span className="sel-value">{selectedSpaceId}</span>
+                      <span className="sel-name">«{getSpaceName(selectedSpaceId)}»</span>
+                    </div>
+                    <div className="sel-row">
+                      <span className="sel-label">Контроль:</span>
+                      <span className={`sel-value ${getControlOwner(selectedSpaceId) ? "sel-owner" : "sel-none"}`}>
+                        {getControlOwner(selectedSpaceId) ?? "нет"}
+                      </span>
+                    </div>
+                    <div className="sel-row">
+                      <span className="sel-label">Фишки:</span>
+                      <span className="sel-value">{gameState.pieces.filter(p => p.locationId === selectedSpaceId).length > 0 ? gameState.pieces.filter(p => p.locationId === selectedSpaceId).map(p => p.pieceId).join(", ") : "нет"}</span>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="sel-empty">Ничего не выбрано. Кликни по точке на карте.</p>
+                )}
               </div>
-            ) : selectedSpaceId ? (
-              <div className="selection-info">
-                <div className="sel-row">
-                  <span className="sel-label">Точка:</span>
-                  <span className="sel-value">{selectedSpaceId}</span>
-                  <span className="sel-name">«{getSpaceName(selectedSpaceId)}»</span>
+
+              <div className="action-panel">
+                <h3 className="panel-title">Действия</h3>
+                <div className="action-group">
+                  <span className="action-group-label">Создать фишку:</span>
+                  <div className="action-btn-row">
+                    <button className="action-btn action-create" onClick={() => handleCreatePiece("tiny-red")}>Создать (красные)</button>
+                    <button className="action-btn action-create" onClick={() => handleCreatePiece("tiny-blue")}>Создать (синие)</button>
+                  </div>
                 </div>
-                <div className="sel-row">
-                  <span className="sel-label">Контроль:</span>
-                  <span className={`sel-value ${getControlOwner(selectedSpaceId) ? "sel-owner" : "sel-none"}`}>
-                    {getControlOwner(selectedSpaceId) ?? "нет"}
-                  </span>
+                <div className="action-group">
+                  <button className="action-btn action-delete" onClick={handleDeletePiece}>Удалить фишку</button>
                 </div>
-                <div className="sel-row">
-                  <span className="sel-label">Фишки:</span>
-                  <span className="sel-value">{gameState.pieces.filter(p => p.locationId === selectedSpaceId).length > 0 ? gameState.pieces.filter(p => p.locationId === selectedSpaceId).map(p => p.pieceId).join(", ") : "нет"}</span>
+                <div className="action-group">
+                  <span className="action-group-label">Контроль точки:</span>
+                  <div className="action-btn-row">
+                    <button className="action-btn action-control" onClick={() => handleChangeControl("tiny-red")}>Красные</button>
+                    <button className="action-btn action-control" onClick={() => handleChangeControl("tiny-blue")}>Синие</button>
+                    <button className="action-btn action-control-neutral" onClick={() => handleChangeControl(null)}>Сброс</button>
+                  </div>
                 </div>
               </div>
-            ) : (
-              <p className="sel-empty">Ничего не выбрано. Кликни по точке на карте.</p>
-            )}
-          </div>
 
-          {/* Кнопки действий */}
-          <div className="action-panel">
-            <h3 className="panel-title">Действия</h3>
+              {validationMessage && (
+                <div className="validation-message">
+                  <span className="validation-icon">⚠</span>
+                  <span>{validationMessage}</span>
+                </div>
+              )}
+            </aside>
 
-            <div className="action-group">
-              <span className="action-group-label">Создать фишку:</span>
-              <div className="action-btn-row">
-                <button
-                  className="action-btn action-create"
-                  onClick={() => handleCreatePiece("tiny-red")}
-                  title="Создать фишку красных на выбранной точке"
-                >
-                  Создать (красные)
-                </button>
-                <button
-                  className="action-btn action-create"
-                  onClick={() => handleCreatePiece("tiny-blue")}
-                  title="Создать фишку синих на выбранной точке"
-                >
-                  Создать (синие)
-                </button>
-              </div>
+            <aside className="debug-area">
+              <DebugPanel
+                gameState={gameState}
+                lastAction={lastAction}
+                eventLog={eventLog}
+                selectedPieceId={selectedPieceId}
+                selectedSpaceId={selectedSpaceId}
+              />
+            </aside>
+          </main>
+
+          <footer className="app-footer">
+            <div className="footer-left">
+              <span>GameState version: {gameState.version}</span>
+              <span className="footer-sep">|</span>
+              <span>Spaces: {gameState.spaces.length}</span>
+              <span className="footer-sep">|</span>
+              <span>Pieces: {gameState.pieces.length}</span>
+              <span className="footer-sep">|</span>
+              <span>Events: {eventLog.events.length}</span>
+              <span className="footer-sep">|</span>
+              <span>Источник истины: Runtime (React state), НЕ Phaser</span>
             </div>
-
-            <div className="action-group">
-              <button
-                className="action-btn action-delete"
-                onClick={handleDeletePiece}
-                title="Удалить выбранную фишку"
-              >
-                Удалить фишку
-              </button>
+            <div className="footer-actions">
+              <button className="snapshot-btn reset-btn" onClick={handleReset}>Сброс</button>
+              <button className="snapshot-btn save-btn" onClick={handleSave}>Сохранить</button>
+              <button className="snapshot-btn load-btn" onClick={handleLoad}>Загрузить</button>
+              {snapshotStatus && <span className="snapshot-status">{snapshotStatus}</span>}
             </div>
-
-            <div className="action-group">
-              <span className="action-group-label">Контроль точки:</span>
-              <div className="action-btn-row">
-                <button
-                  className="action-btn action-control"
-                  onClick={() => handleChangeControl("tiny-red")}
-                  title="Установить контроль красных над точкой"
-                >
-                  Красные
-                </button>
-                <button
-                  className="action-btn action-control"
-                  onClick={() => handleChangeControl("tiny-blue")}
-                  title="Установить контроль синих над точкой"
-                >
-                  Синие
-                </button>
-                <button
-                  className="action-btn action-control-neutral"
-                  onClick={() => handleChangeControl(null)}
-                  title="Сбросить контроль точки"
-                >
-                  Сброс
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* Сообщения валидации */}
-          {validationMessage && (
-            <div className="validation-message">
-              <span className="validation-icon">⚠</span>
-              <span>{validationMessage}</span>
-            </div>
-          )}
-        </aside>
-
-        <aside className="debug-area">
-          <DebugPanel
-            gameState={gameState}
-            lastAction={lastAction}
-            eventLog={eventLog}
-            selectedPieceId={selectedPieceId}
-            selectedSpaceId={selectedSpaceId}
-          />
-        </aside>
-      </main>
-
-      <footer className="app-footer">
-        <div className="footer-left">
-          <span>GameState version: {gameState.version}</span>
-          <span className="footer-sep">|</span>
-          <span>Spaces: {gameState.spaces.length}</span>
-          <span className="footer-sep">|</span>
-          <span>Pieces: {gameState.pieces.length}</span>
-          <span className="footer-sep">|</span>
-          <span>Events: {eventLog.events.length}</span>
-          <span className="footer-sep">|</span>
-          <span>Источник истины: Runtime (React state), НЕ Phaser</span>
-        </div>
-        <div className="footer-actions">
-          <button
-            className="snapshot-btn reset-btn"
-            onClick={handleReset}
-            title="Сбросить всё к исходному сценарию (fixture-based initial state)"
-          >
-            Сброс
-          </button>
-          <button
-            className="snapshot-btn save-btn"
-            onClick={handleSave}
-            title="Сохранить текущее состояние в локальное хранилище браузера"
-          >
-            Сохранить
-          </button>
-          <button
-            className="snapshot-btn load-btn"
-            onClick={handleLoad}
-            title="Загрузить сохранённое состояние из локального хранилища браузера"
-          >
-            Загрузить
-          </button>
-          {snapshotStatus && (
-            <span className="snapshot-status">{snapshotStatus}</span>
-          )}
-        </div>
-      </footer>
+          </footer>
+        </>
+      )}
     </div>
   );
 }

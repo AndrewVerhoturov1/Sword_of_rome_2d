@@ -6,7 +6,7 @@
 
 ## Текущий этап
 
-`Table Sandbox 0.1: Play Sandbox Ready accepted baseline`
+`Table Sandbox 0.1: Play Sandbox Ready + Map Authoring 0.1 accepted baseline`
 
 ## Что уже принято
 
@@ -22,7 +22,8 @@
   - `0014` — minimal runtime snapshot save/load;
   - `0015` — Manual Sandbox Action Pack 1;
   - `0016` — Manual Sandbox Interaction Pack 1 / Smart Drag Move;
-  - `0017` — Play Sandbox Readiness Pack.
+  - `0017` — Play Sandbox Readiness Pack;
+  - `0018` — Map Authoring 0.1 / Spaces and Connections Slice.
 
 ## Что уже работает в product code
 
@@ -69,6 +70,14 @@
   - reset очищает transient selection/messages/event log по зафиксированному правилу
   - есть bounded sanity check для ключевых bootstrap/runtime reference cases
   - save/load переживает move/drag/create/delete/change control/reset
+- Первый editor slice уже доказан:
+  - есть явный editor mode отдельно от play mode
+  - current tiny map загружается в editable authoring draft
+  - editor умеет add / move / rename / delete space
+  - editor умеет create / delete connection
+  - есть object list, inspector и lightweight validation
+  - preview edited draft map идёт в существующую sandbox без смешения authoring draft и runtime `GameState`
+  - editor surface переведён на SVG-first rendering для чёткого zoom
 - Rules boundary уже выделен:
   - runtime asks `validateAction`
   - runtime asks `resolveAction`
@@ -101,7 +110,7 @@
 
 - Нет mature save system beyond one narrow local snapshot.
 - Нет broad rules engine.
-- Нет authoring surfaces product-level breadth.
+- Пока есть только первый bounded map-authoring slice, без broader editor breadth.
 - Нет mature module package loading beyond tiny local fixture slice.
 
 ## Ближайший practical next step
