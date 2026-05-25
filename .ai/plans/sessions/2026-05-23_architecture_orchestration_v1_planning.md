@@ -105,6 +105,8 @@ in_progress
 - `Session run: 024` - `0017` reviewed by Codex: build/typecheck passed, visual human check passed, stack/selection/reset/save-load behavior confirmed, and the `Play Sandbox Readiness Pack` is accepted as the next stable play-preview baseline.
 - `Session run: 025` - `/v1` answer `V1-20260525-051950` accepted by user; handoff `0018_map_authoring_0_1_spaces_and_connections_slice.md` prepared for the first bounded editor branch step: `Map Authoring 0.1` with spaces/connections editing, object list, inspector, validation, preview integration, and aggressive prototype borrowing from `table-map-editor-canvas-local-fixed` without wholesale migration.
 - `Session run: 026` - `0018` reviewed by Codex, two editor rendering/layout issues were fixed directly by Codex (`crop` and `zoom pixelation`), build/typecheck passed, human visual check passed, and `Map Authoring 0.1 - Spaces and Connections Slice` is accepted as the first editor baseline.
+- `Session run: 027` - handoff `0019_repo_sync_audit.md` prepared as a read-only repo sync audit against `origin/main`: inventory, size/hash-first compare, targeted diff inspection, and suspicious untracked/ignored detection without any sync actions.
+- `Session run: 028` - `0019` reviewed by Codex: read-only repo sync audit passed, local `HEAD` equals `origin/main`, important tracked files match by hash, no untracked product/docs drift found, and no sync action is required.
 
 ## User Overrides
 
@@ -116,6 +118,8 @@ in_progress
 - Не переходить к широким изменениям кода без отдельного согласования и без следующего planning шага.
 - Пользователь отдельно попросил сохранить локальные planning-файлы и присылать только ссылки на них.
 - После `/v1` по следующему шагу пользователь явно выбрал полный `Manual Sandbox Action Pack 1`, а не более узкий `change_control`-only slice.
+- Пользователь отдельно запросил быстрый read-only repo sync audit handoff против `origin/main`; это side audit без product-code изменений, commit, push или auto-sync.
+- После audit пользователь отдельно запросил зафиксировать `0019` и подготовить новый `/v1` prompt про gap-анализ editor branch и sequencing к уровню prototype.
 
 ## Checkpoint State
 
@@ -254,6 +258,12 @@ in_progress
   - object list, inspector, context menu, validation, and preview loop now exist in the editor branch;
   - preview uses draft-derived runtime state without making editor draft or Phaser the runtime source of truth;
   - editor surface layout/rendering was hardened after Kilo run: no cropped lower canvas, no CSS-scale blur under zoom.
+- `0019` is now accepted:
+  - read-only repo sync audit against `origin/main` passed;
+  - local `HEAD` and `origin/main` are aligned;
+  - important tracked product/docs files matched by hash;
+  - no untracked important files and no suspicious ignored drift were found;
+  - only local session-planning noise remained outside product sync concerns.
 - В repo уже принят framing: проект = browser-based 2D authoring tool / editor / tabletop sandbox, а Sword of Rome-like модуль = первый тестовый модуль.
 - По `/v1` уже получены и staged два external second opinion:
   - `V1-20260523-052756`
