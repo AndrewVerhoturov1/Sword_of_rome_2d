@@ -51,3 +51,41 @@ export interface MapRenderUnderlay {
   /** Natural image height (пиксели) */
   naturalHeight: number;
 }
+
+// ---- Coordinate transform helpers (Map Plane Alignment 0.1) ----
+
+/**
+ * Преобразует map-local координаты в world-координаты
+ * с учётом underlay offset, scale и rotation.
+ *
+ * Используется единообразно для spaces, connections, pieces и map bounds
+ * в play/test renderer. Матчит transform из MapDraft.ts (mapLocalToWorld),
+ * но работает только с MapRenderUnderlay (не тянет MapDraft в renderer).
+ *
+ * Если underlay === null — координаты возвращаются без изменений.
+ */
+export function mapLocalToWorld(
+  localX: number,
+  localY: number,
+  underlay: MapRenderUnderlay | null
+): { x: number; y: number } {
+  if (!underlay) return { x: localX, y: localY };
+
+  const cx = underlay.naturalWidth / 2;
+  const cy = underlay.naturalHeight / 2;
+  const s = underlay.scale || 1;
+  const rad = (underlay.rotationDeg * Math.PI) / 180;
+  const cos = Math.cos(rad);
+  const sin = Math.sin(rad);
+
+  // Center-based forward transform: translate(-cx,-cy), rotate, scale, translate(cx,cy), translate(ox,oy)
+  const dx = localX - cx;
+  const dy = localY - cy;
+  const rx = dx * cos - dy * sin;
+  const ry = dx * sin + dy * cos;
+
+  return {
+    x: rx * s + cx + underlay.offsetX,
+    y: ry * s + cy + underlay.offsetY,
+  };
+}

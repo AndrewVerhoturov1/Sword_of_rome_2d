@@ -1,6 +1,7 @@
 import Phaser from "phaser";
 import type { GameState } from "../runtime/GameState";
-import type { MapRenderModel } from "../map/MapRenderModel";
+import type { MapRenderModel, MapRenderUnderlay } from "../map/MapRenderModel";
+import { mapLocalToWorld } from "../map/MapRenderModel";
 
 /**
  * TableSandboxScene — Phaser-сцена для Action/Event Spine + Smart Drag Move (0016).
@@ -91,6 +92,10 @@ export class TableSandboxScene extends Phaser.Scene {
 
   // ---- Map visual debug objects (Handoff 0029) ----
   private mapVisualDebugObjects: Phaser.GameObjects.GameObject[] = [];
+
+  // ---- Map plane alignment (Map Plane Alignment 0.1) ----
+  /** Текущий underlay для transform map-local → world coordinates */
+  private currentUnderlay: MapRenderUnderlay | null = null;
 
   constructor() {
     super({ key: "TableSandboxScene" });
@@ -279,6 +284,9 @@ export class TableSandboxScene extends Phaser.Scene {
     // Штатный путь: сброс и полная перерисовка
     this.clearDrag();
     this.clearAllDynamic();
+
+    // Map Plane Alignment 0.1: сохраняем underlay для transform
+    this.currentUnderlay = mapVisual?.underlay ?? null;
 
     // Handoff 0029: map visual debug layer — до connections/spaces/pieces
     if (mapVisual) {
@@ -482,55 +490,59 @@ export class TableSandboxScene extends Phaser.Scene {
    * Не рисует actual image texture. Только bounds proof.
    */
   private drawMapVisualDebug(mv: MapRenderModel): void {
+    // Handoff 0029 V2 review: explicit negative depth для debug-слоя,
+    // чтобы гарантированно быть под connections (depth default 0).
+    const DEBUG_DEPTH = -20;
+    const DEBUG_LABEL_DEPTH = -19;
+
     const g = this.add.graphics();
-    g.setDepth(0); // под connections/spaces/pieces
+    g.setDepth(DEBUG_DEPTH);
     this.mapVisualDebugObjects.push(g);
 
     const { width, height } = mv.coordinateSystem;
+    const u = mv.underlay;
 
-    // 1. Map bounds rectangle — светло-серый пунктир
+    // Map Plane Alignment 0.1: transform all 4 corners → AABB
+    const mapCorners = [
+      mapLocalToWorld(0, 0, u),
+      mapLocalToWorld(width, 0, u),
+      mapLocalToWorld(width, height, u),
+      mapLocalToWorld(0, height, u),
+    ];
+    const mxs = mapCorners.map((c) => c.x);
+    const mys = mapCorners.map((c) => c.y);
+    const mapMinX = Math.min(...mxs);
+    const mapMinY = Math.min(...mys);
+    const mapMaxX = Math.max(...mxs);
+    const mapMaxY = Math.max(...mys);
+
+    // 1. Map bounds rectangle — светло-серый пунктир (AABB по 4 углам)
     g.lineStyle(2, 0x888888, 0.5);
-    g.strokeRect(0, 0, width, height);
+    g.strokeRect(mapMinX, mapMinY, mapMaxX - mapMinX, mapMaxY - mapMinY);
 
-    // 2. Map label
+    // 2. Map label — в левом верхнем углу bounds
     const label = this.add
-      .text(4, 4, `Map visual: ${mv.mapId} ${width}×${height}`, {
+      .text(mapMinX + 4, mapMinY + 4, `Map visual: ${mv.mapId} ${width}×${height}`, {
         fontSize: "10px",
         color: "#aaaaaa",
         fontFamily: "monospace",
       })
-      .setDepth(1);
+      .setDepth(DEBUG_LABEL_DEPTH);
     this.mapVisualDebugObjects.push(label);
 
     // 3. Underlay bounds (если есть и visible)
-    if (mv.underlay && mv.underlay.visible) {
-      const u = mv.underlay;
+    if (u && u.visible) {
       const nw = u.naturalWidth;
       const nh = u.naturalHeight;
-
-      // Compute transformed underlay corners (center-based)
-      const cx = nw / 2;
-      const cy = nh / 2;
       const s = u.scale || 1;
-      const rad = (u.rotationDeg * Math.PI) / 180;
-      const cos = Math.cos(rad);
-      const sin = Math.sin(rad);
 
+      // Reuse mapLocalToWorld для единого coordinate basis
       const corners = [
-        { x: 0, y: 0 },
-        { x: nw, y: 0 },
-        { x: nw, y: nh },
-        { x: 0, y: nh },
-      ].map((c) => {
-        const dx = c.x - cx;
-        const dy = c.y - cy;
-        const rx = dx * cos - dy * sin;
-        const ry = dx * sin + dy * cos;
-        return {
-          x: rx * s + cx + u.offsetX,
-          y: ry * s + cy + u.offsetY,
-        };
-      });
+        mapLocalToWorld(0, 0, u),
+        mapLocalToWorld(nw, 0, u),
+        mapLocalToWorld(nw, nh, u),
+        mapLocalToWorld(0, nh, u),
+      ];
 
       const xs = corners.map((c) => c.x);
       const ys = corners.map((c) => c.y);
@@ -541,7 +553,7 @@ export class TableSandboxScene extends Phaser.Scene {
 
       // Underlay bounds AABB — оранжевый пунктир
       const ubG = this.add.graphics();
-      ubG.setDepth(0);
+      ubG.setDepth(DEBUG_DEPTH);
       ubG.lineStyle(1.5, 0xf0a040, 0.6);
       ubG.strokeRect(minX, minY, maxX - minX, maxY - minY);
       this.mapVisualDebugObjects.push(ubG);
@@ -553,7 +565,7 @@ export class TableSandboxScene extends Phaser.Scene {
           color: "#c09040",
           fontFamily: "monospace",
         })
-        .setDepth(1);
+        .setDepth(DEBUG_LABEL_DEPTH);
       this.mapVisualDebugObjects.push(ulabel);
     }
   }
@@ -592,7 +604,10 @@ export class TableSandboxScene extends Phaser.Scene {
       const from = state.spaces.find((s) => s.spaceId === conn.fromSpaceId);
       const to = state.spaces.find((s) => s.spaceId === conn.toSpaceId);
       if (from && to) {
-        g.lineBetween(from.x, from.y, to.x, to.y);
+        // Map Plane Alignment 0.1: transform map-local → world coordinates
+        const fromWorld = mapLocalToWorld(from.x, from.y, this.currentUnderlay);
+        const toWorld = mapLocalToWorld(to.x, to.y, this.currentUnderlay);
+        g.lineBetween(fromWorld.x, fromWorld.y, toWorld.x, toWorld.y);
       }
     }
   }
@@ -605,10 +620,12 @@ export class TableSandboxScene extends Phaser.Scene {
     controlState: Record<string, string | null>
   ): void {
     for (const space of state.spaces) {
+      // Map Plane Alignment 0.1: transform map-local → world coordinates
+      const world = mapLocalToWorld(space.x, space.y, this.currentUnderlay);
       this.cachedSpaces.push({
         spaceId: space.spaceId,
-        x: space.x,
-        y: space.y,
+        x: world.x,
+        y: world.y,
       });
 
       const isSelected = space.spaceId === selectedSpaceId;
@@ -633,13 +650,13 @@ export class TableSandboxScene extends Phaser.Scene {
       }
 
       // Круг space
-      const circle = this.add.circle(space.x, space.y, SPACE_RADIUS, fillColor, 0.8);
+      const circle = this.add.circle(world.x, world.y, SPACE_RADIUS, fillColor, 0.8);
       circle.setStrokeStyle(strokeWidth, strokeColor, 0.9);
       this.spaceCircles.set(space.spaceId, circle);
 
       // Подпись
       const label = this.add
-        .text(space.x, space.y - SPACE_RADIUS - 8, space.name, {
+        .text(world.x, world.y - SPACE_RADIUS - 8, space.name, {
           fontSize: "11px",
           color: "#c4a46c",
           fontFamily: "monospace",
@@ -665,9 +682,11 @@ export class TableSandboxScene extends Phaser.Scene {
 
       const isSelected = piece.pieceId === selectedPieceId;
 
+      // Map Plane Alignment 0.1: transform space map-local → world
+      const world = mapLocalToWorld(space.x, space.y, this.currentUnderlay);
       // Смещение относительно центра space — чтобы piece был виден рядом
-      const px = space.x + PIECE_OFFSET_X;
-      const py = space.y;
+      const px = world.x + PIECE_OFFSET_X;
+      const py = world.y;
 
       // Кэшируем bounding box для drag hit-теста
       this.cachedPieceBoxes.push({

@@ -8,6 +8,46 @@ Do not record every tiny typo. Record issues that may help future debugging.
 
 ## Entries
 
+### BUG-20260527-001 — Play/test spaces/connections render без underlay transform (coordinate misalignment)
+
+Status: fixed
+
+Area:
+table-sandbox, Phaser scene, Editor → Play continuity, Handoff 0029, Map Plane Alignment 0.1
+
+Symptoms:
+После Handoff 0029 (MapRenderModel Contract Wire-Up) в play/test mode mapVisual debug bounds и underlay bounds видны, но spaces, connections и pieces визуально не совпадают с ними по расположению относительно редактора. Точки и связи выглядят так, как будто рисуются в другой системе координат.
+
+Cause:
+`phaserScene.ts` рисовал spaces/connections/pieces по координатам `space.x`, `space.y` напрямую — в raw map-local координатах. Редактор (`EditorSurface.tsx`) применяет `mapLocalToWorld(space.x, space.y, underlay)` — center-based offset+scale+rotation transform — ко всем объектам. Без этого transform в play/test объекты оказывались в другом месте относительно map/underlay bounds.
+
+Fix:
+1. Добавлен `mapLocalToWorld()` helper в [`MapRenderModel.ts`](table-sandbox/src/map/MapRenderModel.ts:53) — работает только с `MapRenderUnderlay`, не тянет `MapDraft` в renderer.
+2. В [`phaserScene.ts`](table-sandbox/src/renderer/phaserScene.ts) добавлено поле `currentUnderlay`, сохраняемое из `mapVisual.underlay` в `updateFromState`.
+3. Transform применён единообразно в `drawSpaces`, `drawConnections`, `drawPieces`, `drawMapVisualDebug`.
+4. Hit-test (`cachedSpaces`, `cachedPieceBoxes`) теперь в world-координатах — корректно, т.к. pointer input тоже в world.
+5. [P1 correction] Map bounds AABB исправлен с 2-углового (`strokeRect(tl.x, tl.y, br.x - tl.x, br.y - tl.y)`) на 4-угловой (min/max по всем transformed corners), идентично underlay bounds. Для rotated карт 2-угловой подход давал неверные размеры.
+
+Дополнительно в рамках этого же цикла:
+- V2 external review (GPT-5.5 Thinking) нашёл неявный debug depth (0/1) — исправлен на `DEBUG_DEPTH = -20`.
+- Ложное V2 срабатывание: `useState(null)` без generic — не подтвердилось, generic уже был в коде.
+- Path truncation в `write_to_file` при создании V2 артефактов — обойдено через `edit_file`.
+- Потеря working tree после V2 push/review-branch — восстановлено cherry-pick.
+
+Verification:
+- `npm run typecheck` — passes
+- `npm run build` — passes
+- Browser check: не проводился, делегирован человеку
+
+Human check:
+suggested — `table-sandbox/Запуск.bat` → Editor → Preview → точки/связи должны совпадать с map/underlay bounds. Сброс/загрузка чистят debug-слой.
+
+Related files:
+- [`table-sandbox/src/map/MapRenderModel.ts`](table-sandbox/src/map/MapRenderModel.ts)
+- [`table-sandbox/src/renderer/phaserScene.ts`](table-sandbox/src/renderer/phaserScene.ts)
+- [`table-sandbox/src/editor/MapDraft.ts`](table-sandbox/src/editor/MapDraft.ts) (read-only reference)
+- [`.ai/reports/0029_map_plane_alignment_play_preview_0_1_report.md`](.ai/reports/0029_map_plane_alignment_play_preview_0_1_report.md)
+
 ### BUG-20260526-002 — Editor map-plane / large image geometry drift
 
 Status: open
