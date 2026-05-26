@@ -611,18 +611,23 @@ export default function EditorSurface({
     }, [getWorldPoint, underlay]
   );
 
+  /** 0028 correction: use mapLocalToWorld for rotate center, matching scale handler (V2 review) */
   const handleRotateHandleMouseDown = useCallback(
     (event: React.MouseEvent<Element>) => {
       event.stopPropagation(); event.preventDefault();
       if (!underlay || underlay.locked) return;
-      const cx = underlay.offsetX + (underlay.naturalWidth * underlay.scale) / 2;
-      const cy = underlay.offsetY + (underlay.naturalHeight * underlay.scale) / 2;
+      const originUnderlay = { ...underlay };
+      const center = mapLocalToWorld(
+        originUnderlay.naturalWidth / 2,
+        originUnderlay.naturalHeight / 2,
+        originUnderlay
+      );
       const wp = getWorldPoint(event.clientX, event.clientY);
       dragRef.current = {
         type: "underlayRotate",
         startWorldX: wp.x, startWorldY: wp.y,
         originRotation: underlay.rotation,
-        centerWorldX: cx, centerWorldY: cy,
+        centerWorldX: center.x, centerWorldY: center.y,
       };
     }, [getWorldPoint, underlay]
   );
