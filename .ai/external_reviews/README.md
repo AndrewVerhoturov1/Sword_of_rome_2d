@@ -42,12 +42,13 @@ Kilo готовит WIP snapshot для внешнего review:
 После успешного V2 push Kilo обязан немедленно, до завершения run:
 
 1. **Проверить commit-pinned ссылки** — убедиться, что snapshot commit, raw URL и compare link реально доступны.
-2. **Создать instantiated V2 prompt** — заполнить [`v2_prompt_template.md`](templates/v2_prompt_template.md) с реальными commit-pinned ссылками и сохранить в `.ai/external_reviews/prompts/V2-YYYYMMDD-HHMMSS_prompt.md`.
-3. **Показать готовый copy-paste prompt человеку** — prompt должен быть готов к немедленной вставке во внешний чат.
-4. **Перевести статус** — сначала в `prompt_ready` (prompt создан), затем, после показа prompt человеку, в `waiting_external_answer`.
-5. **Не завершать run финальным report до этого шага.** Если prompt не может быть создан — остановиться с blocked-отчётом, объяснив причину.
+2. **Финализировать request и safety artifacts** — после push проставить в request и safety реальный `Snapshot Commit`, заполнить compare/raw links, убрать `TBD` / `not yet committed`, обновить request как минимум до `snapshot_pushed`.
+3. **Создать instantiated V2 prompt** — заполнить [`v2_prompt_template.md`](templates/v2_prompt_template.md) с реальными commit-pinned ссылками и сохранить в `.ai/external_reviews/prompts/V2-YYYYMMDD-HHMMSS_prompt.md`.
+4. **Показать готовый copy-paste prompt человеку** — prompt должен быть готов к немедленной вставке во внешний чат.
+5. **Перевести статус** — сначала в `prompt_ready` (prompt создан), затем, после показа prompt человеку, в `waiting_external_answer`.
+6. **Не завершать run финальным report до этого шага.** Если prompt не может быть создан — остановиться с blocked-отчётом, объяснив причину.
 
-Цепочка: `push → verify links → create prompt → prompt_ready → show human → waiting_external_answer`. Разрыв `push → prompt` является нарушением протокола.
+Цепочка: `push → verify links → finalize request/safety → create prompt → prompt_ready → show human → waiting_external_answer`. Разрыв `push → prompt` или оставленные `TBD` в request/safety являются нарушением протокола.
 
 ### `/v2 preview` — показать, что попадёт в snapshot
 
@@ -194,6 +195,8 @@ draft
 ```
 
 `snapshot_pushed` без последующего `prompt_ready` или `waiting_external_answer` является нарушением протокола. Статус `waiting_external_answer` означает: «snapshot запушен + instantiated prompt создан + prompt передан человеку». Без prompt статус не должен продвигаться дальше `snapshot_pushed`.
+
+`Snapshot Commit` — immutable review target. Это ровно тот commit, который был запушен в review-ветку и показан внешнему чату через commit-pinned links. Последующие implementation commits не заменяют `Snapshot Commit`; они живут отдельно в summary, implementation artifacts или product commits.
 
 ## Классы артефактов и правила хранения
 

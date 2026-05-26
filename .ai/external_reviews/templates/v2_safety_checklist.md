@@ -17,6 +17,8 @@ YYYY-MM-DD
 - Base commit: `<hash>`
 - Snapshot commit: `<hash>` (или `not yet committed`)
 
+До push допустимо `not yet committed`. После push, до создания instantiated prompt, это поле обязано быть заменено на фактический snapshot hash.
+
 ## Git Status Summary
 
 ```
@@ -87,6 +89,8 @@ YYYY-MM-DD
 - [ ] V2 prompt готов и проверен на отсутствие secrets/local paths
 - [ ] Commit-pinned ссылки сформированы (не branch-only links)
 - [ ] Compare link сформирован (`base...snapshot`)
+
+Если safety artifact используется дальше после push, эти post-push пункты должны быть обновлены до фактического состояния. Нельзя выдавать внешний prompt, если здесь остаются pre-push placeholders.
 
 ## Итог
 

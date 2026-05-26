@@ -51,6 +51,8 @@ Base branch: `main` или другая
 
 Review branch: `review/v2/YYYYMMDD-HHMMSS-short-topic`
 
+Для instantiated request после реального push здесь должен стоять уже фактический snapshot hash. Перед выдачей prompt внешнему чату поля `Snapshot commit`, `Compare link` и snapshot raw URLs не должны оставаться `TBD`.
+
 ### Compare link
 
 ```
@@ -127,3 +129,4 @@ https://github.com/AndrewVerhoturov1/Sword_of_rome_2d/compare/<base>...<snapshot
 | Дата | Статус | Комментарий |
 |------|--------|------------|
 | YYYY-MM-DD | `draft` | V2 request создан |
+| YYYY-MM-DD | `snapshot_pushed` | Snapshot запушен, metadata request финализирована |
