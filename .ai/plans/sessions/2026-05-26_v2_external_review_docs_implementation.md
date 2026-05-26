@@ -10,7 +10,7 @@ in_progress
 
 ## Goal
 
-Подготовить и провести первый Kilo docs run для внедрения project-local системы V2 External Senior Review: создать V2 docs/templates/navigation и минимально обновить repo-level workflow rules так, чтобы `/v2` стал discoverable и совместимым с текущим контрактом Kilo.
+Подготовить, внедрить и проверить project-local систему V2 External Senior Review: сначала docs/rules foundation, затем verifier, затем manual pilot, а после первого реального pilot довести V2 до жёсткого operational contract.
 
 ## Approved Plan
 
@@ -38,14 +38,24 @@ in_progress
 
 ### P3: V2 Manual Pilot Prep
 
-- Status: in_progress.
+- Status: completed.
 - Сначала внедрить policy layer для `YOLO Stop Gates`, `Blocked Report Contract` и `V2 Recommendation Gate`.
 - Только после этого готовить следующий manual pilot на `/v2 preview`.
 - Intentional impossible seed уже использован как диагностический сигнал, но не является достаточным policy implementation.
 
+### P4: V2 Process Hardening After First Real Pilot
+
+- Status: in_progress.
+- По итогам real pilot `0026` довести V2 до жёсткого operational contract.
+- Внедрить обязательную связку `push -> instantiated prompt -> waiting_external_answer`.
+- Сделать явный contract для `/v2` как interrupt-команды внутри уже идущего Kilo task.
+- Зафиксировать Codex-owned post-accept cleanup вместо Kilo-owned cleanup.
+- Сделать `V2_navigation.md` обязательным lifecycle index.
+- Уточнить минимальный набор runtime artifacts, YOLO push-gate stop-state и fallback на path/write issues.
+
 ## Active Plan Item
 
-`P3: V2 Manual Pilot Prep`
+`P4: V2 Process Hardening After First Real Pilot`
 
 ## Runs
 
@@ -54,6 +64,8 @@ in_progress
 - `Session run: 003` - prepared handoff `0023_v2_docs_verifier.md` for read-only verification of the current V2 docs set.
 - `Session run: 004` - prepared handoff `0024_v2_intentional_impossible_pilot_seed.md` for an intentional impossible task to test honest blocked handling before V2 escalation.
 - `Session run: 005` - prepared handoff `0025_yolo_stop_gates_and_v2_escalation.md` to implement stop-gates, blocked report semantics, and V2 escalation rules.
+- `Session run: 006` - prepared handoff `0026_underlay_alignment_v2_pilot.md` for a real WIP underlay-alignment pilot that should exercise the new stop-gates and V2 recommendation rules.
+- `Session run: 007` - prepared handoff `0027_v2_process_hardening_after_first_real_pilot.md` to harden V2 lifecycle, interrupt semantics, Codex-owned cleanup, navigation updates and runtime artifact rules after the first successful real V2 run.
 
 ## User Overrides
 
@@ -62,9 +74,11 @@ in_progress
 - Новый Kilo mode создавать нельзя.
 - Raw V2 runtime artifacts не должны трекаться в `main` по умолчанию.
 - `/v2 preview` обязателен перед любым V2 push.
-- Сейчас нужен один Kilo task на docs implementation, а не новый `/v1` и не прямое исполнение.
-- Для первой версии V2 `kilo-recorder` не нужен: пользователь будет передавать raw external answer в Kilo вручную.
-- `kilo-notebook` пока остаётся `/v1-only` и в V2 не расширяется.
+- Для первой версии V2 `kilo-recorder` не нужен: пользователь передаёт raw external answer в Kilo вручную.
+- `kilo-notebook` остаётся `/v1-only` и на V2 не расширяется.
+- После принятого V2-result cleanup делает Codex, а не Kilo.
+- Если человек ничего отдельно не сказал, действует default cleanup policy: Codex удаляет temporary review branch и temporary V2 runtime artifacts.
+- Если человек явно сказал сохранить ветку или artifacts, это фиксируется как `kept_by_decision` или `cleanup_pending`.
 
 ## Checkpoint State
 
@@ -73,8 +87,4 @@ in_progress
 - Clarification about template-layer vs instantiated V2 artifacts added and pushed to `main`.
 - Verifier run `0023` accepted with one narrow follow-up fix in `kilo_mode_contract.md`; that follow-up is already closed.
 - Impossible pilot seed `0024` validated honest blocked behavior but exposed missing policy layer for mandatory stop-gates and V2 escalation semantics.
-- В worktree уже есть unrelated V1 runtime artifacts:
-  - `.ai/external_chats/V1_navigation.md`
-  - `.ai/external_chats/notebook/2026-05-26_V1-20260526-103939_senior-review-of-the-proposed-v2-external-senior.md`
-- Эти V1 runtime files не входят в scope handoff `0021`.
-- Результат handoff `0021` принят только после correction run `0022`.
+- Real pilot `0026` proved V2 technical usefulness on live WIP, but exposed process gaps: `push -> prompt` break, weak `/v2` interrupt semantics, stale `V2_navigation.md`, unclear runtime artifact minimum set, unclear cleanup ownership, YOLO friction around push gate, and path/write fallback gap.

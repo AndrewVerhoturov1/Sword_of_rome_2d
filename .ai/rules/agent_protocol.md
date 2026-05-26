@@ -503,6 +503,24 @@ Codex поддерживает четыре короткие repo-level entry-к
 - Human push gate конкретный: полный safety checklist с exact files, blocked files, risks и yes/no вопросом на русском.
 - Первая версия не содержит helper scripts.
 
+### `/v2` как interrupt
+
+`/v2` может быть вызван пользователем во время уже идущего Kilo run. Это **interrupt**, а не новый Kilo mode:
+
+- Kilo обязан поставить обычную задачу на паузу, кратко зафиксировать текущее WIP state и перейти в `/v2 preview`.
+- После V2-цикла (push → prompt → external answer → ingest → implementation) Kilo возвращается к исходной задаче или завершает её по новому решению.
+- Explicit user `/v2` — это не `blocked-v2-recommended`. При explicit `/v2` не требуется blocked report и не требуется доказательство трёх неудачных попыток. Достаточно краткого WIP summary.
+
+### Cleanup ownership
+
+Cleanup после V2 — **Codex-owned post-accept cleanup**, не Kilo-owned:
+
+- **Kilo:** готовит cleanup preview (инспектирует ветки и артефакты), обновляет `V2_navigation.md`.
+- **Человек:** принимает необратимые решения (удалить/сохранить ветки и артефакты).
+- **Codex:** выполняет post-accept cleanup review: удаляет ветки, проверяет `V2_navigation.md`, убеждается, что raw V2 artifacts не утекли в `main`.
+
+Default cleanup policy: Codex удаляет local и remote `review/v2/...` ветки и temporary V2 runtime artifacts. Если человек явно просит сохранить — фиксируется `kept_by_decision` или `cleanup_pending`.
+
 Полная документация: [`.ai/external_reviews/README.md`](../external_reviews/README.md).
 
 ### Role separation for block orchestration

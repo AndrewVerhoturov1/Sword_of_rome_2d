@@ -138,6 +138,14 @@
 
 `/v2` — это project-local manual protocol, описанный в [`.ai/external_reviews/README.md`](../external_reviews/README.md). V2 не является новым Kilo mode. V2 работает через существующие допустимые modes: `kilo-handoff-runner` для docs/protocol и `kilo-debugger` для stuck/debug cases. V2 ingest полностью ручной: raw external answer передаётся в ordinary Kilo run вручную, без использования `kilo-recorder`. Для V2 ingest допустимы только `kilo-handoff-runner` и `kilo-debugger`. `kilo-notebook` остаётся `/v1-only` и не используется в V2. V2 не добавляет новые значения в списки допустимых `Kilo mode` или `Task role`.
 
+### `/v2` как interrupt
+
+`/v2` может быть вызван пользователем во время уже идущего Kilo run. Это interrupt, а не новый запуск:
+
+- Kilo обязан поставить обычную debug/build попытку на паузу, кратко зафиксировать WIP state, перейти в `/v2 preview`.
+- Explicit user `/v2` — это не `blocked-v2-recommended`. При explicit `/v2` не требуется blocked report и не требуется три неудачные попытки. Достаточно краткого WIP summary.
+- После V2-цикла Kilo возвращается к исходной задаче или завершает её по новому решению.
+
 ### YOLO и V2 escalation
 
 Правила YOLO Stop Gates, V2 Recommendation Gate и Blocked Report Contract описаны в [`AGENTS.md`](../../AGENTS.md). Коротко:
@@ -147,6 +155,7 @@
 - Blocker из-за отсутствия source of truth или private/local-only артефактов → остановка без обязательной рекомендации V2.
 - После 3 осмысленных безуспешных попыток или раньше, если следующая попытка уже рискованна → обязательный blocked report.
 - YOLO не отменяет safety gates, human-review gates, V2 push approval, local-only policy и scope boundaries.
+- `awaiting_human_push_approval` — валидный stop-state даже в YOLO. Kilo обязан остановиться на этом шаге и не продолжать автономно. Продолжение без human confirmation является нарушением протокола.
 
 ## Repo-wide policy inheritance
 

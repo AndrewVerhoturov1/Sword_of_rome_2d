@@ -434,6 +434,23 @@ Codex поддерживает четыре короткие repo-level entry-к
 - **Human push gate конкретный:** перед каждым V2 push показывается полный safety checklist с exact files, blocked files, risks и простым yes/no вопросом на русском.
 - **Первая версия не содержит helper scripts.** Все команды V2 выполняются как manual Kilo instructions.
 
+### `/v2` как interrupt
+
+`/v2` может быть вызван пользователем во время уже идущего Kilo run. Это interrupt, а не новый Kilo mode. Kilo обязан:
+
+- поставить обычную задачу на паузу;
+- кратко зафиксировать текущее WIP state;
+- перейти в `/v2 preview`;
+- после V2-цикла вернуться к исходной задаче или завершить её по новому решению.
+
+Это отличается от `blocked-v2-recommended`:
+- `blocked-v2-recommended` — Kilo сам достиг blocker, требуется blocked report.
+- Explicit user `/v2` — человек явно вызвал interrupt, blocked report не требуется, достаточно WIP summary.
+
+### Cleanup ownership
+
+Cleanup после V2 — **Codex-owned post-accept cleanup.** Default cleanup policy: Codex удаляет local и remote `review/v2/...` ветки и temporary V2 runtime artifacts, обновляет `V2_navigation.md` до `cleaned`. Если человек явно просит сохранить — фиксируется `kept_by_decision` или `cleanup_pending`.
+
 ## Role separation for block orchestration
 
 В рамках split-схемы `PILOT-005 planning / PILOT-006 execution` четыре сущности разведены как разные роли и не должны смешиваться:
@@ -621,5 +638,6 @@ YOLO-режим не отменяет следующие правила:
 - YOLO does not override safety gates — safety gates действуют в любом режиме.
 - YOLO does not override human-review gates — human review обязателен, если он требуется политикой.
 - YOLO does not override V2 push approval — push в public `review/v2/...` branch всегда требует явного human confirmation.
+- `awaiting_human_push_approval` — валидный stop-state даже в YOLO-режиме. Kilo обязан остановиться на этом шаге и не продолжать автономно. Один короткий human approval step на push gate разрешён и обязателен.
 - YOLO does not override local-only/private file policy — `_local/`, `arena-prototype-launcher/`, `output/Arena tests/` и другие local-only слои не публикуются без отдельного явного решения.
 - YOLO does not authorize broad rewrites outside task scope — широкие переписывания вне границ задачи запрещены независимо от режима.

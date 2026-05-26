@@ -285,9 +285,35 @@ V2 prompt должен требовать от внешнего чата:
 - remote review branch удалена или явно оставлена;
 - local review branch удалена или явно оставлена;
 - `V2_navigation.md` обновлён;
-- финальный status установлен в `cleaned`, `superseded` или `implemented`;
+- финальный status установлен в `cleaned`, `cleanup_pending`, `kept_by_decision` или `superseded`;
 - raw V2 runtime artifacts не утекли в `main`;
 - draft PR закрыт, помечен или подтверждён как отсутствующий.
+
+### Cleanup ownership
+
+Cleanup после V2 — **Codex-owned post-accept cleanup**, не Kilo-owned.
+
+| Роль | Ответственность |
+|------|----------------|
+| **Kilo** | Готовит cleanup preview: инспектирует локальную и remote ветки, перечисляет runtime artifacts, обновляет `V2_navigation.md` |
+| **Человек** | Принимает необратимые решения: удалить/сохранить ветки, сохранить/удалить raw response |
+| **Codex** | Выполняет post-accept cleanup review: удаляет ветки, проверяет `V2_navigation.md`, убеждается в отсутствии утечки raw artifacts в `main` |
+
+### Default cleanup policy
+
+После принятого V2-result Codex обязан:
+
+- удалить local `review/v2/...` branch;
+- удалить remote `review/v2/...` branch;
+- удалить temporary V2 runtime artifacts (request, prompt, safety, response, ingest);
+- обновить `V2_navigation.md` до `cleaned`.
+
+### Human override policy
+
+Если человек явно просит сохранить ветку или artifacts:
+- ветка/артефакты не удаляются;
+- в `V2_navigation.md` фиксируется `kept_by_decision` или `cleanup_pending`;
+- причина сохранения кратко записывается.
 
 ## Последовательность внедрения
 
