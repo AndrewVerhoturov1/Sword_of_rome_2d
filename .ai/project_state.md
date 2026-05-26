@@ -2,11 +2,11 @@
 
 ## Дата обновления
 
-`2026-05-25`
+`2026-05-26`
 
 ## Текущий этап
 
-`Table Sandbox 0.1: Play Sandbox Ready + Map Authoring 0.1 accepted baseline`
+`Table Sandbox 0.1: Play Sandbox Ready + Map Authoring 0.1 accepted baseline + 0020 checkpointed editor-growth state`
 
 ## Что уже принято
 
@@ -24,6 +24,17 @@
   - `0016` — Manual Sandbox Interaction Pack 1 / Smart Drag Move;
   - `0017` — Play Sandbox Readiness Pack;
   - `0018` — Map Authoring 0.1 / Spaces and Connections Slice.
+
+## Что зафиксировано как текущий checkpoint, но ещё не считается polished baseline
+
+- `0020` — Map Underlay + Transform + Undo Pack зафиксирован в текущем состоянии по явному решению пользователя:
+  - underlay / terrain image слой уже добавлен в editor branch;
+  - есть move / scale / rotate underlay;
+  - есть opacity / visibility / lock;
+  - есть grid / snap и editor-only undo / redo;
+  - build и typecheck проходят;
+  - но шаг закрыт как checkpoint `as-is`, а не как полностью отполированная финальная версия;
+  - оставшиеся edge cases вокруг large custom image / map-plane поведения вынесены в следующий Kilo step.
 
 ## Что уже работает в product code
 
@@ -78,6 +89,13 @@
   - есть object list, inspector и lightweight validation
   - preview edited draft map идёт в существующую sandbox без смешения authoring draft и runtime `GameState`
   - editor surface переведён на SVG-first rendering для чёткого zoom
+- В текущем checkpoint editor growth branch уже есть:
+  - одна underlay / terrain image под spaces и connections
+  - underlay transform controls: move / scale / rotate
+  - opacity / show-hide / lock-unlock
+  - grid visibility и snap-to-grid
+  - editor-only undo / redo
+  - сохранение current editor/sandbox separation: authoring draft остаётся отдельно от runtime `GameState`
 - Rules boundary уже выделен:
   - runtime asks `validateAction`
   - runtime asks `resolveAction`
@@ -110,19 +128,18 @@
 
 - Нет mature save system beyond one narrow local snapshot.
 - Нет broad rules engine.
-- Пока есть только первый bounded map-authoring slice, без broader editor breadth.
+- Пока editor branch всё ещё неровный:
+  - `0020` зафиксирован как рабочий checkpoint, но не как polished final editor baseline;
+  - next correction всё ещё должен добить large custom image / map-plane ergonomics.
 - Нет mature module package loading beyond tiny local fixture slice.
 
 ## Ближайший practical next step
 
-Следующий шаг пока не зафиксирован локально окончательно, но после accepted `0017` рабочее направление уже сужено сильнее.
+Следующий шаг теперь уже достаточно ясен по локальному состоянию:
 
-Рабочая рамка:
-
-- идти поверх уже принятого play-ready sandbox baseline;
-- не возвращаться назад к bootstrap / runtime hardening, которые уже закрыты;
-- не расползаться сразу в broad rules, save architecture или full editor breadth;
-- естественный следующий branch теперь ближе к `Map Authoring 0.1`, а не к новым sandbox-only readiness fixups.
+- не расширять editor breadth дальше;
+- сначала сделать следующий correction-step поверх checkpointed `0020`;
+- target = добить оставшиеся проблемы map-plane / large custom image поведения без broad redesign.
 
 ## Текущие риски
 

@@ -107,6 +107,9 @@ in_progress
 - `Session run: 026` - `0018` reviewed by Codex, two editor rendering/layout issues were fixed directly by Codex (`crop` and `zoom pixelation`), build/typecheck passed, human visual check passed, and `Map Authoring 0.1 - Spaces and Connections Slice` is accepted as the first editor baseline.
 - `Session run: 027` - handoff `0019_repo_sync_audit.md` prepared as a read-only repo sync audit against `origin/main`: inventory, size/hash-first compare, targeted diff inspection, and suspicious untracked/ignored detection without any sync actions.
 - `Session run: 028` - `0019` reviewed by Codex: read-only repo sync audit passed, local `HEAD` equals `origin/main`, important tracked files match by hash, no untracked product/docs drift found, and no sync action is required.
+- `Session run: 029` - `/v1` answer `V1-20260525-063455` accepted by user; handoff `0020_map_underlay_transform_undo_pack.md` prepared for the next bounded editor-growth step: one transformable underlay, grid/snap, shared map-plane behavior for spaces/connections, and editor-only undo/redo with strong prototype borrowing but without wholesale migration.
+- `Session run: 030` - `0020` remains unaccepted after Kilo run and follow-up visual evidence: large-image/editor-plane behavior is still broken, `/v1` answer `V1-20260526-000901` accepted by user, and correction handoff `0020_correction_map_plane_coordinate_model_fix.md` prepared to fix map-plane geometry/model rather than only surface underlay symptoms.
+- `Session run: 031` - current `0020` state reviewed after the correction pass now in worktree: `npm run typecheck` and `npm run build` pass, user explicitly requested to close/push the task as-is, and Codex checkpoints `0020` as partially accepted with remaining custom-image / map-plane follow-up deferred to the next Kilo step.
 
 ## User Overrides
 
@@ -120,6 +123,9 @@ in_progress
 - После `/v1` по следующему шагу пользователь явно выбрал полный `Manual Sandbox Action Pack 1`, а не более узкий `change_control`-only slice.
 - Пользователь отдельно запросил быстрый read-only repo sync audit handoff против `origin/main`; это side audit без product-code изменений, commit, push или auto-sync.
 - После audit пользователь отдельно запросил зафиксировать `0019` и подготовить новый `/v1` prompt про gap-анализ editor branch и sequencing к уровню prototype.
+- После нового `/v1` пользователь отдельно подтвердил, что согласен с рекомендацией внешнего чата и хочет следующий Kilo step именно как bounded `Map Underlay + Transform + Undo Pack`, с обязательным активным заимствованием editor UX из prototype.
+- После следующего `/v1` пользователь отдельно подтвердил, что correction должен идти внутри `0020`, а не как новый feature-step, и попросил сразу собрать correction-handoff на `Map Plane Coordinate Model Fix`.
+- После повторного review пользователь отдельно попросил не держать `0020` открытым дальше, а закрыть и запушить текущее состояние как checkpoint even if follow-up issues still remain for the next Kilo task.
 
 ## Checkpoint State
 
@@ -264,6 +270,37 @@ in_progress
   - important tracked product/docs files matched by hash;
   - no untracked important files and no suspicious ignored drift were found;
   - only local session-planning noise remained outside product sync concerns.
+- `/v1` follow-up guidance after accepted `0018` baseline:
+  - `V1-20260525-063455` says editor branch should stay the main focus;
+  - next step should be larger than "just add one background image";
+  - recommended bounded pack = `Map Underlay + Transform + Undo Pack`;
+  - must-have direction = one underlay, transform controls, grid/snap, spaces/connections attached to shared map plane, editor-only undo/redo;
+  - prototype remains a strong UX donor/reference, not a wholesale migration source.
+- Current next practical step is now fixed locally by accepted `/v1` guidance and explicit user approval:
+  - prepare `0020_map_underlay_transform_undo_pack.md`;
+  - maximize prototype borrowing for underlay/transform/grid/snap/undo editor UX;
+  - keep authoring draft and runtime preview clearly separated;
+  - do not expand into multi-layer image system, scenario editor, piece editor, or broad runtime redesign.
+- `0020` is not accepted yet:
+  - Kilo implemented a large part of the pack, but large-image behavior is still wrong;
+  - current symptoms are deeper than one underlay-layer bug: editor still behaves as if its world is the original tiny fixed plane;
+  - user-visible problems include drifting image vs points, strange movement, and confusion about what the small grid field even means.
+- `/v1` correction guidance for open `0020`:
+  - `V1-20260526-000901` says the user's intuition is right: the small fixed grid field should not be treated as the whole editor world;
+  - recommended bounded correction = `Map Plane Coordinate Model Fix`;
+  - active authoring size should come from `draft.coordinateSystem`, not from imported fixture constants as permanent truth;
+  - viewport/camera, map plane, underlay, and map-local coordinates should be separated cleanly;
+  - large custom image handling should become explicit and predictable instead of silently forcing the image into the tiny fixture-sized world.
+- Current next practical step is now fixed locally by accepted `/v1` guidance and explicit user approval:
+  - prepare `0020_correction_map_plane_coordinate_model_fix.md`;
+  - keep this as correction inside `0020`, not `0021`;
+  - fix geometry/model seam before any further editor feature growth.
+- `0020` is now checkpointed by explicit user request, but not treated as the final polished editor baseline:
+  - underlay/image loading, transform controls, grid/snap, and editor-only undo/redo are present in code;
+  - active draft size now comes from real `coordinateSystem` again instead of the temporary forced `6000x4000` bootstrap bug;
+  - current code passes `npm run typecheck` and `npm run build`;
+  - remaining follow-up scope is narrowed to large custom image / map-plane ergonomics and any browser-level edge cases still left after the correction;
+  - next Kilo step should continue from this checkpoint instead of reopening the entire `0020` design from zero.
 - В repo уже принят framing: проект = browser-based 2D authoring tool / editor / tabletop sandbox, а Sword of Rome-like модуль = первый тестовый модуль.
 - По `/v1` уже получены и staged два external second opinion:
   - `V1-20260523-052756`

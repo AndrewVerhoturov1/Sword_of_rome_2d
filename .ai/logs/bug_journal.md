@@ -8,6 +8,44 @@ Do not record every tiny typo. Record issues that may help future debugging.
 
 ## Entries
 
+### BUG-20260526-002 — Editor map-plane / large image geometry drift
+
+Status: open
+
+Area:
+editor branch, `0020`, underlay, map-plane geometry
+
+Symptoms:
+При загрузке большой custom map image карта может вести себя не как реальная рабочая плоскость редактора: раньше были drift image vs points, странное движение при scale/move, ощущение что весь editor world всё ещё равен tiny fixture sheet.
+
+Cause:
+Проблема оказалась не в одной подложке, а в editor geometry model:
+- fixed tiny plane долго оставался implicit source of truth;
+- underlay, grid, pointer conversion и map-local coordinates расходились по смыслу;
+- large image edge cases начали проявляться сильнее tiny-fixture сценария.
+
+Current state:
+В `0020` и correction-pass большая часть модели уже переделана:
+- active draft size снова идёт из реального `coordinateSystem`, а не из forced `6000x4000`;
+- build/typecheck проходят;
+- но текущий checkpoint всё ещё допускает, что на живой большой карте могут остаться browser-level edge cases.
+
+Fix direction:
+Следующий узкий шаг должен проверять и добивать только large custom image / map-plane ergonomics поверх текущего checkpoint, без wholesale editor redesign.
+
+Verification:
+- `npm run typecheck`
+- `npm run build`
+- Codex code review of [`MapDraft.ts`](D:/Codex+Kilocode/projects/sword-of-rome-web/table-sandbox/src/editor/MapDraft.ts) and [`EditorSurface.tsx`](D:/Codex+Kilocode/projects/sword-of-rome-web/table-sandbox/src/editor/EditorSurface.tsx)
+
+Human check:
+suggested — на живой большой custom карте проверить move / scale / rotate / space placement / preview.
+
+Related files:
+- [`table-sandbox/src/editor/MapDraft.ts`](D:/Codex+Kilocode/projects/sword-of-rome-web/table-sandbox/src/editor/MapDraft.ts)
+- [`table-sandbox/src/editor/EditorSurface.tsx`](D:/Codex+Kilocode/projects/sword-of-rome-web/table-sandbox/src/editor/EditorSurface.tsx)
+- [`table-sandbox/src/editor/Editor.css`](D:/Codex+Kilocode/projects/sword-of-rome-web/table-sandbox/src/editor/Editor.css)
+
 ### BUG-20260524-001 — Phaser canvas исчезает при StrictMode double-mount
 
 Status: fixed

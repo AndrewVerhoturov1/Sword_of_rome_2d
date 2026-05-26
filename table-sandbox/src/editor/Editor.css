@@ -302,6 +302,7 @@
   stroke: transparent;
   stroke-width: 16;
   cursor: pointer;
+  pointer-events: auto;
 }
 
 .editor-connection {
@@ -318,10 +319,12 @@
 
 .editor-space-group {
   cursor: pointer;
+  pointer-events: auto;
 }
 
 .editor-space-hit {
   fill: transparent;
+  pointer-events: auto;
 }
 
 .editor-space-node {
@@ -562,5 +565,95 @@
 .editor-context-separator {
   height: 1px;
   margin: 3px 0;
+  background: #21262d;
+}
+
+/* ---- 0020: Underlay styles ---- */
+
+.editor-underlay {
+  pointer-events: auto;
+  border: 1px solid transparent;
+  box-sizing: border-box;
+}
+
+.editor-underlay-selected {
+  border-color: rgba(88, 166, 255, 0.8);
+  outline: 2px solid rgba(88, 166, 255, 0.6);
+  outline-offset: 2px;
+  box-shadow: 0 0 12px rgba(88, 166, 255, 0.25);
+}
+
+.editor-underlay-locked {
+  cursor: default !important;
+}
+
+.editor-underlay-img {
+  display: block;
+  pointer-events: none;
+}
+
+.editor-underlay-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #1a2a1a, #0d1a0d);
+  border: 2px dashed rgba(255, 255, 255, 0.12);
+  border-radius: 4px;
+  color: rgba(255, 255, 255, 0.25);
+  font-size: 14px;
+  font-family: Georgia, serif;
+  user-select: none;
+}
+
+.editor-underlay-placeholder-sub {
+  font-size: 10px;
+  margin-top: 4px;
+  opacity: 0.6;
+}
+
+/* ---- 0020: Underlay transform handles (now positioned outside underlay div, inline styles) ---- */
+
+.editor-underlay-handle {
+  width: 10px;
+  height: 10px;
+  background: #58a6ff;
+  border: 1px solid #0d1117;
+}
+
+.editor-underlay-handle-nw { cursor: nw-resize; }
+.editor-underlay-handle-ne { cursor: ne-resize; }
+.editor-underlay-handle-sw { cursor: sw-resize; }
+.editor-underlay-handle-se { cursor: se-resize; }
+
+.editor-underlay-handle-rotate {
+  width: 10px;
+  height: 10px;
+  background: #f0c040;
+  border: 1px solid #0d1117;
+  border-radius: 50%;
+  cursor: grab;
+}
+
+.editor-underlay-handle-rotate:active {
+  cursor: grabbing;
+}
+
+.editor-underlay-rotate-line {
+  background: rgba(240, 192, 64, 0.4);
+  pointer-events: none;
+}
+
+/* ---- 0020: Toolbar disabled buttons ---- */
+
+.editor-btn:disabled {
+  opacity: 0.3;
+  cursor: default;
+  border-color: #21262d !important;
+}
+
+.editor-btn:disabled:hover {
   background: #21262d;
 }
