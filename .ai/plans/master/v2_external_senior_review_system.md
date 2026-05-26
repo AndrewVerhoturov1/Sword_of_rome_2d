@@ -1,57 +1,78 @@
-# V2 External Senior Review System Plan
+# План системы V2 External Senior Review
 
-## Status
+## Статус
 
-`approved-for-planning`
+`approved-for-docs-implementation`
 
-## Created
+## Дата создания
 
 2026-05-26
 
-## Goal
+## Цель
 
-Introduce a project-local `/v2` external senior review protocol for Kilo Code. The protocol lets Kilo prepare a safe GitHub-visible WIP snapshot, ask an external chat for grounded technical review, save the response, and propose next actions without letting the external chat edit code or become repo authority.
+Внедрить project-local протокол `/v2` для внешнего senior review поверх Kilo Code.
 
-## Summary
+Смысл V2:
 
-V2 is a manual, strict protocol under `.ai/external_reviews/`.
+- Kilo готовит безопасный GitHub-видимый WIP snapshot;
+- внешний чат смотрит pinned snapshot и сравнивает его с base;
+- внешний чат даёт технический совет;
+- Kilo сохраняет ответ, формулирует своё понимание и предлагает следующий шаг;
+- внешний чат не получает repo authority и не превращается в исполнителя кода.
 
-First implementation is documentation and workflow only:
+## Краткое описание
 
-- no helper script;
-- no automated push;
-- no new Kilo mode;
-- no direct code-fixing after external answer;
-- tracked protocol/templates by default, but not raw V2 runtime artifacts in `main`;
-- same GitHub repo review branches;
-- mandatory human confirmation before every V2 push.
+V2 — это строгий ручной протокол в `.ai/external_reviews/`.
 
-V2 is separate from `/v1`:
+Первая реализация включает только документацию и workflow-правила:
 
-- `/v1` is prompt-only planning/critique route;
-- `/v2` is WIP snapshot review route;
-- `/v2` gives external chat pinned base/snapshot links and compare context;
-- `/v2` requires stronger safety rules because it publishes working code.
+- без helper script;
+- без автоматического push;
+- без нового Kilo mode;
+- без автоматического исправления кода после внешнего ответа;
+- с tracked protocol/templates по умолчанию, но без raw V2 runtime artifacts в `main`;
+- с review-ветками в текущем GitHub repo;
+- с обязательным human confirmation перед каждым V2 push.
 
-## Fixed Decisions
+V2 отделяется от `/v1`:
 
-| Topic | Decision |
+- `/v1` — prompt-only route для planning/critique;
+- `/v2` — route для review реального WIP snapshot;
+- `/v2` даёт внешнему чату base/snapshot distinction и compare context;
+- `/v2` требует более жёсткой safety-модели, потому что публикует рабочий код.
+
+## Язык документов V2
+
+Основные V2-документы и шаблоны должны быть написаны по-русски, чтобы пользователь мог их читать и проверять без дополнительного перевода.
+
+Английский остаётся только там, где этого требует project policy:
+
+- code identifiers;
+- file/folder names;
+- status values;
+- branch names;
+- JSON keys;
+- machine-readable поля и технические идентификаторы.
+
+## Зафиксированные решения
+
+| Тема | Решение |
 |---|---|
 | Storage | `.ai/external_reviews/` |
-| First scope | docs/templates/rules only |
-| Helper script | not included in first version |
-| Kilo mode | no new Kilo mode |
-| Typical Kilo mode | `Kilo Debugger` for stuck/debug cases, `Kilo Handoff Runner` for docs/protocol work |
-| Artifact tracking | track protocol docs, templates, navigation, and sanitized accepted summaries in `main`; keep raw V2 runtime artifacts out of `main` by default |
-| Review branch target | current repo `AndrewVerhoturov1/Sword_of_rome_2d` |
+| First scope | только docs/templates/rules |
+| Helper script | не входит в первую версию |
+| Kilo mode | новый режим не создаём |
+| Typical Kilo mode | `Kilo Debugger` для stuck/debug cases, `Kilo Handoff Runner` для docs/protocol work |
+| Artifact tracking | в `main` трекаем protocol docs, templates, navigation и sanitized accepted summaries; raw V2 runtime artifacts в `main` по умолчанию не трекаем |
+| Review branch target | текущий repo `AndrewVerhoturov1/Sword_of_rome_2d` |
 | Review branch format | `review/v2/YYYYMMDD-HHMMSS-short-topic` |
-| Push gate | Kilo must always ask human confirmation before V2 push |
-| External response authority | planning/debug input only, not accepted fact without local verification |
-| Human review | required for every main V2 document before acceptance |
+| Push gate | Kilo всегда спрашивает человека перед V2 push |
+| External response authority | внешний ответ = planning/debug input, а не accepted fact без локальной проверки |
+| Human review | обязателен для всех основных V2 документов |
 
-## Required Files
+## Обязательные файлы
 
-Create the project-local V2 area:
+Нужно создать project-local V2 area:
 
 ```text
 .ai/
@@ -66,66 +87,85 @@ Create the project-local V2 area:
       v2_safety_checklist.md
 ```
 
-Update repo-level discovery and workflow rules:
+Нужно обновить repo-level discovery и workflow rules:
 
 - `AGENTS.md`
 - `.ai/repo_navigation.md`
 - `.ai/rules/agent_protocol.md`
 - `.ai/rules/kilo_mode_contract.md`
-- relevant `.ai/prompts/` files if they mention external routes, Kilo mode rules, or shortcut commands.
+- relevant `.ai/prompts/` files, если они затрагивают external routes, Kilo mode rules или shortcut commands.
 
-Do not create automation scripts in first implementation.
+В первой версии не создавать automation scripts.
 
-## Artifact Classes
+## Классы артефактов
 
-V2 must distinguish artifact classes explicitly.
+V2 должен явно различать классы артефактов.
 
-### Public and stable in `main`
+### Публичные и стабильные в `main`
 
 - `.ai/external_reviews/README.md`
 - `.ai/external_reviews/V2_navigation.md`
 - `.ai/external_reviews/templates/*`
-- sanitized accepted summaries, if the user decides they belong in project history
+- sanitized accepted summaries, если пользователь решил, что они должны остаться в публичной истории проекта
 
-### Runtime artifacts for active V2 work
+### Runtime artifacts для активной V2 работы
 
 - request report
 - generated prompt
 - changed-file inventory
 - safety report
-- temporary screenshots approved for this review
+- временные screenshots, отдельно разрешённые для этого review
 
-Default rule:
+Правило по умолчанию:
 
-- these may live in `review/v2/...` branch for the active review;
-- they are not tracked in `main` by default.
+- они могут жить в `review/v2/...` branch для активного review;
+- в `main` по умолчанию не трекаются;
+- всё, что ушло в public `review/v2/...` branch, надо считать опубликованным, даже если ветка потом удалена.
 
-### Raw response and ingest artifacts
+### Raw response и ingest artifacts
 
 - raw external answer
 - Kilo understanding summary
-- implementation-plan draft based on the answer
+- draft implementation plan по мотивам внешнего ответа
 
-Default rule:
+Правило по умолчанию:
 
-- raw response is not tracked in `main` by default;
-- only sanitized accepted summary may be promoted later.
+- raw response в `main` по умолчанию не трекается;
+- позже можно поднять только sanitized accepted summary.
 
-## V2 Protocol Requirements
+`Sanitized accepted summary` означает:
 
-V2 must define these user-facing commands or command-like instructions:
+- без raw external answer;
+- без приватных локальных путей;
+- без screenshots и binary artifacts, если они отдельно не одобрены для публикации;
+- без secrets и personal data;
+- без временных гипотез отладки, которые не были приняты;
+- без полного debug log.
 
-- `/v2` - prepare external senior review snapshot.
-- `/v2 preview` - show what would be included, without commit or push.
-- `/v2 ingest` - process an already-captured external answer and summarize Kilo understanding.
-- `/v2 status` - show current V2 request state.
-- `/v2 cleanup` - guide cleanup of temporary review branch after human approval.
+Правило публикации:
 
-First implementation may document these commands as manual Kilo protocol. It does not need to implement a CLI.
+- sanitized accepted summary можно публиковать только после explicit human/Codex acceptance.
 
-## V2 Status Lifecycle
+## Требования к V2 протоколу
 
-V2 should define a compact status model:
+V2 должен описывать такие user-facing commands или command-like instructions:
+
+- `/v2` — подготовить external senior review snapshot;
+- `/v2 preview` — показать, что попадёт в snapshot, но не делать commit/push;
+- `/v2 ingest` — обработать уже сохранённый внешний ответ и сформулировать Kilo understanding;
+- `/v2 status` — показать состояние текущего V2 request;
+- `/v2 cleanup` — провести cleanup временной review-ветки после human approval.
+
+В первой версии это может быть задокументировано как manual Kilo protocol. CLI реализовывать не нужно.
+
+### Правило preview
+
+- `/v2 preview` обязателен перед любым V2 push;
+- V2 push запрещён, если preview не был показан человеку и явно им не принят.
+
+## Жизненный цикл статусов V2
+
+V2 должен использовать компактный набор статусов:
 
 - `draft`
 - `previewed`
@@ -139,25 +179,27 @@ V2 should define a compact status model:
 - `superseded`
 - `cleaned`
 
-`/v2 status` and `V2_navigation.md` should use the same vocabulary.
+`/v2 status` и `V2_navigation.md` должны использовать одну и ту же терминологию.
 
-## Safety Requirements
+## Требования по безопасности
 
-Before any V2 push, Kilo must:
+Перед любым V2 push Kilo обязан:
 
-- inspect tracked changed files;
-- inspect untracked files;
-- inspect suspicious ignored files when relevant;
-- block secrets and private/local-only files;
-- report blocked files plainly;
-- show files proposed for snapshot;
-- show branch name, base branch, base commit, and exact files proposed for push;
-- show large/binary file hits and local-only path hits;
-- ask human confirmation even if safety-check is clean.
+- проверить tracked changed files;
+- проверить untracked files;
+- проверить suspicious ignored files, если они релевантны;
+- блокировать secrets и private/local-only files;
+- явно показывать blocked files;
+- явно показывать files proposed for snapshot;
+- показывать branch name, base branch, base commit и exact files proposed for push;
+- показывать large/binary hits и local-only path hits;
+- спрашивать человека даже если safety-check чистый.
 
-Default decision: do not publish risky files.
+Правило по умолчанию:
 
-Human confirmation must not be a vague "push?" question. The confirmation packet must include:
+- risky files не публикуются.
+
+Human confirmation не должен быть расплывчатым вопросом “push?”. Пакет подтверждения должен содержать:
 
 - review branch name;
 - base branch;
@@ -170,36 +212,42 @@ Human confirmation must not be a vague "push?" question. The confirmation packet
 - local-only path hits;
 - exact files that will be pushed;
 - exact files excluded from push;
-- a simple Russian yes/no decision prompt.
+- простой yes/no prompt на русском языке.
 
-Blocked or high-risk examples:
+### Предупреждение о публичности ветки
+
+- push в public GitHub `review/v2/...` branch — это публикация;
+- даже после удаления ветки commit links могут остаться во внешних чатах, кэше, форках, локальных копиях, скриншотах и заметках;
+- если файл нельзя считать опубликованным, его нельзя пушить.
+
+Примеры blocked или high-risk файлов:
 
 - `.env`, `.env.*`
-- key/certificate/credential files;
-- files under `_local/`;
-- generated output and build artifacts;
-- private images/assets;
-- archives;
-- logs;
-- large binary files unless explicitly approved.
+- key/certificate/credential files
+- файлы под `_local/`
+- generated output и build artifacts
+- private images/assets
+- archives
+- logs
+- large binary files без отдельного разрешения
 
-## External Chat Requirements
+## Требования к внешнему чату
 
-The V2 prompt must require external chat to:
+V2 prompt должен требовать от внешнего чата:
 
-- read V2 request report first;
-- inspect WIP files at snapshot commit;
-- compare against base files at base commit;
-- keep base/snapshot distinction explicit;
-- prefer commit-pinned links; branch links are supplemental only;
-- list what it read in `Context Readback`;
-- separate verified facts from hypotheses;
-- avoid claiming local runtime, tests, shell, or git status;
-- avoid direct code patches as if it had local repo access;
-- give bounded senior technical advice;
-- state missing context and uncertainty.
+- сначала прочитать V2 request report;
+- открыть WIP files на snapshot commit;
+- сравнить их с base files на base commit;
+- явно сохранять distinction между base и snapshot;
+- предпочитать commit-pinned links; branch links допустимы только как дополнительный контекст;
+- перечислить, что было прочитано, в `Context Readback`;
+- отделять verified facts от hypotheses;
+- не утверждать, что он видел local runtime, tests, shell или git status;
+- не писать patch так, как будто у него есть локальный repo access;
+- давать bounded senior technical advice;
+- явно говорить, чего не хватило и где граница уверенности.
 
-Required response shape must include:
+Обязательная форма ответа должна включать:
 
 - `V2 ID`
 - `Context Readback`
@@ -218,33 +266,44 @@ Required response shape must include:
 - `Questions back to Kilo/user, if any`
 - `Candidate Navigation Entry`
 
-## V2 Ingest Boundary
+## Граница V2 ingest
 
-The first implementation must not blur `kilo-recorder` and ordinary interpretation work.
+Первая версия не должна смешивать `kilo-recorder` и обычную интерпретацию ответа.
 
-V2 default boundary:
+Базовая граница V2:
 
-1. raw external answer is captured first as a narrow recording step;
-2. a separate ordinary Kilo continuation reads that captured response;
-3. only that second step writes Kilo understanding and proposed implementation plan.
+1. raw external answer сначала захватывается как узкий recording step;
+2. отдельное обычное продолжение Kilo читает этот захваченный ответ;
+3. только второй шаг пишет Kilo understanding и proposed implementation plan.
 
-This keeps existing `kilo-recorder` contract intact. First implementation should document this split clearly instead of inventing a new Kilo mode.
+Так мы не ломаем существующий контракт `kilo-recorder`. В первой версии эту границу нужно описать явно, без изобретения нового Kilo mode.
 
-## Implementation Sequence
+## Требования к cleanup
 
-### Step 0 - Tracker
+`/v2 cleanup` должен проверять и фиксировать:
 
-Create this master plan document.
+- remote review branch удалена или явно оставлена;
+- local review branch удалена или явно оставлена;
+- `V2_navigation.md` обновлён;
+- финальный status установлен в `cleaned`, `superseded` или `implemented`;
+- raw V2 runtime artifacts не утекли в `main`;
+- draft PR закрыт, помечен или подтверждён как отсутствующий.
 
-Expected output:
+## Последовательность внедрения
+
+### Шаг 0 — Tracker
+
+Создать этот master plan.
+
+Ожидаемый результат:
 
 - `.ai/plans/master/v2_external_senior_review_system.md`
 
 Human review: required.
 
-### Step 1 - Revise Plan Before Implementation
+### Шаг 1 — Уточнение плана перед реализацией
 
-Use the accepted external critique to tighten:
+Использовать уже полученную внешнюю критику, чтобы ужесточить:
 
 - artifact tracking policy;
 - ingest/recorder boundary;
@@ -254,21 +313,23 @@ Use the accepted external critique to tighten:
 - cleanup expectations;
 - rollout size.
 
-### Step 2 - Kilo Docs Run
+Этот шаг уже отражён в текущем состоянии документа. Он остаётся как первый implementation checkpoint, а не как приглашение заново открыть широкое планирование.
 
-One medium-to-large Kilo Docs run through `strong_model`.
+### Шаг 2 — Kilo Docs Run
+
+Один medium-to-large Kilo Docs run через `strong_model`.
 
 Scope:
 
-- create V2 protocol docs;
-- update repo-level rules for discoverability;
-- define artifact classes and default storage rules;
-- document that no new Kilo mode exists;
-- document human push confirmation;
-- document V2 as project-local first;
-- document raw-response capture vs ingest summary split.
+- создать V2 protocol docs;
+- обновить repo-level rules для discoverability;
+- зафиксировать artifact classes и default storage rules;
+- зафиксировать, что новый Kilo mode не создаётся;
+- зафиксировать human push confirmation;
+- зафиксировать, что V2 сначала живёт только в этом repo;
+- зафиксировать split между raw-response capture и ingest summary.
 
-Recommended model class:
+Рекомендуемый класс модели:
 
 - `strong_model`
 
@@ -278,22 +339,22 @@ Default model:
 
 Human review: required.
 
-### Step 3 - Kilo Verifier Run
+### Шаг 3 — Kilo Verifier Run
 
-Read-only verification except report.
+Read-only verification, кроме report.
 
 Scope:
 
-- verify docs consistency;
-- verify no new forbidden Kilo mode values were introduced;
-- verify no helper script was created;
-- verify `.gitignore` does not hide `.ai/external_reviews/`;
-- verify templates contain required sections;
-- verify V2 docs do not authorize push without human confirmation;
-- verify raw V2 request/response artifacts are not tracked in `main` by default;
-- verify V2 docs do not silently bypass existing recorder boundaries.
+- проверить consistency docs;
+- проверить, что не появились запрещённые Kilo mode values;
+- проверить, что helper script не создан;
+- проверить, что `.gitignore` не скрывает `.ai/external_reviews/`;
+- проверить, что templates содержат обязательные секции;
+- проверить, что V2 docs не разрешают push без human confirmation;
+- проверить, что raw V2 request/response artifacts по умолчанию не трекаются в `main`;
+- проверить, что V2 docs не обходят молча существующую recorder boundary.
 
-Recommended model class:
+Рекомендуемый класс модели:
 
 - `strong_model`
 
@@ -301,44 +362,48 @@ Default model:
 
 - `Kimi K2.6`
 
-Reason: executor and verifier should not use the same concrete model for an important workflow task.
+Причина:
 
-### Step 4 - Human Review
+- executor и verifier не должны использовать одну и ту же concrete model для важной workflow-задачи.
 
-Human review is required before acceptance of the docs patch. The review should check whether:
+### Шаг 4 — Human Review
 
-- `/v2`, `/v2 preview`, `/v2 ingest`, `/v2 status`, `/v2 cleanup` are understandable in simple Russian;
-- the push gate is strict enough;
-- the artifact storage rules are acceptable;
-- the manual workflow is realistic without helper scripts.
+Human review обязателен до принятия docs patch.
 
-### Step 5 - Codex Final Review
+Нужно проверить:
 
-Codex verifies:
+- понятны ли `/v2`, `/v2 preview`, `/v2 ingest`, `/v2 status`, `/v2 cleanup` простым русским языком;
+- достаточно ли строгий push gate;
+- устраивают ли правила хранения артефактов;
+- реалистичен ли manual workflow без helper scripts.
+
+### Шаг 5 — Codex Final Review
+
+Codex проверяет:
 
 - Kilo reports;
-- actual diff;
-- file presence;
-- rule consistency;
+- фактический diff;
+- наличие нужных файлов;
+- consistency rule layer;
 - search checks;
 - `git status`;
-- required `Human Check` and `Баги и сложности` sections.
+- обязательные секции `Human Check` и `Баги и сложности`.
 
-Checkpoint commit only after accepted result.
+Checkpoint commit делать только после принятого результата.
 
-### Step 6 - Low-Risk Manual Pilot
+### Шаг 6 — Low-Risk Manual Pilot
 
-After docs acceptance, run one low-risk manual pilot:
+После принятия docs patch провести один low-risk manual pilot:
 
-- start with `/v2 preview`;
-- use a non-secret issue only;
-- push only after explicit human approval;
-- capture what was awkward in the manual flow;
-- decide after the pilot whether a tiny helper script is justified.
+- начать с `/v2 preview`;
+- использовать только non-secret issue;
+- пушить только после explicit human approval;
+- зафиксировать, что оказалось неудобным в ручном flow;
+- уже после пилота решить, нужен ли tiny helper script.
 
-## Verification Commands
+## Проверки
 
-Run after implementation:
+Команды после реализации:
 
 ```powershell
 git status --short --branch
@@ -346,56 +411,57 @@ rg -n "/v2|external_reviews|V2_navigation" AGENTS.md .ai
 rg -n "kilo-v2|Kilo V2|kilo-builder|kilo-docs|kilo-tester|kilo-refactor" AGENTS.md .ai
 ```
 
-Manual checks:
+Ручные проверки:
 
-- `.gitignore` must not ignore `.ai/external_reviews/`.
-- V2 templates must include `V2 ID`, base commit, snapshot commit, compare link, changed files, safety status, `Context Readback`, `Provider/Model`, and verified/not verified separation.
-- V2 docs must state: no push without human confirmation, no secrets/private assets, no automatic fixes after external answer, no new Kilo mode, no helper script in first implementation.
-- V2 docs must state that commit-pinned links are primary and branch links are supplemental only.
-- V2 docs must distinguish public templates from raw V2 runtime artifacts.
-- V2 docs must define the raw-response capture vs ingest-summary split.
+- `.gitignore` не должен скрывать `.ai/external_reviews/`;
+- V2 templates должны включать `V2 ID`, base commit, snapshot commit, compare link, changed files, safety status, `Context Readback`, `Provider/Model` и verified/not verified separation;
+- V2 docs должны явно говорить: no push without human confirmation, no secrets/private assets, no automatic fixes after external answer, no new Kilo mode, no helper script in first implementation;
+- V2 docs должны явно говорить, что commit-pinned links — основной формат, branch links — только дополнительный;
+- V2 docs должны различать public templates и raw V2 runtime artifacts;
+- V2 docs должны явно описывать split между raw-response capture и ingest-summary.
 
-## Human Review Points
+## Точки human review
 
-Human review is required for:
+Human review обязателен для:
 
-- this master plan;
+- этого master plan;
 - V2 README/protocol;
 - V2 external chat rules;
 - V2 templates;
-- any repo-level rules that change Kilo behavior;
-- any future decision to add automation.
+- любых repo-level rules, которые меняют поведение Kilo;
+- любого будущего решения добавить automation.
 
-The user should check:
+Пользователь должен проверить:
 
-1. Does V2 match intended workflow?
-2. Is the human push gate strict enough?
-3. Are the `main` vs review-branch vs raw-response storage rules acceptable for this project?
-4. Are Kilo instructions simple enough for manual use?
-5. Are there missing safety risks around private images, local-only folders, or WIP branches?
+1. Совпадает ли V2 с желаемым workflow.
+2. Достаточно ли строг human push gate.
+3. Приемлемы ли правила хранения `main` vs review-branch vs raw-response artifacts.
+4. Достаточно ли просты Kilo instructions для ручного использования.
+5. Не пропущены ли safety-risks вокруг private images, local-only folders и WIP branches.
 
-## Out Of Scope For First Implementation
+## Что вне scope первой версии
 
-- CLI command for `/v2`.
-- Automatic branch creation.
-- Automatic commit/push.
-- Automatic raw link generation.
-- Automatic ingest parsing.
-- Draft PR creation.
-- Central workflow-core generalization.
-- New Kilo mode or UI setup.
-- Tracking raw V2 request/response artifacts in `main` by default.
+- CLI implementation для `/v2`
+- automatic branch creation
+- automatic commit/push
+- automatic raw link generation
+- automatic ingest parsing
+- draft PR creation
+- generalization в central workflow core
+- новый Kilo mode или UI setup
+- tracking raw V2 request/response artifacts в `main` по умолчанию
 
-## Acceptance Criteria
+## Критерии приёмки
 
-- Master plan exists and is reviewable.
-- `.ai/external_reviews/` structure is defined.
-- V2 protocol is discoverable from repo-level rules.
-- V2 templates are complete enough for Kilo to use manually.
-- Safety-check and always-confirm push gate are explicit.
-- V2 prompt rules require honest external readback and base/snapshot separation.
-- V2 artifact classes and default storage rules are explicit.
-- V2 ingest boundary does not conflict silently with existing recorder contract.
-- No helper script or automation is added.
-- No new Kilo mode is introduced.
-- Human review requirements are explicit.
+- master plan существует и пригоден для review;
+- структура `.ai/external_reviews/` определена;
+- V2 protocol discoverable из repo-level rules;
+- V2 templates достаточно полны для ручной работы Kilo;
+- safety-check и always-confirm push gate описаны явно;
+- V2 prompt rules требуют honest external readback и base/snapshot separation;
+- artifact classes и default storage rules описаны явно;
+- V2 ingest boundary не конфликтует молча с существующим recorder contract;
+- helper script и automation не добавлены;
+- новый Kilo mode не введён;
+- требования human review описаны явно.
+
