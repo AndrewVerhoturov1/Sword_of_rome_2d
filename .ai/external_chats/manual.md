@@ -256,3 +256,4 @@ V2 документирован отдельно в [`.ai/external_reviews/READM
 - Raw V2 runtime artifacts не трекаются в `main` по умолчанию.
 - V2 ingest полностью ручной: raw external answer передаётся в ordinary Kilo run вручную (прямая вставка текста или локальный response-файл). `kilo-recorder` в первой версии V2 не используется.
 - `kilo-notebook` остаётся `/v1-only`.
+- V2 часто запускается после честной остановки Kilo в статусе `blocked-v2-recommended` и рекомендации `/v2 preview` как следующего шага (см. [`AGENTS.md`](../../AGENTS.md), раздел `Safety gates` / `YOLO Stop Gates`).

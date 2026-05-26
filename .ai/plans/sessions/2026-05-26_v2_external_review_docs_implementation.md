@@ -38,18 +38,22 @@ in_progress
 
 ### P3: V2 Manual Pilot Prep
 
-- Status: pending.
-- После принятия docs patch подготовить low-risk manual pilot на `/v2 preview`.
+- Status: in_progress.
+- Сначала внедрить policy layer для `YOLO Stop Gates`, `Blocked Report Contract` и `V2 Recommendation Gate`.
+- Только после этого готовить следующий manual pilot на `/v2 preview`.
+- Intentional impossible seed уже использован как диагностический сигнал, но не является достаточным policy implementation.
 
 ## Active Plan Item
 
-`P2: V2 Verification`
+`P3: V2 Manual Pilot Prep`
 
 ## Runs
 
 - `Session run: 001` - prepared handoff `0021_v2_external_review_docs_foundation.md` for the first V2 docs implementation run.
 - `Session run: 002` - prepared handoff `0022_v2_manual_ingest_correction.md` for the V2 ingest-boundary correction after Codex review.
 - `Session run: 003` - prepared handoff `0023_v2_docs_verifier.md` for read-only verification of the current V2 docs set.
+- `Session run: 004` - prepared handoff `0024_v2_intentional_impossible_pilot_seed.md` for an intentional impossible task to test honest blocked handling before V2 escalation.
+- `Session run: 005` - prepared handoff `0025_yolo_stop_gates_and_v2_escalation.md` to implement stop-gates, blocked report semantics, and V2 escalation rules.
 
 ## User Overrides
 
@@ -67,6 +71,8 @@ in_progress
 - Public master-plan updated in `.ai/plans/master/v2_external_senior_review_system.md`.
 - P1 accepted by Codex after correction run `002`; checkpoint commit created for accepted workflow files only.
 - Clarification about template-layer vs instantiated V2 artifacts added and pushed to `main`.
+- Verifier run `0023` accepted with one narrow follow-up fix in `kilo_mode_contract.md`; that follow-up is already closed.
+- Impossible pilot seed `0024` validated honest blocked behavior but exposed missing policy layer for mandatory stop-gates and V2 escalation semantics.
 - В worktree уже есть unrelated V1 runtime artifacts:
   - `.ai/external_chats/V1_navigation.md`
   - `.ai/external_chats/notebook/2026-05-26_V1-20260526-103939_senior-review-of-the-proposed-v2-external-senior.md`

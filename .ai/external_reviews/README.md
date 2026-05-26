@@ -277,6 +277,20 @@ V2 prompt должен требовать от внешнего чата:
 - **Не трекает raw V2 runtime artifacts в `main` по умолчанию.**
 - **Не заменяет `/v1` или `/r1`.**
 
+## YOLO Mode Interaction
+
+V2 и YOLO-режим связаны через механизм остановки и эскалации:
+
+- **V2 часто запускается после честной остановки Kilo.** Когда Kilo честно останавливается в статусе `blocked-v2-recommended`, следующим шагом может быть `/v2 preview` для внешнего senior review.
+- **Kilo не должен бесконечно «додавливать» задачу.** YOLO Stop Gates требуют остановки при рискованных или бессмысленных действиях, а не бесконечных попыток.
+- **После blocked report пользователь может:**
+  - разрешить локально продолжить (например, если проблема оказалась проще);
+  - попросить подготовить `/v2 preview` для внешнего senior review;
+  - отменить часть изменений и вернуться к предыдущему состоянию;
+  - передать вопрос Codex для перепланирования.
+
+Полные правила YOLO Stop Gates, V2 Recommendation Gate и Blocked Report Contract описаны в [`AGENTS.md`](../../AGENTS.md).
+
 ## Связанные документы
 
 - [V2_navigation.md](V2_navigation.md) — индекс V2 requests
@@ -288,7 +302,7 @@ V2 prompt должен требовать от внешнего чата:
 
 ## Ссылки на внешние контракты
 
-- [`AGENTS.md`](../AGENTS.md) — workflow contract
+- [`AGENTS.md`](../../AGENTS.md) — workflow contract
 - [`.ai/rules/agent_protocol.md`](../rules/agent_protocol.md) — агентный протокол
 - [`.ai/rules/kilo_mode_contract.md`](../rules/kilo_mode_contract.md) — контракт Kilo modes
 - [`.ai/external_chats/external_chat_rules.md`](../external_chats/external_chat_rules.md) — правила для внешнего чата
