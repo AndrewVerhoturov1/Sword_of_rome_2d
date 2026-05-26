@@ -1,5 +1,7 @@
 # V2 Request: <краткое название>
 
+Этот файл — template-layer. Placeholder-поля, примерные URL и `<...>` значения здесь нормальны. Реальные ссылки и commit hash должны появляться уже в instantiated request-файле, например `.ai/external_reviews/requests/V2-YYYYMMDD-HHMMSS_request.md`.
+
 ## V2 ID
 
 `V2-YYYYMMDD-HHMMSS`

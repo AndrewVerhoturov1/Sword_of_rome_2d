@@ -2,6 +2,8 @@
 
 Это шаблон prompt-а для внешнего чата в маршруте V2. В отличие от [`/v1`](../../prompts/create_external_question_prompt.md), V2 prompt передаёт внешнему чату commit-pinned ссылки на реальный WIP код и контекст сравнения base vs snapshot.
 
+Этот файл — template-layer. `{{...}}` placeholders здесь нормальны. Живые raw/blob URL должны появляться уже в instantiated prompt-файле, например `.ai/external_reviews/prompts/V2-YYYYMMDD-HHMMSS_prompt.md`.
+
 ## Структура V2 Prompt
 
 ```text
@@ -134,3 +136,4 @@ Central `/v1`-style правила здесь нужны для честного
 - Prompt не требует Recorder Payload (это не `/r1`). V2 ingest полностью ручной: raw external answer передаётся в ordinary Kilo run вручную.
 - `kilo-recorder` в первой версии V2 не используется.
 - Все ссылки должны быть raw URL (предпочтительно) или blob URL.
+- Если нужен файл с уже подставленными ссылками, создай instantiated prompt в `.ai/external_reviews/prompts/`, а не редактируй template под один конкретный review.

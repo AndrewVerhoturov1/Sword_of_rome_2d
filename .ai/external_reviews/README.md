@@ -155,6 +155,30 @@ Kilo проверяет и фиксирует:
 
 Если конкретная V2-сессия использует другой путь, это нужно явно отметить в request и в `V2_navigation.md`.
 
+## Template vs instantiated artifacts
+
+Как и в `/v1`, V2 использует два разных слоя:
+
+1. **Templates** в `.ai/external_reviews/templates/`
+   - содержат placeholders;
+   - объясняют структуру;
+   - не обязаны содержать живые GitHub raw/blob URL.
+
+2. **Instantiated artifacts** в runtime paths
+   - создаются под конкретный `V2 ID`;
+   - содержат уже реальные ссылки;
+   - именно их человек показывает внешнему чату или использует для ingest.
+
+Для первой версии V2 это значит:
+
+- `templates/v2_request_template.md` — только шаблон;
+- `templates/v2_prompt_template.md` — только шаблон;
+- реальные ссылки должны появляться в instantiated файлах, например:
+  - `.ai/external_reviews/requests/V2-YYYYMMDD-HHMMSS_request.md`
+  - `.ai/external_reviews/prompts/V2-YYYYMMDD-HHMMSS_prompt.md`
+
+Если в шаблоне виден `{{placeholder}}`, это не missing link и не ошибка публикации. Это признак template-layer. Проверять нужно уже instantiated request/prompt.
+
 ## Review branch
 
 - **Repo:** `AndrewVerhoturov1/Sword_of_rome_2d` (текущий GitHub repo)
