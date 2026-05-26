@@ -18,7 +18,7 @@ YYYY-MM-DD
 
 ## Model
 
-<модель Kilo, использованная для interpretation step>
+<модель Kilo, использованная для manual ingest run>
 
 ## Ссылки
 

@@ -68,4 +68,4 @@
 
 ## Следующий шаг
 
-`/v2 ingest` — запустить interpretation step для формулирования Kilo understanding summary.
+`/v2 ingest` — запустить ordinary Kilo run для формулирования Kilo understanding summary.

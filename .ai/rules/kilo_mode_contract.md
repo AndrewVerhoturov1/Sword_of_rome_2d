@@ -140,21 +140,21 @@
 
 ## Repo-wide policy inheritance
 
-Р’СЃРµ ordinary Kilo modes, РєСЂРѕРјРµ mode-specific exceptions РІСЂРѕРґРµ `kilo-recorder` Рё `kilo-notebook`, РЅР°СЃР»РµРґСѓСЋС‚ repo-level policy layer:
+Все ordinary Kilo modes, кроме mode-specific exceptions вроде `kilo-recorder` и `kilo-notebook`, наследуют repo-level policy layer:
 
 - `.ai/policies/language_policy.md`
 - `.ai/policies/human_review_policy.md`
 - `.ai/policies/bug_tracking_policy.md`
 
-Р•СЃР»Рё task РЅРµ Явно exempted mode-specific contract-РѕРј, report РґРѕР»Р¶РµРЅ СЃРѕРґРµСЂР¶Р°С‚СЊ:
+Если task не явно exempted mode-specific contract-ом, report должен содержать:
 
 - `Баги и сложности`
 - `Human Check`
 - `Runtime metadata`
 
-Debugger / bugfix / repeated-issue runs РґРѕР»Р¶РЅС‹ СЃРЅР°С‡Р°Р»Р° СЃРјРѕС‚СЂРµС‚СЊ `.ai/logs/bug_journal.md`.
+Debugger / bugfix / repeated-issue runs должны сначала смотреть `.ai/logs/bug_journal.md`.
 
-Failed human check С‡РёС‚Р°РµС‚СЃСЏ real bug/difficulty state, Р° РЅРµ С„РѕСЂРјР°Р»СЊРЅРѕР№ РїРѕРјРµС‚РєРѕР№.
+Failed human check считается real bug/difficulty state, а не формальной пометкой.
 
 ## Preflight-check
 

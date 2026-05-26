@@ -86,6 +86,7 @@ Kilo проверяет и фиксирует:
 - local review branch удалена или явно оставлена;
 - [`V2_navigation.md`](V2_navigation.md) обновлён;
 - финальный статус установлен в `cleaned`, `superseded` или `implemented`;
+- в `V2_navigation.md` сохранены минимум: `V2 ID`, `base commit`, `snapshot commit`, `compare link`, итоговый статус и судьба review branch;
 - raw V2 runtime artifacts не утекли в `main`;
 - draft PR закрыт, помечен или подтверждён как отсутствующий.
 
@@ -96,10 +97,10 @@ Kilo проверяет и фиксирует:
 | `draft` | V2 request создан, но ещё не previewed |
 | `previewed` | `/v2 preview` показан человеку |
 | `awaiting_human_push_approval` | Preview принят, ждём разрешения на push |
-| `snapshot_pushed` | Review branch запушина в public GitHub |
+| `snapshot_pushed` | Review branch запушен в public GitHub |
 | `waiting_external_answer` | Snapshot отправлен внешнему чату, ждём ответ |
-| `raw_response_captured` | Raw external answer записан (recording step) |
-| `ingested` | Kilo understanding summary готов (interpretation step) |
+| `raw_response_captured` | Сырой ответ внешнего чата сохранён вручную |
+| `ingested` | Kilo understanding summary готов после ручного ingest |
 | `implementation_planned` | Предложен план реализации по мотивам ответа |
 | `implemented` | Изменения приняты и реализованы |
 | `superseded` | Request перекрыт более новым V2 request |
@@ -112,21 +113,21 @@ Kilo проверяет и фиксирует:
 - `.ai/external_reviews/README.md` — этот файл
 - `.ai/external_reviews/V2_navigation.md` — индекс V2 requests
 - `.ai/external_reviews/templates/*` — шаблоны
-- Sanitized accepted summaries — только после explicit human/Codex acceptance
+- `.ai/external_reviews/summaries/` — только sanitized accepted summaries и только после explicit human/Codex acceptance
 
 ### Runtime artifacts (в `review/v2/...` branch, не в `main`)
 
-- V2 request report
-- Generated V2 prompt
-- Changed-file inventory
-- Safety report
-- Временные screenshots (только явно разрешённые для этого review)
+- `.ai/external_reviews/requests/` — V2 request reports
+- `.ai/external_reviews/prompts/` — generated V2 prompts
+- `.ai/external_reviews/safety/` — safety checklists и safety reports
+- changed-file inventory
+- временные screenshots (только явно разрешённые для этого review)
 
 ### Raw response и ingest artifacts (не в `main` по умолчанию)
 
-- Raw external answer
-- Kilo understanding summary
-- Draft implementation plan
+- `.ai/external_reviews/responses/` — raw external answers
+- `.ai/external_reviews/ingest_summaries/` — Kilo understanding summaries
+- draft implementation plan
 
 **Правило по умолчанию:** Raw V2 runtime artifacts не трекаются в `main`. Они живут в `review/v2/...` branch или local-only до explicit решения о публикации sanitized summary.
 
@@ -140,6 +141,19 @@ Kilo проверяет и фиксирует:
 - secrets и personal data;
 - временных гипотез отладки, которые не были приняты;
 - полного debug log.
+
+## Нормализованные runtime paths
+
+Первая версия V2 использует следующие стандартные пути:
+
+- `.ai/external_reviews/requests/` — request reports;
+- `.ai/external_reviews/prompts/` — prompts для внешнего чата;
+- `.ai/external_reviews/safety/` — safety checklist и safety reports;
+- `.ai/external_reviews/responses/` — raw external answers;
+- `.ai/external_reviews/ingest_summaries/` — Kilo understanding summaries;
+- `.ai/external_reviews/summaries/` — sanitized accepted summaries.
+
+Если конкретная V2-сессия использует другой путь, это нужно явно отметить в request и в `V2_navigation.md`.
 
 ## Review branch
 

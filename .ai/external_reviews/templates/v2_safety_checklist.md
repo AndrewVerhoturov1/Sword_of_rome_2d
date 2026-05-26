@@ -57,6 +57,8 @@ YYYY-MM-DD
 - [ ] `output/**` — нет в snapshot (кроме `output/README.md`)
 - [ ] `arena-prototype-launcher/**` — нет в snapshot
 - [ ] `.ai/external_chats/requests/**`, `responses/**`, `tasks/**`, `recorder_packages/**`, `notebook_sources/**`, `notebook_packages/**` — нет в snapshot
+- [ ] `.ai/external_reviews/responses/**` — не публикуется в `main` без отдельного решения
+- [ ] `.ai/external_reviews/ingest_summaries/**` — не публикуется в `main` без отдельного решения
 
 ### Binary и large files
 
@@ -79,7 +81,9 @@ YYYY-MM-DD
 
 ## V2-specific проверки
 
-- [ ] Нет raw V2 request/response artifacts в snapshot (эти файлы не должны утекать в `main`)
+- [ ] `.ai/external_reviews/requests/**`, `prompts/**`, `safety/**` проверены: в них нет secrets, private paths и запрещённых файлов
+- [ ] `.ai/external_reviews/responses/**` и `.ai/external_reviews/ingest_summaries/**` не публикуются в `main` по умолчанию
+- [ ] Если request/prompt/safety artifacts уходят в `review/v2/...`, это явно осознано как публичная публикация
 - [ ] V2 prompt готов и проверен на отсутствие secrets/local paths
 - [ ] Commit-pinned ссылки сформированы (не branch-only links)
 - [ ] Compare link сформирован (`base...snapshot`)

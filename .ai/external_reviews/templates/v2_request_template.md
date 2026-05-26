@@ -55,6 +55,13 @@ Review branch: `review/v2/YYYYMMDD-HHMMSS-short-topic`
 https://github.com/AndrewVerhoturov1/Sword_of_rome_2d/compare/<base>...<snapshot>
 ```
 
+## Ключевые ссылки для review
+
+| Файл | Base raw URL | Snapshot raw URL | Почему важен |
+|------|--------------|------------------|--------------|
+| `path/to/file1.ts` | `https://raw.githubusercontent.com/.../<base>/path/to/file1.ts` | `https://raw.githubusercontent.com/.../<snapshot>/path/to/file1.ts` | ... |
+| `path/to/file2.ts` | `https://raw.githubusercontent.com/.../<base>/path/to/file2.ts` | `https://raw.githubusercontent.com/.../<snapshot>/path/to/file2.ts` | ... |
+
 ## Изменённые файлы
 
 | Файл | Статус (M/A/D) | Краткое описание изменений |

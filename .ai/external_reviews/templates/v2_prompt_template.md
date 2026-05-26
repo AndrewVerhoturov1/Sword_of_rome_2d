@@ -14,10 +14,22 @@ V2 ID: V2-YYYYMMDD-HHMMSS
 Прочитай этот файл. Это правила твоего поведения для V2.
 {{Central Rules Link}}
 
+## V2 Override Note
+
+Central `/v1`-style правила здесь нужны для честного `Context Readback`, source boundaries, запрета на выдуманный local access и явного разделения verified / not verified.
+Структура ответа для этого review задаётся именно V2-шаблоном ниже, даже если названия секций отличаются от `/v1`.
+
 ## V2 Request Report
 
 Прочитай V2 request report первым. Он описывает цель review, контекст, уже испробованное и конкретные вопросы.
 {{V2 Request Report Link}}
+
+## Additional Project Context, if provided
+
+- {{Project AGENTS Link}}
+- {{Project Repo Navigation Link}}
+- {{Bug Journal Link}}
+- {{Previous V1 or V2 Review Link}}
 
 ## Base and Snapshot
 
@@ -107,6 +119,10 @@ V2 ID: V2-YYYYMMDD-HHMMSS
 |------|--------------|
 | `{{Central Rules Link}}` | Raw URL на `external_chat_rules.md` из central core. Краткое указание: «Прочитай этот файл. Это правила твоего поведения для V2.» |
 | `{{V2 Request Report Link}}` | Raw URL на заполненный `v2_request_template.md` — опубликованный в review branch. |
+| `{{Project AGENTS Link}}` | Raw URL на `AGENTS.md`, если он нужен для repo-level contract. |
+| `{{Project Repo Navigation Link}}` | Raw URL на `.ai/repo_navigation.md`, если нужен project context. |
+| `{{Bug Journal Link}}` | Raw URL на `.ai/logs/bug_journal.md`, если review завязан на повторяемый баг. |
+| `{{Previous V1 or V2 Review Link}}` | Ссылка на релевантный прошлый внешний review, если он реально нужен. |
 | `{{Base Files Links}}` | Commit-pinned raw URL на ключевые файлы в base commit. |
 | `{{Snapshot Files Links}}` | Commit-pinned raw URL на те же файлы в snapshot commit. |
 | `{{Compare Link}}` | GitHub compare URL: `https://github.com/AndrewVerhoturov1/Sword_of_rome_2d/compare/<base>...<snapshot>` |
