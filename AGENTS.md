@@ -422,6 +422,18 @@ Codex поддерживает четыре короткие repo-level entry-к
 - Режим не выполняет block work, не запускает executor-ы и не готовит executor packages до human approval design.
 - Уточняющие вопросы и approval происходят внутри `/b1` до передачи управления в execution layer.
 
+## `/v2` — External Senior Review (project-local manual protocol)
+
+`/v2` — это строгий ручной протокол для внешнего senior review реального WIP-кода. В отличие от `/v1` (prompt-only), V2 даёт внешнему чату зафиксированный snapshot реального кода и контекст сравнения с base. `/v2` не является новым shortcut-вызовом уровня `/v1` или `/r1` — это отдельный project-local manual protocol, описанный в [`.ai/external_reviews/README.md`](.ai/external_reviews/README.md). `/v2` не заменяет `/v1` и `/r1`.
+
+- `/v2` **не является новым Kilo mode.** V2 работает через существующие допустимые modes: `kilo-handoff-runner` для docs/protocol и `kilo-debugger` для stuck/debug cases.
+- `/v2 preview` **обязателен перед любым V2 push.** Push запрещён, если preview не был показан человеку и явно им не принят.
+- **Push в public `review/v2/...` branch = публикация.** Даже после удаления ветки commit links могут остаться во внешних чатах, кэше и форках.
+- **Raw V2 runtime artifacts не трекаются в `main` по умолчанию.** В `main` идут только protocol docs, templates, navigation и sanitized accepted summaries.
+- **V2 ingest — полностью ручной:** raw external answer передаётся в ordinary Kilo run вручную — прямой вставкой текста в запуск, либо через локально сохранённый V2 response file. Kilo formulates understanding summary через [`v2_ingest_summary_template.md`](.ai/external_reviews/templates/v2_ingest_summary_template.md). Для V2 ingest используется только `kilo-handoff-runner` или `kilo-debugger`.
+- **Human push gate конкретный:** перед каждым V2 push показывается полный safety checklist с exact files, blocked files, risks и простым yes/no вопросом на русском.
+- **Первая версия не содержит helper scripts.** Все команды V2 выполняются как manual Kilo instructions.
+
 ## Role separation for block orchestration
 
 В рамках split-схемы `PILOT-005 planning / PILOT-006 execution` четыре сущности разведены как разные роли и не должны смешиваться:

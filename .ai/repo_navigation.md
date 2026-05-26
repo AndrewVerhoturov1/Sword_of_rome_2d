@@ -141,6 +141,12 @@
 - [`external_chats/notebook/`](external_chats/notebook/) — notebook entry files.
 - [`external_chats/notebook/README.md`](external_chats/notebook/README.md) — что лежит в notebook entry history.
 
+## V2 External Senior Review
+
+- [`external_reviews/README.md`](external_reviews/README.md) — протокол V2 External Senior Review.
+- [`external_reviews/V2_navigation.md`](external_reviews/V2_navigation.md) — индекс V2 requests.
+- [`external_reviews/templates/`](external_reviews/templates/) — шаблоны V2 (request, prompt, response, ingest summary, safety checklist).
+
 ## Public vs Local-only
 
 ### Public (canon, references, docs, scripts, ideas, .ai core)

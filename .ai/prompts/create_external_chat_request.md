@@ -9,6 +9,8 @@
 
 Дополнительное правило для `/r1`: выбор модели для External Web Chat по умолчанию остаётся за человеком. Codex не должен превращать `/r1` в меню выбора модели, если человек сам не попросил помощи именно с моделью.
 
+**Отличие от `/v2`:** `/v2` — это отдельный project-local manual protocol для внешнего senior review реального WIP-кода через зафиксированный GitHub snapshot. `/v2` не использует external launch package и не является частью маршрута `/r1`. Документация: [`.ai/external_reviews/README.md`](../external_reviews/README.md).
+
 ## Разделение artifact types
 
 - **`external launch package`** (этот шаблон) — package для `External Web Chat`, содержит published-artifact ссылки, static manual version, task bundle и expected response path.

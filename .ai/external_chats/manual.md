@@ -242,3 +242,17 @@ Raw URL должен быть preferred source для чтения, GitHub blob 
 - тесты
 - diff-review
 - auth/payments/credentials/migrations/security-sensitive work
+
+## 8. V2 External Senior Review
+
+V2 — это отдельный project-local manual protocol для внешнего senior review реального WIP-кода через зафиксированный GitHub snapshot. V2 не использует published-artifact route этого manual и не является частью `/r1`.
+
+V2 документирован отдельно в [`.ai/external_reviews/README.md`](../external_reviews/README.md).
+
+Коротко:
+- `/v2` — не новый Kilo mode, работает через существующие `kilo-handoff-runner` и `kilo-debugger`.
+- `/v2 preview` обязателен перед любым V2 push.
+- Push в public `review/v2/...` branch = публикация.
+- Raw V2 runtime artifacts не трекаются в `main` по умолчанию.
+- V2 ingest полностью ручной: raw external answer передаётся в ordinary Kilo run вручную (прямая вставка текста или локальный response-файл). `kilo-recorder` в первой версии V2 не используется.
+- `kilo-notebook` остаётся `/v1-only`.

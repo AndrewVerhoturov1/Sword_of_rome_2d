@@ -491,6 +491,20 @@ Codex поддерживает четыре короткие repo-level entry-к
 - Режим не выполняет block work, не запускает executor-ы и не готовит executor packages до human approval design.
 - Уточняющие вопросы и approval происходят внутри `/b1` до передачи управления в execution layer.
 
+## `/v2` — External Senior Review (project-local manual protocol)
+
+`/v2` — это строгий ручной протокол для внешнего senior review реального WIP-кода через зафиксированный GitHub snapshot. Это не новый Kilo mode и не новый shortcut-вызов уровня `/v1` или `/r1`. V2 работает через существующие допустимые modes: `kilo-handoff-runner` для docs/protocol и `kilo-debugger` для stuck/debug cases.
+
+Основные правила V2:
+- `/v2 preview` обязателен перед любым V2 push.
+- Push в public `review/v2/...` branch = публикация.
+- Raw V2 runtime artifacts не трекаются в `main` по умолчанию.
+- V2 ingest полностью ручной: raw external answer передаётся в ordinary Kilo run вручную (прямой вставкой текста или через локально сохранённый V2 response file). Для V2 ingest используется только `kilo-handoff-runner` или `kilo-debugger`.
+- Human push gate конкретный: полный safety checklist с exact files, blocked files, risks и yes/no вопросом на русском.
+- Первая версия не содержит helper scripts.
+
+Полная документация: [`.ai/external_reviews/README.md`](../external_reviews/README.md).
+
 ### Role separation for block orchestration
 
 В рамках split-схемы `PILOT-005 planning / PILOT-006 execution` четыре сущности разведены как разные роли и не должны смешиваться:
