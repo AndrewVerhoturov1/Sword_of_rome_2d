@@ -1,5 +1,6 @@
 import Phaser from "phaser";
 import type { GameState } from "../runtime/GameState";
+import type { MapRenderModel } from "../map/MapRenderModel";
 
 /**
  * TableSandboxScene — Phaser-сцена для Action/Event Spine + Smart Drag Move (0016).
@@ -87,6 +88,9 @@ export class TableSandboxScene extends Phaser.Scene {
   private dragGhost: Phaser.GameObjects.Container | null = null;
   private dragTailLine: Phaser.GameObjects.Graphics | null = null;
   private snapHighlightRing: Phaser.GameObjects.Arc | null = null;
+
+  // ---- Map visual debug objects (Handoff 0029) ----
+  private mapVisualDebugObjects: Phaser.GameObjects.GameObject[] = [];
 
   constructor() {
     super({ key: "TableSandboxScene" });
@@ -244,13 +248,16 @@ export class TableSandboxScene extends Phaser.Scene {
   }
 
   /**
-   * Обновить отрисовку из GameState.
-   * Вызывается из React при каждом изменении GameState или selection.
+   * Обновить отрисовку из GameState + mapVisual.
+   * Вызывается из React при каждом изменении GameState, selection или mapVisual.
+   *
+   * Handoff 0029: добавлен mapVisual — отдельный display-only contract.
    */
   updateFromState(
     state: GameState,
     selectedPieceId: string | null,
-    selectedSpaceId: string | null
+    selectedSpaceId: string | null,
+    mapVisual: MapRenderModel | null = null
   ): void {
     // Сохраняем selectedPieceId для drag-target resolution
     this.currentSelectedPieceId = selectedPieceId;
@@ -272,6 +279,11 @@ export class TableSandboxScene extends Phaser.Scene {
     // Штатный путь: сброс и полная перерисовка
     this.clearDrag();
     this.clearAllDynamic();
+
+    // Handoff 0029: map visual debug layer — до connections/spaces/pieces
+    if (mapVisual) {
+      this.drawMapVisualDebug(mapVisual);
+    }
 
     this.drawConnections(state);
     this.drawSpaces(state, selectedSpaceId, state.controlState);
@@ -457,6 +469,95 @@ export class TableSandboxScene extends Phaser.Scene {
     this.dragPending = false;
   }
 
+  // ---- Map visual debug render (Handoff 0029) ----
+
+  /**
+   * Минимальный debug/bounds render authored map visual.
+   *
+   * Рисует:
+   * - map bounds rectangle из coordinateSystem.width/height;
+   * - label с mapId и размерами;
+   * - если underlay есть и visible — underlay bounds rectangle.
+   *
+   * Не рисует actual image texture. Только bounds proof.
+   */
+  private drawMapVisualDebug(mv: MapRenderModel): void {
+    const g = this.add.graphics();
+    g.setDepth(0); // под connections/spaces/pieces
+    this.mapVisualDebugObjects.push(g);
+
+    const { width, height } = mv.coordinateSystem;
+
+    // 1. Map bounds rectangle — светло-серый пунктир
+    g.lineStyle(2, 0x888888, 0.5);
+    g.strokeRect(0, 0, width, height);
+
+    // 2. Map label
+    const label = this.add
+      .text(4, 4, `Map visual: ${mv.mapId} ${width}×${height}`, {
+        fontSize: "10px",
+        color: "#aaaaaa",
+        fontFamily: "monospace",
+      })
+      .setDepth(1);
+    this.mapVisualDebugObjects.push(label);
+
+    // 3. Underlay bounds (если есть и visible)
+    if (mv.underlay && mv.underlay.visible) {
+      const u = mv.underlay;
+      const nw = u.naturalWidth;
+      const nh = u.naturalHeight;
+
+      // Compute transformed underlay corners (center-based)
+      const cx = nw / 2;
+      const cy = nh / 2;
+      const s = u.scale || 1;
+      const rad = (u.rotationDeg * Math.PI) / 180;
+      const cos = Math.cos(rad);
+      const sin = Math.sin(rad);
+
+      const corners = [
+        { x: 0, y: 0 },
+        { x: nw, y: 0 },
+        { x: nw, y: nh },
+        { x: 0, y: nh },
+      ].map((c) => {
+        const dx = c.x - cx;
+        const dy = c.y - cy;
+        const rx = dx * cos - dy * sin;
+        const ry = dx * sin + dy * cos;
+        return {
+          x: rx * s + cx + u.offsetX,
+          y: ry * s + cy + u.offsetY,
+        };
+      });
+
+      const xs = corners.map((c) => c.x);
+      const ys = corners.map((c) => c.y);
+      const minX = Math.min(...xs);
+      const minY = Math.min(...ys);
+      const maxX = Math.max(...xs);
+      const maxY = Math.max(...ys);
+
+      // Underlay bounds AABB — оранжевый пунктир
+      const ubG = this.add.graphics();
+      ubG.setDepth(0);
+      ubG.lineStyle(1.5, 0xf0a040, 0.6);
+      ubG.strokeRect(minX, minY, maxX - minX, maxY - minY);
+      this.mapVisualDebugObjects.push(ubG);
+
+      // Underlay label
+      const ulabel = this.add
+        .text(minX + 2, minY + 2, `Underlay: ${nw}×${nh} s=${s.toFixed(2)} r=${u.rotationDeg}°`, {
+          fontSize: "9px",
+          color: "#c09040",
+          fontFamily: "monospace",
+        })
+        .setDepth(1);
+      this.mapVisualDebugObjects.push(ulabel);
+    }
+  }
+
   // ---- Очистка ----
 
   private clearAllDynamic(): void {
@@ -467,6 +568,9 @@ export class TableSandboxScene extends Phaser.Scene {
       this.selectionHighlight.destroy();
       this.selectionHighlight = null;
     }
+    // Handoff 0029: очистка map visual debug objects
+    for (const obj of this.mapVisualDebugObjects) obj.destroy();
+    this.mapVisualDebugObjects = [];
     this.spaceCircles.clear();
     this.spaceLabels.clear();
     this.pieceMarkers.clear();

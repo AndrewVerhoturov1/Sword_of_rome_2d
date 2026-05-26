@@ -24,6 +24,7 @@ import "./App.css";
 import EditorSurface from "./editor/EditorSurface";
 import { type MapDraft, loadMapDraft } from "./editor/MapDraft";
 import { type SpaceState, type ConnectionState } from "./runtime/GameState";
+import { type MapRenderModel, type MapRenderUnderlay } from "./map/MapRenderModel";
 import mapData from "./fixtures/tiny-module/modules/tiny-module/map.json";
 
 /**
@@ -81,8 +82,47 @@ export default function App() {
   /** Editor draft — живёт в App, переживает переключение режимов */
   const [editorDraft, setEditorDraft] = useState<MapDraft>(() => loadMapDraft(mapData));
 
+  /**
+   * Handoff 0029: MapRenderModel — display-only visual contract.
+   * Отдельный от GameState. При preview строится из редакторского draft.
+   * null означает «нет authored map visual» (fixture/load flow).
+   */
+  const [mapVisual, setMapVisual] = useState<MapRenderModel | null>(null);
+
   /** Монотонный счётчик для генерации pieceId */
   const nextPieceSeqRef = useRef<number>(3);
+
+  /**
+   * Handoff 0029: конвертирует MapDraft в MapRenderModel (visual contract).
+   * Не трогает GameState. Только display-only поля.
+   */
+  const draftToMapRenderModel = useCallback((draft: MapDraft): MapRenderModel => {
+    const underlay: MapRenderUnderlay | null = draft.underlay
+      ? {
+          src: draft.underlay.src,
+          offsetX: draft.underlay.offsetX,
+          offsetY: draft.underlay.offsetY,
+          scale: draft.underlay.scale,
+          rotationDeg: draft.underlay.rotation,
+          opacityPercent: draft.underlay.opacity,
+          visible: draft.underlay.visible,
+          naturalWidth: draft.underlay.naturalWidth,
+          naturalHeight: draft.underlay.naturalHeight,
+        }
+      : null;
+
+    return {
+      source: "editor-preview",
+      mapId: draft.mapId,
+      name: draft.name,
+      coordinateSystem: {
+        type: "pixel",
+        width: draft.coordinateSystem.width,
+        height: draft.coordinateSystem.height,
+      },
+      underlay,
+    };
+  }, []);
 
   /**
    * Конвертирует MapDraft в GameState для preview.
@@ -120,10 +160,12 @@ export default function App() {
     };
   }, [initialGS]);
 
-  /** Переход из редактора в preview: устанавливает GameState из draft */
+  /** Переход из редактора в preview: устанавливает GameState и mapVisual из draft */
   const handlePreview = useCallback((draft: MapDraft) => {
     const gs = draftToGameState(draft);
+    const visual = draftToMapRenderModel(draft);
     setGameState(gs);
+    setMapVisual(visual);
     setEventLog(createEventLog());
     setLastAction(null);
     setAppMode("play");
@@ -134,7 +176,7 @@ export default function App() {
     resetActionSeq(0);
     resetEventSeq(0);
     nextPieceSeqRef.current = 3;
-  }, [draftToGameState]);
+  }, [draftToGameState, draftToMapRenderModel]);
 
   /**
    * Сбросить всё к исходному fixture-based состоянию.
@@ -161,6 +203,7 @@ export default function App() {
     });
 
     setGameState(freshGS);
+    setMapVisual(null); // Handoff 0029: очистка stale editor visual
     setEventLog(createEventLog());
     setLastAction(null);
     setSelectedPieceId(null);
@@ -295,6 +338,7 @@ export default function App() {
       nextPieceSeqRef.current = maxPieceNum + 1;
 
       setGameState(loadedGS);
+      setMapVisual(null); // Handoff 0029: очистка stale editor visual при load
       setEventLog(loadedEL);
       setLastAction(null);
       setSelectedPieceId(null);
@@ -557,6 +601,8 @@ export default function App() {
           className="mode-switch-btn"
           onClick={() => {
             if (appMode === "editor") {
+              // Handoff 0029: прямой переход в fixture play — очистка stale editor visual
+              setMapVisual(null);
               setAppMode("play");
             } else {
               setAppMode("editor");
@@ -588,6 +634,7 @@ export default function App() {
               <h2 className="area-label">Table Surface (Phaser Renderer)</h2>
               <PhaserStage
                 gameState={gameState}
+                mapVisual={mapVisual}
                 selectedPieceId={selectedPieceId}
                 selectedSpaceId={selectedSpaceId}
                 onSpaceClick={handleSpaceClick}

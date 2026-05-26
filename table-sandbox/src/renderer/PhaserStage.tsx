@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import Phaser from "phaser";
 import { TableSandboxScene, SceneCallbacks } from "./phaserScene";
 import type { GameState } from "../runtime/GameState";
+import type { MapRenderModel } from "../map/MapRenderModel";
 
 /**
  * PhaserStage — React-компонент, который монтирует Phaser game instance
@@ -10,13 +11,17 @@ import type { GameState } from "../runtime/GameState";
  * Phaser живёт ТОЛЬКО внутри этого компонента.
  * Никакой Phaser-объект не пролезает в остальной React shell.
  *
- * Принимает GameState для рендера и selection для подсветки.
+ * Принимает GameState для рендера, mapVisual для authored map display,
+ * и selection для подсветки.
  * Передаёт клики по spaces и drag release наружу через callbacks.
  *
  * Handoff 0016: добавлен onPieceDragRelease для smart drag move.
+ * Handoff 0029: добавлен mapVisual — отдельный visual contract от editor preview.
  */
 interface PhaserStageProps {
   gameState: GameState;
+  /** Handoff 0029: authored map visual contract (null = fixture/load flow) */
+  mapVisual: MapRenderModel | null;
   selectedPieceId: string | null;
   selectedSpaceId: string | null;
   onSpaceClick: (spaceId: string) => void;
@@ -26,6 +31,7 @@ interface PhaserStageProps {
 
 export function PhaserStage({
   gameState,
+  mapVisual,
   selectedPieceId,
   selectedSpaceId,
   onSpaceClick,
@@ -86,8 +92,8 @@ export function PhaserStage({
       if (scene && scene.scene.isActive()) {
         scene.setCallbacks(callbacks);
         sceneRef.current = scene;
-        // Первый рендер из state
-        scene.updateFromState(gameState, selectedPieceId, selectedSpaceId);
+        // Первый рендер из state + mapVisual
+        scene.updateFromState(gameState, selectedPieceId, selectedSpaceId, mapVisual);
       }
     });
 
@@ -110,7 +116,7 @@ export function PhaserStage({
     }
   }, [onSpaceClick, onSpaceRightClick, onPieceDragRelease]);
 
-  // ---- Обновление рендера при изменении GameState или selection ----
+  // ---- Обновление рендера при изменении GameState, selection или mapVisual ----
 
   useEffect(() => {
     if (!gameRef.current) return;
@@ -118,9 +124,9 @@ export function PhaserStage({
       "TableSandboxScene"
     ) as TableSandboxScene;
     if (scene && scene.scene.isActive()) {
-      scene.updateFromState(gameState, selectedPieceId, selectedSpaceId);
+      scene.updateFromState(gameState, selectedPieceId, selectedSpaceId, mapVisual);
     }
-  }, [gameState, selectedPieceId, selectedSpaceId]);
+  }, [gameState, mapVisual, selectedPieceId, selectedSpaceId]);
 
   return (
     <div
