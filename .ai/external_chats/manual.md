@@ -258,3 +258,4 @@ V2 документирован отдельно в [`.ai/external_reviews/READM
 - `kilo-notebook` остаётся `/v1-only`.
 - V2 часто запускается после честной остановки Kilo в статусе `blocked-v2-recommended` и рекомендации `/v2 preview` как следующего шага, либо по явному вызову `/v2` пользователем как interrupt во время активного Kilo run (см. [`AGENTS.md`](../../AGENTS.md), раздел `Safety gates` / `YOLO Stop Gates`).
 - Cleanup после V2 — Codex-owned post-accept cleanup: Codex удаляет review ветки и temporary artifacts. Default cleanup policy: удалить. Human override: `kept_by_decision` или `cleanup_pending`.
+- `.ai/reports/`, `.ai/handoffs/` и `.ai/plans/sessions/` — local-only runtime paths. Их не надо давать внешнему чату как published GitHub-readable evidence для V2 review.

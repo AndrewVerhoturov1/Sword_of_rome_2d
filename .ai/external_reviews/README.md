@@ -218,6 +218,28 @@ draft
 - `.ai/external_reviews/ingest_summaries/` — Kilo understanding summaries
 - draft implementation plan
 
+### Local-only runtime evidence, не для published external links
+
+Следующие runtime paths не считаются published evidence для внешнего V2 review и не должны включаться в prompt как GitHub-readable source of truth:
+
+- `.ai/reports/`
+- `.ai/handoffs/`
+- `.ai/plans/sessions/`
+
+Причина:
+
+- эти пути являются локальными Kilo/Codex runtime artifacts;
+- часть из них игнорируется Git и не обязана существовать в GitHub;
+- ссылки на них во внешнем prompt могут дать 404 и ломают traceability.
+
+Для внешнего V2 review использовать только:
+
+- committed protocol docs;
+- `V2_navigation.md`;
+- commit-pinned raw file links;
+- compare links;
+- request/prompt/safety artifacts, если они реально опубликованы и доступны по ссылке.
+
 **Правило по умолчанию:** Raw V2 runtime artifacts не трекаются в `main`. Они живут в `review/v2/...` branch или local-only до explicit решения о публикации sanitized summary.
 
 ### Sanitized accepted summary
@@ -274,6 +296,17 @@ draft
 
 - **Финальное обновление `V2_navigation.md`** — статус, branch state, cleanup decision
 - **Cleanup decision** — `cleaned`, `cleanup_pending` или `kept_by_decision`
+
+### Legacy exception для первого реального pilot
+
+Первый реальный V2 pilot (`V2-20260526-140000`) был завершён до полного ужесточения ingest-artifact discipline. Поэтому для него допускается legacy-исключение: ответ был ingest-нут без отдельно сохранённого ingest summary artifact.
+
+Это не норма для будущих запусков.
+
+Для всех следующих V2 runs правило жёсткое:
+
+- direct paste разрешён;
+- но ingest summary artifact всё равно обязан существовать.
 
 ## Path/write fallback
 

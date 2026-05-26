@@ -2,11 +2,22 @@
 
 ## Статус
 
-`approved-for-docs-implementation`
+`implemented-historical-plan`
 
 ## Дата создания
 
 2026-05-26
+
+## Роль документа
+
+Это historical planning document.
+
+Current operational contract для V2 задают:
+
+- [`.ai/external_reviews/README.md`](../external_reviews/README.md)
+- [`.ai/external_reviews/V2_navigation.md`](../external_reviews/V2_navigation.md)
+
+Этот master plan хранит решения и историю внедрения, но не должен читаться как более свежий operational contract, если README и V2_navigation уже ушли дальше.
 
 ## Цель
 
