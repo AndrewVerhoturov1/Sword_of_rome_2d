@@ -136,7 +136,7 @@
 
 ## V2 External Senior Review — не новый Kilo mode
 
-`/v2` — это project-local manual protocol, описанный в [`.ai/external_reviews/README.md`](../external_reviews/README.md). V2 не является новым Kilo mode. V2 работает через существующие допустимые modes: `kilo-handoff-runner` для docs/protocol и `kilo-debugger` для stuck/debug cases. V2 ingest полностью ручной: raw external answer передаётся в ordinary Kilo run вручную, без использования `kilo-recorder`. V2 не добавляет новые значения в списки допустимых `Kilo mode` или `Task role`.
+`/v2` — это project-local manual protocol, описанный в [`.ai/external_reviews/README.md`](../external_reviews/README.md). V2 не является новым Kilo mode. V2 работает через существующие допустимые modes: `kilo-handoff-runner` для docs/protocol и `kilo-debugger` для stuck/debug cases. V2 ingest полностью ручной: raw external answer передаётся в ordinary Kilo run вручную, без использования `kilo-recorder`. Для V2 ingest допустимы только `kilo-handoff-runner` и `kilo-debugger`. `kilo-notebook` остаётся `/v1-only` и не используется в V2. V2 не добавляет новые значения в списки допустимых `Kilo mode` или `Task role`.
 
 ## Repo-wide policy inheritance
 
