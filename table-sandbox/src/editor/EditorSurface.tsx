@@ -11,6 +11,7 @@ import {
   uniqueId,
   validateMapDraft,
   worldToMapLocal,
+  mapLocalToWorld,
   takeSnapshot,
   restoreSnapshot,
   pushHistory,
@@ -90,15 +91,16 @@ type DragState =
       centerWorldY: number;
     }
   | {
+      /** 0026 correction: center-radial scale (V2 review) */
       type: "underlayScale";
       startWorldX: number;
       startWorldY: number;
       originScale: number;
-      originOffsetX: number;
-      originOffsetY: number;
-      originWidth: number;
-      originHeight: number;
-      corner: "nw" | "ne" | "sw" | "se";
+      /** world-space center of underlay at drag start */
+      centerWorldX: number;
+      centerWorldY: number;
+      /** distance from center to start pointer */
+      startDistance: number;
     };
 
 /** Вычислить угол от central point к (x,y) в градусах (borrowed from prototype) */
@@ -191,13 +193,7 @@ export default function EditorSurface({
     [draft.connections.length]
   );
 
-  const clampWorldPoint = useCallback((point: WorldPoint): WorldPoint => {
-    return {
-      x: Math.max(0, Math.min(mapW, point.x)),
-      y: Math.max(0, Math.min(mapH, point.y)),
-    };
-  }, [mapW, mapH]);
-
+  /** 0026 correction: raw workspace point, no early clamping (V2 review) */
   const getWorldPoint = useCallback(
     (clientX: number, clientY: number): WorldPoint => {
       const rect = canvasRef.current?.getBoundingClientRect();
@@ -205,13 +201,22 @@ export default function EditorSurface({
         return { x: 0, y: 0 };
       }
 
-      return clampWorldPoint({
+      return {
         x: (clientX - rect.left - view.panX) / view.zoom,
         y: (clientY - rect.top - view.panY) / view.zoom,
-      });
+      };
     },
-    [clampWorldPoint, view.panX, view.panY, view.zoom]
+    [view.panX, view.panY, view.zoom]
   );
+
+  /** 0026 correction: clamp map-local point to underlay image bounds (V2 review) */
+  const clampMapLocal = useCallback((local: WorldPoint): WorldPoint => {
+    if (!underlay) return local;
+    return {
+      x: Math.max(0, Math.min(underlay.naturalWidth, local.x)),
+      y: Math.max(0, Math.min(underlay.naturalHeight, local.y)),
+    };
+  }, [underlay]);
 
   const setToolWithMessage = useCallback((nextTool: Tool) => {
     setTool(nextTool);
@@ -371,12 +376,13 @@ export default function EditorSurface({
 
   // ---- Space/connection operations (0018 baseline, adapted 0020) ----
 
-  /** 0020: addSpace конвертирует world → map-local, применяет snap */
+  /** 0020: addSpace конвертирует world → map-local, применяет snap, clamp 0026 */
   const addSpace = useCallback(
     (worldX: number, worldY: number) => {
       const local = worldToMapLocal(worldX, worldY, underlay);
-      const snappedX = snapValue(local.x, editorSettings.gridSize, editorSettings.snapToGrid);
-      const snappedY = snapValue(local.y, editorSettings.gridSize, editorSettings.snapToGrid);
+      const clamped = clampMapLocal(local);
+      const snappedX = snapValue(clamped.x, editorSettings.gridSize, editorSettings.snapToGrid);
+      const snappedY = snapValue(clamped.y, editorSettings.gridSize, editorSettings.snapToGrid);
 
       const ordinal = nextSpaceOrdinal();
       const spaceId = uniqueId(
@@ -397,7 +403,7 @@ export default function EditorSurface({
       setSelection({ type: "space", id: spaceId });
       setMessage("Точка добавлена.");
     },
-    [draft, nextSpaceOrdinal, onDraftChange, underlay, editorSettings]
+    [draft, nextSpaceOrdinal, onDraftChange, underlay, editorSettings, clampMapLocal]
   );
 
   /** 0020: moveSpace работает в map-local координатах, применяет snap */
@@ -584,18 +590,23 @@ export default function EditorSurface({
     }, []
   );
 
+  /** 0026 correction: center-radial scale — corner param kept for UI but unused (V2 review) */
   const handleScaleHandleMouseDown = useCallback(
-    (event: React.MouseEvent<Element>, corner: "nw" | "ne" | "sw" | "se") => {
+    (event: React.MouseEvent<Element>, _corner: "nw" | "ne" | "sw" | "se") => {
       event.stopPropagation(); event.preventDefault();
       if (!underlay || underlay.locked) return;
       const wp = getWorldPoint(event.clientX, event.clientY);
+      const originUnderlay = { ...underlay };
+      const cx = underlay.naturalWidth / 2;
+      const cy = underlay.naturalHeight / 2;
+      const center = mapLocalToWorld(cx, cy, originUnderlay);
+      const startDist = Math.sqrt((wp.x - center.x) ** 2 + (wp.y - center.y) ** 2);
       dragRef.current = {
         type: "underlayScale",
         startWorldX: wp.x, startWorldY: wp.y,
         originScale: underlay.scale,
-        originOffsetX: underlay.offsetX, originOffsetY: underlay.offsetY,
-        originWidth: underlay.naturalWidth, originHeight: underlay.naturalHeight,
-        corner,
+        centerWorldX: center.x, centerWorldY: center.y,
+        startDistance: Math.max(1, startDist),
       };
     }, [getWorldPoint, underlay]
   );
@@ -719,36 +730,19 @@ export default function EditorSurface({
         });
         return;
       }
+      /** 0026 correction: center-radial scale from V2 review — rotation-invariant */
       if (drag.type === "underlayScale" && underlay) {
         const wp = getWorldPoint(event.clientX, event.clientY);
-        const dx = wp.x - drag.startWorldX;
-        const dy = wp.y - drag.startWorldY;
-        // Prototype-style: adjust width/height directly, preserve aspect ratio
-        let nextW = drag.originWidth * drag.originScale;
-        let nextH = drag.originHeight * drag.originScale;
-        if (drag.corner.includes("e")) nextW = nextW + dx;
-        if (drag.corner.includes("w")) nextW = nextW - dx;
-        if (drag.corner.includes("s")) nextH = nextH + dy;
-        if (drag.corner.includes("n")) nextH = nextH - dy;
-        // Preserve aspect ratio (as prototype keepLayerRatio)
-        const ar = drag.originWidth / Math.max(1, drag.originHeight);
-        if (Math.abs(dx) > Math.abs(dy)) {
-          nextH = nextW / ar;
-        } else {
-          nextW = nextH * ar;
-        }
-        nextW = Math.max(20, nextW);
-        nextH = Math.max(20, nextH);
-        const nextScale = Math.round((nextW / drag.originWidth) * 100) / 100;
-        const nextX = drag.corner.includes("w")
-          ? drag.originOffsetX + (drag.originWidth * drag.originScale - nextW)
-          : drag.originOffsetX;
-        const nextY = drag.corner.includes("n")
-          ? drag.originOffsetY + (drag.originHeight * drag.originScale - nextH)
-          : drag.originOffsetY;
+        const currentDist = Math.sqrt(
+          (wp.x - drag.centerWorldX) ** 2 + (wp.y - drag.centerWorldY) ** 2
+        );
+        const nextScale = Math.max(
+          0.1,
+          Math.round((drag.originScale * currentDist) / drag.startDistance * 100) / 100
+        );
         onDraftChange({
           ...draft,
-          underlay: { ...underlay, scale: Math.max(0.1, nextScale), offsetX: nextX, offsetY: nextY },
+          underlay: { ...underlay, scale: nextScale },
         });
         return;
       }

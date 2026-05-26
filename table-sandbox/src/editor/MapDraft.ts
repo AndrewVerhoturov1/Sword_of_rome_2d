@@ -210,6 +210,36 @@ export function mapLocalToWorld(
   };
 }
 
+/**
+ * 0026 correction: compute axis-aligned bounding box of transformed underlay
+ * in world/workspace coordinates (V2 review — split viewport/map-plane).
+ */
+export interface WorkspaceBounds {
+  minX: number;
+  minY: number;
+  maxX: number;
+  maxY: number;
+}
+
+export function getTransformedUnderlayBounds(underlay: UnderlayState): WorkspaceBounds {
+  const w = underlay.naturalWidth;
+  const h = underlay.naturalHeight;
+  const corners = [
+    mapLocalToWorld(0, 0, underlay),
+    mapLocalToWorld(w, 0, underlay),
+    mapLocalToWorld(w, h, underlay),
+    mapLocalToWorld(0, h, underlay),
+  ];
+  const xs = corners.map((c) => c.x);
+  const ys = corners.map((c) => c.y);
+  return {
+    minX: Math.min(...xs),
+    minY: Math.min(...ys),
+    maxX: Math.max(...xs),
+    maxY: Math.max(...ys),
+  };
+}
+
 // ---- Default underlay factory (0020) ----
 
 export const DEFAULT_UNDERLAY: UnderlayState = {
