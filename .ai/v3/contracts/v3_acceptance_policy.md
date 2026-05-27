@@ -122,7 +122,7 @@ human_review:
 После `accept`:
 
 - принятые файлы (contracts, journal entry, navigation) коммитятся как workflow checkpoint;
-- commit message: `V3: accept Phase 2 — Contract Pack`.
+- commit message использует стандартный формат: `Workflow: accept Kilo task NNNN` (см. [`AGENTS.md`](../../../AGENTS.md), раздел Git truth).
 
 ## 6. Что считается reject / revision / accept
 
