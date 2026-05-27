@@ -127,6 +127,7 @@
 - [`plans/master/first_milestone_runtime_skeleton.md`](plans/master/first_milestone_runtime_skeleton.md) — next-step working skeleton для Table Sandbox 0.1.
 - [`plans/master/module_authoring_workflow.md`](plans/master/module_authoring_workflow.md) — authoring workflow: workspace shell + editor surfaces + play sandbox preview.
 - [`plans/master/v3_artifact_producing_workflow_contract.md`](plans/master/v3_artifact_producing_workflow_contract.md) — draft V3 artifact-producing workflow contract: внешний чат создаёт artifact package, Kilo Notebook V3 импортирует его безопасно, Codex проверяет, человек принимает.
+- [`plans/master/v3_workflow_implementation_plan.md`](plans/master/v3_workflow_implementation_plan.md) — repo-grounded rollout plan для V3: от contract alignment и нового mode `kilo-notebook-v3` до `.ai/v3/`, pilot, V1 critique, V2 hardening и расширения scope.
 
 ### Навигация
 
@@ -151,6 +152,7 @@
 ## V3 Artifact Workflow
 
 - [`plans/master/v3_artifact_producing_workflow_contract.md`](plans/master/v3_artifact_producing_workflow_contract.md) — проектный контракт V3: внешний чат генерирует artifact package, Kilo Notebook V3 импортирует только разрешённые файлы, Codex делает review, человек даёт финальное принятие.
+- [`plans/master/v3_workflow_implementation_plan.md`](plans/master/v3_workflow_implementation_plan.md) — поэтапный план внедрения V3 как отдельного workflow subsystem и отдельного режима `Kilo Notebook V3`.
 
 ## Public vs Local-only
 
