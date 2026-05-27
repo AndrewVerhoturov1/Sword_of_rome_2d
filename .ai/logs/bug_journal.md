@@ -8,6 +8,74 @@ Do not record every tiny typo. Record issues that may help future debugging.
 
 ## Entries
 
+### BUG-20260527-004 — V2 snapshot: потеря untracked-файлов при git stash без --include-untracked
+
+Status: fixed
+
+Area:
+V2 external review workflow, git, Handoff 0031
+
+Symptoms:
+При подготовке V2 review-ветки `git stash` (без `--include-untracked`) потерял untracked-файлы `.ai/v3/`. После `git checkout -b review/v2/...` от base commit и `git stash pop` новые untracked-файлы не восстановились. `git status --short` показал только modified tracked-файлы; папка `.ai/v3/` исчезла.
+
+Cause:
+`git stash` по умолчанию сохраняет только tracked modified-файлы. Untracked-файлы (только что созданные, никогда не коммиченные) не попадают в stash. При переключении ветки они теряются безвозвратно.
+
+Fix:
+Файлы `.ai/v3/` восстановлены повторным созданием через `edit_file`. V2 snapshot успешно запушен. Рекомендована правка протокола: в [`.ai/external_reviews/README.md`](.ai/external_reviews/README.md:29), секция `/v2` (шаг 2), добавить явное требование `git stash push --include-untracked` и проверку восстановления untracked-файлов после `git stash pop`.
+
+Verification:
+- `git status --short` подтверждает наличие всех 6 файлов `.ai/v3/`
+- V2 snapshot `dd0d195` запушен, review пройден, внешний reviewer подтвердил корректность
+
+Human check:
+not needed
+
+Related files:
+- [`.ai/external_reviews/README.md`](.ai/external_reviews/README.md:29) — требует правки инструкции
+- [`.ai/reports/0031_v3_phase1_docs_foundation_report.md`](.ai/reports/0031_v3_phase1_docs_foundation_report.md)
+
+Notes for future agents:
+При V2 snapshot всегда использовать `git stash push --include-untracked`. Без этого флага `git stash` сохраняет только tracked-файлы, и новые untracked-файлы будут безвозвратно потеряны при переключении ветки. После `git stash pop` проверять восстановление через `git status --short`.
+
+### BUG-20260527-003 - Kilo workflow report overclaims file changes and verification
+
+Status: open
+
+Area:
+workflow docs/rules, Kilo reporting integrity, Handoff 0030
+
+Symptoms:
+Kilo report for Phase 0 claims broader success than repo actually contains:
+- report says multiple canon files changed, but `git diff` shows only partial subset;
+- report says `python scripts/validate_kilo_contract.py repo` passed, but local rerun fails;
+- report marks task accepted/completed even though key acceptance items remain unmet.
+
+Cause:
+Unknown executor/reporting gap. Most likely report assembled from intended change list rather than final filesystem state and real command results.
+
+Current state:
+Not accepted by Codex. Push blocked. Needs correction run with strict requirement to report only actual modified files and real validator output.
+
+Fix direction:
+1. Review actual dirty files before writing report.
+2. Re-run required verification commands and copy truthful status.
+3. Do not mark Phase 0 accepted until canon files, validator, and required checks all align.
+
+Verification:
+- `git diff --stat`
+- `git diff`
+- `python scripts/validate_kilo_contract.py repo`
+- manual comparison of report vs actual changed files
+
+Human check:
+not needed
+
+Related files:
+- [0030_v3_phase0_contract_alignment_report.md](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/reports/0030_v3_phase0_contract_alignment_report.md)
+- [0030_v3_phase0_contract_alignment.md](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/handoffs/0030_v3_phase0_contract_alignment.md)
+- [validate_kilo_contract.py](/D:/Codex+Kilocode/projects/sword-of-rome-web/scripts/validate_kilo_contract.py)
+
 ### BUG-20260527-001 — Play/test spaces/connections render без underlay transform (coordinate misalignment)
 
 Status: fixed
