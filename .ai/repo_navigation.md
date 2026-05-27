@@ -151,15 +151,15 @@
 
 ## V3 Artifact Workflow
 
-**Текущий статус (Phase 2):** режим `kilo-notebook-v3` / `Kilo Notebook V3` canonically разрешён в Phase 0. В Phase 1 создан discoverable foundation layer `.ai/v3/`. В Phase 2 создан полный Contract Pack в `.ai/v3/contracts/`. `/v3` shortcut не активирован. Full operational workflow будет развёрнут в следующих фазах (Phase 3: Prompt and Template Layer).
+**Текущий статус (Phase 3):** режим `kilo-notebook-v3` / `Kilo Notebook V3` canonically разрешён в Phase 0. В Phase 1 создан discoverable foundation layer `.ai/v3/`. В Phase 2 создан полный Contract Pack (9 контрактов) в `.ai/v3/contracts/`. В Phase 3 создан Prompt and Template Layer: 4 промпта в `.ai/v3/prompts/`, 5 шаблонов в `.ai/v3/templates/`. `/v3` shortcut не активирован. Full operational workflow — в следующих фазах (Phase 4: Runtime Mode Integration).
 
 ### V3 Foundation Layer
 
 - [`v3/README.md`](v3/README.md) — главный вход в V3: что это, текущий статус, целевая схема процесса.
-- [`v3/V3_navigation.md`](v3/V3_navigation.md) — навигация по V3-слою: структура, связанные документы, ожидаемые future additions.
-- [`v3/contracts/README.md`](v3/contracts/README.md) — формальные контракты V3 (Phase 2: request, artifact package, manifest, journal, Codex review, revision, storage, scope, acceptance).
-- [`v3/templates/README.md`](v3/templates/README.md) — будущие шаблоны V3 (placeholder, наполнение — Phase 3).
-- [`v3/prompts/README.md`](v3/prompts/README.md) — будущие промпты V3 (placeholder, наполнение — Phase 3).
+- [`v3/V3_navigation.md`](v3/V3_navigation.md) — навигация по V3-слою: структура, связанные документы.
+- [`v3/contracts/README.md`](v3/contracts/README.md) — 9 формальных контрактов V3 (Phase 2: request, artifact package, manifest, journal, Codex review, revision, storage, scope, acceptance).
+- [`v3/prompts/README.md`](v3/prompts/README.md) — 4 промпта V3 (Phase 3): create V3 request, kilo-notebook-v3 mode, Codex review, revision request.
+- [`v3/templates/README.md`](v3/templates/README.md) — 5 шаблонов V3 (Phase 3): V3 request, manifest.yaml, journal, Codex review, revision request.
 - [`v3/docs/README.md`](v3/docs/README.md) — будущая документация V3 (placeholder, наполнение — Phase 3+).
 
 ### V3 Master Plans

@@ -1,0 +1,130 @@
+# v3_journal_template.yaml — Шаблон Journal Entry для V3 Import
+#
+# Версия: 0.1 (Phase 3)
+# Назначение: валидный YAML-скелет journal entry.
+#   Заполняется Kilo Notebook V3 после импорта artifact package.
+#   На Phase 3 — вручную. На Phase 7 — через скрипт write_v3_journal.py.
+#
+# Используй совместно с: v3_journal_contract.md
+
+# === Идентификация ===
+
+v3_id: "<V3-YYYYMMDD-HHMMSS-<slug>>"
+# Совпадает с v3_id из manifest импортированного пакета.
+
+timestamp: "<ISO 8601 UTC>"
+# Пример: 2026-05-27T15:30:00Z
+
+# === Статус импорта ===
+
+import_status: "<imported | partial | failed | blocked>"
+# imported  — все файлы успешно импортированы.
+# partial   — часть импортирована, часть пропущена.
+# failed    — импорт не удался (критическая ошибка).
+# blocked   — импорт не начинался (preflight-ошибка).
+
+# === Исходный пакет ===
+
+source_package:
+  package_id: "<v3_id из manifest>"
+  manifest_path: "<путь к manifest.yaml в staging>"
+  # Пример: .ai/v3/staging/V3-20260527-153000-v3-contracts/manifest.yaml
+  zip_archive: "<путь к сохранённому ZIP>"
+  # Пример: .ai/v3/staging/V3-20260527-153000-v3-contracts.zip
+  checksums_verified: true
+  # true — все хэши совпали. false — были расхождения (см. skipped_files).
+
+# === Импортированные файлы ===
+
+imported_files:
+  # Файлы, которые были успешно созданы (или обновлены — в будущих фазах).
+  - path: "<project-relative-path>"
+    action: "create"
+    sha256_match: true
+    notes: ""
+
+  # - path: "<project-relative-path-2>"
+  #   action: "create"
+  #   sha256_match: true
+  #   notes: ""
+
+# === Пропущенные файлы ===
+
+skipped_files:
+  # Файлы, которые были пропущены при импорте.
+  # Если пропусков нет — оставь пустой список: []
+
+  # - path: "<project-relative-path>"
+  #   reason: "<outside_allowed_paths | in_forbidden_paths | checksum_mismatch | file_already_exists | not_in_manifest | unsupported_action | binary_file>"
+  #   notes: "<пояснение>"
+
+  # Возможные причины пропуска:
+  #   outside_allowed_paths  — путь не входит в allowed_paths manifest.
+  #   in_forbidden_paths     — путь входит в forbidden_paths manifest.
+  #   checksum_mismatch      — SHA-256 не совпадает с checksums.sha256.
+  #   file_already_exists    — файл уже существует, overwrite запрещён (MVP).
+  #   not_in_manifest        — файл есть в files/ ZIP, но отсутствует в manifest.
+  #   unsupported_action     — действие не поддерживается (например, delete).
+  #   binary_file            — бинарный файл без явного разрешения.
+
+# === Заметки о верификации ===
+
+verification_notes:
+  manifest_valid: true
+  # false если manifest отсутствует или невалиден.
+  all_files_in_manifest: true
+  # false если в files/ есть файлы не из manifest.
+  no_extra_files: true
+  # false если в files/ есть лишние файлы.
+  checksums_all_match: true
+  # false если хотя бы один хэш не совпал.
+  allowed_paths_valid: true
+  # false если target path вне allowed_paths.
+  forbidden_paths_respected: true
+  # false если target path в forbidden_paths.
+
+# === Статус ручной проверки ===
+
+human_review_status: "pending"
+# Начальное значение всегда pending.
+# Возможные значения: pending | approved | rejected | revision_requested.
+
+# === Codex review (добавляется позже, после review) ===
+
+# codex_review:
+#   reviewer: "codex"
+#   verdict: "<accept | accept_with_notes | revision_needed | reject>"
+#   timestamp: "<ISO 8601 UTC>"
+#   summary: "<краткое резюме>"
+#   checks:
+#     journal_valid: true
+#     files_exist: true
+#     files_match_request: true
+#     scope_respected: true
+#     allowed_paths_respected: true
+#     forbidden_paths_respected: true
+#     acceptance_criteria_met: true
+#   notes: "<подробные заметки>"
+#   human_review_required: true
+#   human_review_items:
+#     - "<что проверить человеку>"
+
+# === Human review (добавляется позже, после human verdict) ===
+
+# human_review:
+#   reviewer: "human"
+#   verdict: "<accept | revision | reject>"
+#   timestamp: "<ISO 8601 UTC>"
+#   notes: "<комментарий человека>"
+#   codex_recommendation: "<accept | revision_needed | reject>"
+
+# === История revision (добавляется при повторных попытках) ===
+
+# revision_history:
+#   - attempt: 1
+#     package_id: "<V3-YYYYMMDD-HHMMSS-<slug>-attempt-1>"
+#     result: "<revision_needed | reject>"
+#     reason: "<причина>"
+#   - attempt: 2
+#     package_id: "<V3-YYYYMMDD-HHMMSS-<slug>-attempt-2>"
+#     result: "<pending | accept | reject>"
