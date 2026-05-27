@@ -34,7 +34,7 @@ Kilo Code — исполнитель маленьких изолированны
 - `kilo-notebook` = `/v1-only` (prompt-only внешний анализ, staged local persistence).
 - `kilo-recorder` = `/r1-only` (response capture для External Web Chat).
 - `/v2` = не новый Kilo mode; работает через `kilo-handoff-runner` или `kilo-debugger`.
-- `kilo-notebook-v3` = будущий отдельный V3 import/check/write/journal mode для artifact-producing workflow. В Phase 0 только узаконен; `.ai/v3/` subsystem и pilot ещё не созданы.
+- `kilo-notebook-v3` = отдельный V3 import/check/write/journal mode для artifact-producing workflow. Режим canonically разрешён (Phase 0). `.ai/v3/` subsystem создана (Phases 1-3), manual setup guide доступен (Phase 4). `/v3` shortcut не активирован, `scripts/v3/*` не созданы, pilot ещё не проведён.
 
 ### Режим kilo-notebook-v3
 
@@ -47,11 +47,14 @@ Kilo Code — исполнитель маленьких изолированны
 - Отдельный от `kilo-recorder` (который остаётся `/r1-only`).
 - Отдельный от V2.
 
-**Текущий статус (Phase 0):**
-- Режим canonically разрешён в mode lists, validator и rules.
-- `.ai/v3/` subsystem ещё не создана.
-- `/v3` shortcut ещё не активирован.
-- Режим не является operational workflow — для реального V3 import нужны следующие фазы rollout.
+**Текущий статус (Phase 4):**
+- Режим canonically разрешён в mode lists, validator и rules (Phase 0).
+- `.ai/v3/` foundation, контракты, промпты, шаблоны созданы (Phases 1-3).
+- Manual setup guide доступен: [`.ai/v3/docs/manual_kilo_notebook_v3_setup.md`](../v3/docs/manual_kilo_notebook_v3_setup.md) (Phase 4).
+- `/v3` shortcut не активирован.
+- `scripts/v3/*` не созданы (Phase 7).
+- Pilot ещё не проведён (Phase 5).
+- Режим готов к ручному запуску, но scripted support — в следующих фазах.
 
 **Примечание по UI:**
 Фактическое добавление режима `Kilo Notebook V3` в интерфейс выполняется человеком вручную через интерфейс Kilo. Repo-level contract не заменяет ручную настройку режима в UI.

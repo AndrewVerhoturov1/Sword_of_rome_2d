@@ -149,13 +149,15 @@
 - Отдельный от `kilo-recorder` (который остаётся `/r1-only`).
 - Отдельный от V2.
 
-### Текущий статус (Phase 0)
+### Текущий статус (Phase 4)
 
-- Режим canonically разрешён в mode lists, validator и rules.
-- `.ai/v3/` subsystem ещё не создана.
-- `/v3` shortcut ещё не активирован.
-- Режим не является operational workflow.
-- Полный operational contract будет определён в следующих фазах rollout.
+- Режим canonically разрешён в mode lists, validator и rules (Phase 0).
+- `.ai/v3/` foundation, контракты, промпты, шаблоны созданы (Phases 1-3).
+- Manual setup guide доступен: [`.ai/v3/docs/manual_kilo_notebook_v3_setup.md`](../v3/docs/manual_kilo_notebook_v3_setup.md) (Phase 4).
+- `/v3` shortcut не активирован.
+- `scripts/v3/*` не созданы (Phase 7).
+- Pilot ещё не проведён (Phase 5).
+- Режим готов к ручному запуску, scripted support — в следующих фазах.
 
 ### Разрешённые операции (после активации)
 
@@ -180,7 +182,7 @@
 - `kilo-notebook` = `/v1-only`.
 - `kilo-recorder` = `/r1-only`.
 - `/v2` = не новый Kilo mode.
-- `kilo-notebook-v3` = будущий отдельный V3 import/check/write/journal mode. В Phase 0 только узаконен.
+- `kilo-notebook-v3` = отдельный V3 import/check/write/journal mode. Режим canonically разрешён (Phase 0). `.ai/v3/` subsystem создана (Phases 1-3), manual setup guide доступен (Phase 4). `/v3` shortcut не активирован, `scripts/v3/*` не созданы, pilot ещё не проведён.
 
 ## V2 External Senior Review — не новый Kilo mode
 

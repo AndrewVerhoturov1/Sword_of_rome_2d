@@ -37,8 +37,10 @@
 - `Kilo Verifier`
 - `Kilo Recorder`
 - `Kilo Notebook`
+- `Kilo Notebook V3`
 - Проверьте, что `Kilo mode` и `Task role` не смешиваются.
-- Проверьте, что `kilo-recorder` и `kilo-notebook` настроены как отдельные mode, а не как role.
+- Проверьте, что `kilo-recorder`, `kilo-notebook` и `kilo-notebook-v3` настроены как отдельные mode, а не как role.
+- `Kilo Notebook V3` требует ручной настройки в UI — см. `.ai/v3/docs/manual_kilo_notebook_v3_setup.md` в исходном проекте.
 
 ## 5. Настроить published external route
 

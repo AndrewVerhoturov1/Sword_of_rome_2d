@@ -1,17 +1,22 @@
 # V3 Documentation
 
-Эта папка будет содержать документацию V3 artifact-producing workflow.
+Эта папка содержит документацию V3 artifact-producing workflow.
 
 ## Текущий статус
 
-Placeholder. Документация ещё не создана — это задача Phase 3+ rollout.
+**Phase 4 (2026-05-27):** создан setup guide [`manual_kilo_notebook_v3_setup.md`](manual_kilo_notebook_v3_setup.md). Остальная документация — в следующих фазах.
 
-## Ожидаемое содержимое (Phase 3+)
+## Содержимое
 
-- **Setup guide** — как человеку вручную настроить `Kilo Notebook V3` в интерфейсе Kilo.
+| Файл | Назначение | Статус |
+|------|------------|--------|
+| [`manual_kilo_notebook_v3_setup.md`](manual_kilo_notebook_v3_setup.md) | Ручная настройка режима `Kilo Notebook V3` в интерфейсе Kilo | ✅ Phase 4 |
+
+## Ожидаемое содержимое (следующие фазы)
+
 - **Safety rules** — правила безопасности: какие файлы можно перезаписывать, staging vs direct write.
 - **Storage policy** — где хранить raw ZIP, staging-файлы, journal; что tracked, что local-only.
-- **Pilot notes** — заметки после первого docs-only pilot.
+- **Pilot notes** — заметки после первого docs-only pilot (Phase 5+).
 
 ## Сейчас доступно
 

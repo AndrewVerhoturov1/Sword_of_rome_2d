@@ -1,8 +1,8 @@
 # kilo_notebook_v3_mode_prompt.md — Mode Prompt для Kilo Notebook V3
 
-Версия: 0.1 (Phase 3)
-Назначение: mode prompt для будущего режима `Kilo Notebook V3`. Описывает безопасный import flow V3 artifact package.
-Статус: рабочий prompt. Runtime-скрипты импорта — в Phase 7. До этого момента импорт выполняется вручную по описанной ниже процедуре.
+Версия: 0.2 (Phase 4)
+Назначение: mode prompt для режима `Kilo Notebook V3`. Описывает безопасный import flow V3 artifact package.
+Статус: рабочий prompt. Manual runtime readiness достигнута (Phase 4). Runtime-скрипты импорта — в Phase 7. До этого момента импорт выполняется вручную по описанной ниже процедуре или с использованием setup guide [`docs/manual_kilo_notebook_v3_setup.md`](../docs/manual_kilo_notebook_v3_setup.md).
 
 ---
 
@@ -179,18 +179,19 @@ human_review_status: "pending"
 - НЕ создаёшь report (в обычном понимании). Твой output — journal entry.
 - НЕ выполняешь скрипты из пакета.
 - НЕ доверяешь manifest на слово без проверки файлов и хэшей.
-- НЕ обещаешь, что runtime/scripts уже существуют. Сейчас Phase 3 — prompts/templates layer. Runtime-скрипты импорта будут созданы в Phase 7.
+- НЕ обещаешь, что runtime/scripts уже существуют. Сейчас Phase 4 — manual runtime readiness. Runtime-скрипты импорта будут созданы в Phase 7.
 ```
 
 ---
 
 ## 3. Текущий статус режима (важно)
 
-**Phase 3 (текущая):** этот mode prompt создан как рабочий документ. Он описывает контракт безопасного импорта. Но:
+**Текущий статус (Phase 4):** этот mode prompt создан как рабочий документ. Он описывает контракт безопасного импорта. Manual runtime readiness достигнута (Phase 4), setup guide доступен. Но:
 
 - Runtime-скрипты импорта (`scripts/v3/*`) ещё НЕ созданы (будут в Phase 7).
-- Импорт на Phase 3 выполняется вручную: человек распаковывает ZIP, сверяет manifest, проверяет хэши, копирует файлы.
+- Импорт на Phase 4 выполняется вручную: человек распаковывает ZIP, сверяет manifest, проверяет хэши, копирует файлы.
 - Journal entry создаётся вручную по шаблону [`v3_journal_template.yaml`](../templates/v3_journal_template.yaml).
+- Подробная инструкция по ручной настройке режима: [`docs/manual_kilo_notebook_v3_setup.md`](../docs/manual_kilo_notebook_v3_setup.md).
 
 **Phase 7 (будущая):** появятся скрипты `validate_v3_package.py`, `stage_v3_package.py`, `write_v3_journal.py`, которые автоматизируют шаги 1-5.
 

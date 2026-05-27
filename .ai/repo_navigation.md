@@ -151,7 +151,7 @@
 
 ## V3 Artifact Workflow
 
-**Текущий статус (Phase 3):** режим `kilo-notebook-v3` / `Kilo Notebook V3` canonically разрешён в Phase 0. В Phase 1 создан discoverable foundation layer `.ai/v3/`. В Phase 2 создан полный Contract Pack (9 контрактов) в `.ai/v3/contracts/`. В Phase 3 создан Prompt and Template Layer: 4 промпта в `.ai/v3/prompts/`, 5 шаблонов в `.ai/v3/templates/`. `/v3` shortcut не активирован. Full operational workflow — в следующих фазах (Phase 4: Runtime Mode Integration).
+**Текущий статус (Phase 4):** режим `kilo-notebook-v3` / `Kilo Notebook V3` canonically разрешён в Phase 0. В Phase 1 создан discoverable foundation layer `.ai/v3/`. В Phase 2 создан полный Contract Pack (9 контрактов) в `.ai/v3/contracts/`. В Phase 3 создан Prompt and Template Layer: 4 промпта в `.ai/v3/prompts/`, 5 шаблонов в `.ai/v3/templates/`. В Phase 4 выполнена manual runtime integration: создан [setup guide](v3/docs/manual_kilo_notebook_v3_setup.md), синхронизированы bootstrap docs и global rules. `/v3` shortcut не активирован. Full operational workflow — в следующих фазах (Phase 5: Safe Pilot).
 
 ### V3 Foundation Layer
 
@@ -160,7 +160,8 @@
 - [`v3/contracts/README.md`](v3/contracts/README.md) — 9 формальных контрактов V3 (Phase 2: request, artifact package, manifest, journal, Codex review, revision, storage, scope, acceptance).
 - [`v3/prompts/README.md`](v3/prompts/README.md) — 4 промпта V3 (Phase 3): create V3 request, kilo-notebook-v3 mode, Codex review, revision request.
 - [`v3/templates/README.md`](v3/templates/README.md) — 5 шаблонов V3 (Phase 3): V3 request, manifest.yaml, journal, Codex review, revision request.
-- [`v3/docs/README.md`](v3/docs/README.md) — будущая документация V3 (placeholder, наполнение — Phase 3+).
+- [`v3/docs/README.md`](v3/docs/README.md) — документация V3: setup guide создан (Phase 4), остальное — в следующих фазах.
+- [`v3/docs/manual_kilo_notebook_v3_setup.md`](v3/docs/manual_kilo_notebook_v3_setup.md) — ручная настройка режима `Kilo Notebook V3` в интерфейсе Kilo (Phase 4).
 
 ### V3 Master Plans
 
