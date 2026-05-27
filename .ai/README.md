@@ -233,6 +233,7 @@ Kilo может:
 - `kilo-verifier` — независимо проверяет результаты после Builder/Debugger.
 - `kilo-recorder` — записывает ответ External Web Chat только в response-файл. Strict external-chat-only scope. Является execution sink, а не reasoning/review step. Для запуска обязателен `recorder package`. Recorder НЕ делает `git status`, НЕ создаёт report, НЕ читает дополнительные локальные файлы для восстановления контекста, если `raw_response` уже есть в package, и НЕ пишет placeholder вместо verbatim `raw_response`.
 - `kilo-notebook` — сохраняет `/v1` ответ как local staged notebook entry и обновляет `V1_navigation.md`. Не публикует ответ, не обновляет `repo_navigation.md`, не присваивает accepted/published статусы. User-facing вход — сырой ответ внешнего чата; внутренний `notebook package` создаётся через `python scripts/stage_v1_notebook.py --input <source-file>`, где source-file — это raw-response source artifact из `.ai/external_chats/notebook_sources/`. Shell text-dump (`echo`, heredoc, длинный CLI literal) запрещён как стандартный transport.
+- `kilo-notebook-v3` — будущий режим для V3 artifact-producing workflow: безопасный импорт артефактов из внешнего V3 artifact package, проверка manifest, путей и хэшей, запись только разрешённых файлов, journaling. В Phase 0 только узаконен; `.ai/v3/` subsystem и pilot ещё не созданы. Отделён от `kilo-notebook` (`/v1-only`), `kilo-recorder` (`/r1-only`) и V2.
 
 ## Central Workflow Core
 
@@ -306,8 +307,8 @@ External Web Chat — это отдельный `Agent kind`, а не Kilo mode.
 
 - `Kilo mode` — это только режим запуска Kilo.
 - `Task role` — это смысловая роль внутри handoff.
-- В handoff допустимы только mode-значения `kilo-handoff-runner`, `kilo-debugger`, `kilo-verifier`, `kilo-recorder`, `kilo-notebook`.
-- В launch package допустимы только UI-имена `Kilo Handoff Runner`, `Kilo Debugger`, `Kilo Verifier`, `Kilo Recorder`, `Kilo Notebook`.
+- В handoff допустимы только mode-значения `kilo-handoff-runner`, `kilo-debugger`, `kilo-verifier`, `kilo-recorder`, `kilo-notebook`, `kilo-notebook-v3`.
+- В launch package допустимы только UI-имена `Kilo Handoff Runner`, `Kilo Debugger`, `Kilo Verifier`, `Kilo Recorder`, `Kilo Notebook`, `Kilo Notebook V3`.
 - `Builder Agent`, `Docs Agent`, `Tester Agent`, `Refactor Agent`, `Debugger Agent`, `Recorder Agent`, `Notebook Agent` нельзя писать в поле `Kilo mode`.
 - `External Web Chat` — это отдельный `Agent kind`, а не Kilo mode.
 - Фактическое создание режимов `Kilo Recorder` и `Kilo Notebook` в интерфейсе Kilo человек делает вручную. Repo-level canon фиксирует контракт, но не заменяет ручную настройку UI.

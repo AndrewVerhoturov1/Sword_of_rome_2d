@@ -23,11 +23,38 @@ Kilo Code — исполнитель маленьких изолированны
 - `Task role` — это смысловая роль handoff.
 - `Agent kind` — тип агента: `Kilo Code`, `External Web Chat` и др.
 - `External Web Chat` — отдельный `Agent kind`, а не `Kilo mode`. Это внешний чат без доступа к файловой системе репозитория.
-- В handoff допустимы только `kilo-handoff-runner`, `kilo-debugger`, `kilo-verifier`, `kilo-recorder`, `kilo-notebook`.
-- В launch package допустимы только `Kilo Handoff Runner`, `Kilo Debugger`, `Kilo Verifier`, `Kilo Recorder`, `Kilo Notebook`.
+- В handoff допустимы только `kilo-handoff-runner`, `kilo-debugger`, `kilo-verifier`, `kilo-recorder`, `kilo-notebook`, `kilo-notebook-v3`.
+- В launch package допустимы только `Kilo Handoff Runner`, `Kilo Debugger`, `Kilo Verifier`, `Kilo Recorder`, `Kilo Notebook`, `Kilo Notebook V3`.
 - Значения `kilo-builder`, `kilo-docs`, `kilo-tester`, `kilo-refactor` запрещены.
 - `Recorder Agent` — это `Task role`, а не `Kilo mode`. Рекомендуемая связка для recorder-задач: `Kilo mode = kilo-recorder`, `Task role = Recorder Agent`.
-- `Notebook Agent` — это `Task role`, а не `Kilo mode`. Рекомендуемая связка для notebook-задач: `Kilo mode = kilo-notebook`, `Task role = Notebook Agent`.
+- `Notebook Agent` — это `Task role`, а не `Kilo mode`. Рекомендуемая связка для `/v1` notebook persistence: `Kilo mode = kilo-notebook`, `Task role = Notebook Agent`. Для V3 artifact import: `Kilo mode = kilo-notebook-v3`, `Task role = Notebook Agent`.
+
+### Границы режимов
+
+- `kilo-notebook` = `/v1-only` (prompt-only внешний анализ, staged local persistence).
+- `kilo-recorder` = `/r1-only` (response capture для External Web Chat).
+- `/v2` = не новый Kilo mode; работает через `kilo-handoff-runner` или `kilo-debugger`.
+- `kilo-notebook-v3` = будущий отдельный V3 import/check/write/journal mode для artifact-producing workflow. В Phase 0 только узаконен; `.ai/v3/` subsystem и pilot ещё не созданы.
+
+### Режим kilo-notebook-v3
+
+`kilo-notebook-v3` — официальный `Kilo mode`, предназначенный для будущего V3 artifact-producing workflow.
+
+**Назначение:**
+- Безопасный импорт артефактов из внешнего V3 artifact package.
+- Рекомендуемая связка: `Kilo mode = kilo-notebook-v3`, `Task role = Notebook Agent`.
+- Отдельный от `kilo-notebook` (который остаётся `/v1-only`).
+- Отдельный от `kilo-recorder` (который остаётся `/r1-only`).
+- Отдельный от V2.
+
+**Текущий статус (Phase 0):**
+- Режим canonically разрешён в mode lists, validator и rules.
+- `.ai/v3/` subsystem ещё не создана.
+- `/v3` shortcut ещё не активирован.
+- Режим не является operational workflow — для реального V3 import нужны следующие фазы rollout.
+
+**Примечание по UI:**
+Фактическое добавление режима `Kilo Notebook V3` в интерфейс выполняется человеком вручную через интерфейс Kilo. Repo-level contract не заменяет ручную настройку режима в UI.
 
 ### Session contract
 
@@ -44,7 +71,7 @@ Kilo Code — исполнитель маленьких изолированны
   - `Checkpoint State`
 - Каждый запуск Kilo внутри session нумеруется локально: `Session run: 001`, `Session run: 002` и т.д.
 - Новый handoff в session обязан ссылаться на `Session plan`, `Plan item` и `Session run`.
-- Существующий контракт `Kilo mode` допускает: `kilo-handoff-runner`, `kilo-debugger`, `kilo-verifier`, `kilo-recorder`, `kilo-notebook`.
+- Существующий контракт `Kilo mode` допускает: `kilo-handoff-runner`, `kilo-debugger`, `kilo-verifier`, `kilo-recorder`, `kilo-notebook`, `kilo-notebook-v3`.
 
 ## Роли
 

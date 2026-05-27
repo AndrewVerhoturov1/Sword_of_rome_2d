@@ -18,6 +18,8 @@ INTERNAL_MODES = (
     "kilo-debugger",
     "kilo-verifier",
     "kilo-recorder",
+    "kilo-notebook",
+    "kilo-notebook-v3",
 )
 
 UI_MODES = (
@@ -25,6 +27,8 @@ UI_MODES = (
     "Kilo Debugger",
     "Kilo Verifier",
     "Kilo Recorder",
+    "Kilo Notebook",
+    "Kilo Notebook V3",
 )
 
 TASK_ROLES = (
@@ -33,8 +37,8 @@ TASK_ROLES = (
     "Tester Agent",
     "Refactor Agent",
     "Debugger Agent",
-    "Test Agent",
     "Recorder Agent",
+    "Notebook Agent",
 )
 
 FORBIDDEN_MODE_TOKENS = (

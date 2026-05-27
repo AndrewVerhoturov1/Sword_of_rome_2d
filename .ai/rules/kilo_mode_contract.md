@@ -13,6 +13,7 @@
 - `kilo-verifier`
 - `kilo-recorder`
 - `kilo-notebook`
+- `kilo-notebook-v3`
 
 ### Launch package: `Kilo mode:`
 
@@ -23,6 +24,7 @@
 - `Kilo Verifier`
 - `Kilo Recorder`
 - `Kilo Notebook`
+- `Kilo Notebook V3`
 
 ### Handoff: `Task role`
 
@@ -133,6 +135,52 @@
 ### UI-примечание
 
 Фактическое добавление режима `Kilo Notebook` в интерфейс выполняется человеком вручную через интерфейс Kilo. Этот шаг меняет только repo-level contract и launch/handoff rules.
+
+## Контракт для kilo-notebook-v3
+
+Режим `kilo-notebook-v3` имеет отдельный контракт для будущего V3 artifact-producing workflow.
+
+### Назначение
+
+- Режим предназначен для V3 artifact-producing workflow.
+- Используется для безопасного импорта артефактов из внешнего V3 artifact package.
+- Рекомендуемая связка: `Kilo mode = kilo-notebook-v3`, `Task role = Notebook Agent`.
+- Отдельный от `kilo-notebook` (который остаётся `/v1-only`).
+- Отдельный от `kilo-recorder` (который остаётся `/r1-only`).
+- Отдельный от V2.
+
+### Текущий статус (Phase 0)
+
+- Режим canonically разрешён в mode lists, validator и rules.
+- `.ai/v3/` subsystem ещё не создана.
+- `/v3` shortcut ещё не активирован.
+- Режим не является operational workflow.
+- Полный operational contract будет определён в следующих фазах rollout.
+
+### Разрешённые операции (после активации)
+
+- Принять ZIP artifact package от внешнего чата.
+- Распаковать package в staging-зону.
+- Проверить manifest, пути, хэши.
+- Записать только явно разрешённые файлы.
+- Создать journal entry.
+
+### Запрещённые операции
+
+- Писать файлы вне `allowed_writes`.
+- Перезаписывать существующие файлы без явного разрешения.
+- Выполнять auto-apply без Codex review.
+
+### UI-примечание
+
+Фактическое добавление режима `Kilo Notebook V3` в интерфейс выполняется человеком вручную через интерфейс Kilo.
+
+## Границы режимов
+
+- `kilo-notebook` = `/v1-only`.
+- `kilo-recorder` = `/r1-only`.
+- `/v2` = не новый Kilo mode.
+- `kilo-notebook-v3` = будущий отдельный V3 import/check/write/journal mode. В Phase 0 только узаконен.
 
 ## V2 External Senior Review — не новый Kilo mode
 

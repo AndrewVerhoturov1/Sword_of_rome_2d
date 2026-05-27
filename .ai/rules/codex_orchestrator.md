@@ -100,6 +100,7 @@ Report mode задаёт глубину отчёта, но не отменяет
 - Если `fast_model` или `fast_coding_model` не справились, эскалация идёт в `strong_model`.
 - High-risk/security/auth/payments/migrations/architecture/workflow-rules-change идут через `strong_model` + Codex/Human gate.
 - Для важных задач executor и verifier не должны использовать одну и ту же конкретную модель; при конфликте нужен явный human/Codex gate.
+- `kilo-notebook-v3` не создаёт новый model class. V3 задачи идут через существующие классы: `strong_model` для workflow-rules-change/mode-contract и `fast_model` для простых docs-задач.
 
 ### Что больше не используется
 

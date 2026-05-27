@@ -151,8 +151,10 @@
 
 ## V3 Artifact Workflow
 
-- [`plans/master/v3_artifact_producing_workflow_contract.md`](plans/master/v3_artifact_producing_workflow_contract.md) — проектный контракт V3: внешний чат генерирует artifact package, Kilo Notebook V3 импортирует только разрешённые файлы, Codex делает review, человек даёт финальное принятие.
-- [`plans/master/v3_workflow_implementation_plan.md`](plans/master/v3_workflow_implementation_plan.md) — поэтапный план внедрения V3 как отдельного workflow subsystem и отдельного режима `Kilo Notebook V3`.
+**Текущий статус (Phase 0):** режим `kilo-notebook-v3` / `Kilo Notebook V3` canonically разрешён в mode lists, rules и validator. `.ai/v3/` subsystem ещё не создана. `/v3` shortcut не активирован. Полный operational workflow будет развёрнут в следующих фазах.
+
+- [`plans/master/v3_artifact_producing_workflow_contract.md`](plans/master/v3_artifact_producing_workflow_contract.md) — проектный контракт V3.
+- [`plans/master/v3_workflow_implementation_plan.md`](plans/master/v3_workflow_implementation_plan.md) — поэтапный план внедрения V3.
 
 ## Public vs Local-only
 
