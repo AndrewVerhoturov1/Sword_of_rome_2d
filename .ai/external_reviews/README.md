@@ -38,6 +38,9 @@ Kilo готовит WIP snapshot для внешнего review:
    - `git stash push --include-untracked -m "v2-snapshot-wip"` — флаг `--include-untracked` обязателен.
    - После создания review-ветки от base commit: `git stash pop`.
    - После восстановления обязательно проверяет `git status --short`: new files должны вернуться как `??`.
+2b. **Central rules URL для V2 prompt:**
+   - Правильный URL: `https://raw.githubusercontent.com/AndrewVerhoturov1/ai-workflow-core/main/external_chat_rules.md`
+   - НЕ использовать `https://raw.githubusercontent.com/AndrewVerhoturov1/ai-workflow-core/main/ai/external_chats/external_chat_rules.md` — этот URL возвращает 404.
 3. Заполняет [`v2_request_template.md`](templates/v2_request_template.md).
 4. Готовит safety-отчёт по [`v2_safety_checklist.md`](templates/v2_safety_checklist.md).
 5. Показывает preview и ждёт human approval.

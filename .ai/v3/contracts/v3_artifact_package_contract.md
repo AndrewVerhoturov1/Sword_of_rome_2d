@@ -1,0 +1,150 @@
+# V3 Artifact Package Contract
+
+Версия: 0.1 (Phase 2)
+Назначение: формальный контракт структуры V3 artifact package — ZIP-архива, который внешний чат создаёт в ответ на V3 request.
+Статус: контракт Phase 2. Описывает обязательную структуру, но не является готовым importer/runtime (скрипты — в Phase 7).
+
+---
+
+## 1. Суть artifact package
+
+V3 artifact package — это ZIP-архив со строгой внутренней структурой. Внешний чат создаёт его в ответ на [`v3_request_contract.md`](v3_request_contract.md) и возвращает человеку. Человек скачивает ZIP и передаёт в `kilo-notebook-v3` для безопасного импорта.
+
+Пакет — это транспортный контейнер. Он не является источником истины сам по себе. Источник истины — связка:
+
+```text
+ZIP + manifest + checksums + allowed paths + journal
+```
+
+## 2. Обязательная структура пакета
+
+Корень ZIP обязан содержать строго следующие элементы:
+
+```text
+V3-YYYYMMDD-HHMMSS-<slug>/
+  manifest.yaml          # обязателен
+  README_FOR_KILO.md     # обязателен
+  README_FOR_CODEX.md    # обязателен
+  checksums.sha256       # обязателен
+  files/                 # обязателен
+    <project-relative-path-1>
+    <project-relative-path-2>
+    ...
+```
+
+### 2.1. Корневая папка
+
+Имя корневой папки: `V3-YYYYMMDD-HHMMSS-<slug>`, где:
+
+- `V3` — префикс workflow route;
+- `YYYYMMDD` — дата создания (UTC);
+- `HHMMSS` — время создания (UTC);
+- `<slug>` — короткий идентификатор задачи латиницей, например `v3-contracts`.
+
+Пример: `V3-20260527-153000-v3-contracts`.
+
+### 2.2. [`manifest.yaml`](v3_manifest_contract.md)
+
+Главный файл пакета. Описывает всё содержимое и правила импорта. Контракт manifest — в [`v3_manifest_contract.md`](v3_manifest_contract.md).
+
+Обязателен. Без manifest пакет считается невалидным.
+
+### 2.3. README_FOR_KILO.md
+
+Инструкция для `kilo-notebook-v3`. Объясняет:
+
+- как распаковать пакет;
+- какой режим записи использовать;
+- какие пути разрешены (`allowed_paths`);
+- что делать при конфликте имён;
+- что делать при несовпадении хэша;
+- что писать в journal;
+- когда остановиться.
+
+Обязателен. Это не пользовательская документация, а машиночитаемая инструкция для импортёра.
+
+### 2.4. README_FOR_CODEX.md
+
+Инструкция для Codex. Объясняет:
+
+- зачем создан пакет;
+- какие файлы ожидаются;
+- какую задачу они решают;
+- какие критерии приёмки;
+- какие места проверить особенно внимательно;
+- какие ручные проверки попросить у человека;
+- какие признаки должны привести к отклонению.
+
+Обязателен. Без него Codex не может выполнить review по контракту [`v3_codex_review_contract.md`](v3_codex_review_contract.md).
+
+### 2.5. checksums.sha256
+
+Файл с SHA-256 хэшами всех файлов из `files/`. Формат:
+
+```text
+<sha256>  files/<project-relative-path>
+```
+
+Пример:
+
+```text
+a1b2c3d4e5f6...  files/.ai/v3/contracts/v3_request_contract.md
+f6e5d4c3b2a1...  files/docs/v3/setup_guide.md
+```
+
+Обязателен. Без checksums импортёр не может проверить целостность файлов.
+
+### 2.6. files/
+
+Папка с реальными проектными файлами. Внутри `files/` структура повторяет project-relative пути.
+
+Например, если файл должен попасть в `.ai/v3/contracts/v3_request_contract.md`, то в ZIP он лежит как:
+
+```text
+files/.ai/v3/contracts/v3_request_contract.md
+```
+
+Все файлы внутри `files/` должны быть перечислены в `manifest.yaml`. Файл, который есть в `files/`, но отсутствует в manifest, считается нелегальным и должен быть заблокирован при импорте.
+
+## 3. Инварианты пакета
+
+При импорте должны выполняться следующие проверки:
+
+| Инвариант | Проверка | Нарушение |
+|-----------|----------|-----------|
+| Manifest существует | `manifest.yaml` присутствует в корне | Пакет невалиден, импорт остановлен |
+| Все файлы из manifest есть в `files/` | Сверка списка `files` в manifest с содержимым `files/` | Импорт остановлен |
+| Нет файлов в `files/` вне manifest | Все файлы в `files/` перечислены в manifest | Нелегальные файлы заблокированы |
+| Все хэши совпадают | SHA-256 каждого файла совпадает с `checksums.sha256` | Файл заблокирован |
+| Все пути в `allowed_paths` | Каждый target path входит в `allowed_paths` из manifest | Файл заблокирован |
+| Ни один путь не в `forbidden_paths` | Каждый target path НЕ входит в `forbidden_paths` | Файл заблокирован |
+
+## 4. Что НЕ является artifact package
+
+- ZIP без `manifest.yaml` — не artifact package.
+- ZIP с файлами, но без `checksums.sha256` — не artifact package.
+- ZIP без `README_FOR_KILO.md` — не artifact package.
+- ZIP без `README_FOR_CODEX.md` — не artifact package.
+- ZIP с project target files вне `files/` — не artifact package. Только package control files могут быть в корне ZIP: `manifest.yaml`, `README_FOR_KILO.md`, `README_FOR_CODEX.md`, `checksums.sha256`.
+- Набор файлов в чате, не упакованный в ZIP, — не artifact package.
+
+## 5. MVP-ограничения
+
+На Phase 2 (текущая):
+
+- `action` только `create` (новые файлы);
+- перезапись существующих файлов (`overwrite`) не поддерживается;
+- удаление файлов (`delete`) не поддерживается;
+- бинарные файлы в `files/` не допускаются без явного разрешения в request.
+
+Эти ограничения — часть контракта, а не временное неудобство. Они снимаются только после Phase 5 (Safe Pilot) и Phase 8 (Expansion to Product-Code Scopes).
+
+---
+
+## Связанные контракты
+
+- [`v3_request_contract.md`](v3_request_contract.md) — контракт V3 request.
+- [`v3_manifest_contract.md`](v3_manifest_contract.md) — контракт manifest.yaml.
+- [`v3_journal_contract.md`](v3_journal_contract.md) — контракт journal entry.
+- [`v3_codex_review_contract.md`](v3_codex_review_contract.md) — контракт Codex review.
+- [`v3_storage_policy.md`](v3_storage_policy.md) — что tracked, что local-only.
