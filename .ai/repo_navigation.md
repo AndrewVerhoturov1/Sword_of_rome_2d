@@ -126,6 +126,7 @@
 - [`plans/master/first_vertical_slice_spec.md`](plans/master/first_vertical_slice_spec.md) — spec одного end-to-end proof slice: движение фишки через полный canonical pipeline.
 - [`plans/master/first_milestone_runtime_skeleton.md`](plans/master/first_milestone_runtime_skeleton.md) — next-step working skeleton для Table Sandbox 0.1.
 - [`plans/master/module_authoring_workflow.md`](plans/master/module_authoring_workflow.md) — authoring workflow: workspace shell + editor surfaces + play sandbox preview.
+- [`plans/master/v3_artifact_producing_workflow_contract.md`](plans/master/v3_artifact_producing_workflow_contract.md) — draft V3 artifact-producing workflow contract: внешний чат создаёт artifact package, Kilo Notebook V3 импортирует его безопасно, Codex проверяет, человек принимает.
 
 ### Навигация
 
@@ -146,6 +147,10 @@
 - [`external_reviews/README.md`](external_reviews/README.md) — протокол V2 External Senior Review.
 - [`external_reviews/V2_navigation.md`](external_reviews/V2_navigation.md) — индекс V2 requests.
 - [`external_reviews/templates/`](external_reviews/templates/) — шаблоны V2 (request, prompt, response, ingest summary, safety checklist).
+
+## V3 Artifact Workflow
+
+- [`plans/master/v3_artifact_producing_workflow_contract.md`](plans/master/v3_artifact_producing_workflow_contract.md) — проектный контракт V3: внешний чат генерирует artifact package, Kilo Notebook V3 импортирует только разрешённые файлы, Codex делает review, человек даёт финальное принятие.
 
 ## Public vs Local-only
 
