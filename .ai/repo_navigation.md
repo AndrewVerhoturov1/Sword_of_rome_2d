@@ -151,9 +151,20 @@
 
 ## V3 Artifact Workflow
 
-**Текущий статус (Phase 0):** режим `kilo-notebook-v3` / `Kilo Notebook V3` canonically разрешён в mode lists, rules и validator. `.ai/v3/` subsystem ещё не создана. `/v3` shortcut не активирован. Полный operational workflow будет развёрнут в следующих фазах.
+**Текущий статус (Phase 1):** режим `kilo-notebook-v3` / `Kilo Notebook V3` canonically разрешён в Phase 0. В Phase 1 создан discoverable foundation layer `.ai/v3/`. `/v3` shortcut не активирован. Full operational workflow будет развёрнут в следующих фазах (Phase 2: Contract Pack, Phase 3: Prompt and Template Layer).
 
-- [`plans/master/v3_artifact_producing_workflow_contract.md`](plans/master/v3_artifact_producing_workflow_contract.md) — проектный контракт V3.
+### V3 Foundation Layer
+
+- [`v3/README.md`](v3/README.md) — главный вход в V3: что это, текущий статус, целевая схема процесса.
+- [`v3/V3_navigation.md`](v3/V3_navigation.md) — навигация по V3-слою: структура, связанные документы, ожидаемые future additions.
+- [`v3/contracts/README.md`](v3/contracts/README.md) — будущие формальные контракты V3 (placeholder, наполнение — Phase 2).
+- [`v3/templates/README.md`](v3/templates/README.md) — будущие шаблоны V3 (placeholder, наполнение — Phase 3).
+- [`v3/prompts/README.md`](v3/prompts/README.md) — будущие промпты V3 (placeholder, наполнение — Phase 3).
+- [`v3/docs/README.md`](v3/docs/README.md) — будущая документация V3 (placeholder, наполнение — Phase 3+).
+
+### V3 Master Plans
+
+- [`plans/master/v3_artifact_producing_workflow_contract.md`](plans/master/v3_artifact_producing_workflow_contract.md) — проектный контракт V3 (draft 0.1).
 - [`plans/master/v3_workflow_implementation_plan.md`](plans/master/v3_workflow_implementation_plan.md) — поэтапный план внедрения V3.
 
 ## Public vs Local-only
