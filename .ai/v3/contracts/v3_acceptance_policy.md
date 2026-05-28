@@ -1,191 +1,129 @@
 # V3 Acceptance Policy
 
-Версия: 0.1 (Phase 2)
-Назначение: формальная политика того, как человек принимает, отклоняет или отправляет на доработку результат V3 import.
-Статус: контракт Phase 2. Описывает acceptance gates и human verdict flow; не является готовым prompt/шаблоном (шаблоны — в Phase 3).
+Версия: 0.3
+Назначение: формальная политика того, как человек принимает, отклоняет или отправляет на доработку результат V3 import-stage.
+Статус: contract layer. Уточнена под raw-input notebook flow.
 
 ---
 
-## 1. Суть acceptance
+## 1. Важное различие
 
-Acceptance — это финальный шаг V3 workflow. После того как:
+Acceptance flow начинается не с момента получения ZIP, а только после реального import-stage.
 
-1. `kilo-notebook-v3` импортировал package и создал journal entry;
-2. Codex выполнил review (по [`v3_codex_review_contract.md`](v3_codex_review_contract.md));
+Нужно различать:
 
-человек принимает финальное решение.
+- внешний package получен;
+- package review выполнен;
+- import-stage выполнен;
+- Codex review выполнен;
+- human verdict дан.
 
-Финальное решение всегда за человеком. Codex может рекомендовать, но не может заменить human verdict.
+ZIP сам по себе не входит в acceptance flow.
 
-## 2. Minimal acceptance gates
+## 2. Import gates before acceptance flow
 
-Ни один V3 import не может быть принят без выполнения всех минимальных gates:
+Acceptance/import chain нельзя начинать, пока одновременно не выполнены все условия:
+
+1. Реальный external package существует.
+2. Package review уже выполнен.
+3. `Kilo Notebook V3` реально настроен в UI.
+4. Известен raw package source.
+5. Текущий шаг явно объявлен import-stage.
+6. Реальный git repo root определён и используется как единственный target root.
+
+Если это не так, статус должен оставаться pre-Kilo:
+
+- `external_package_received`
+- `package_reviewed`
+- `kilo_mode_not_configured`
+
+## 3. Minimal acceptance gates after import
+
+После того как import-stage реально начался, ни один результат не может быть принят без:
 
 | Gate | Проверка | Кто выполняет |
-|------|----------|---------------|
-| Package valid | Manifest существует, checksums совпадают, paths валидны | `kilo-notebook-v3` |
-| Journal created | Journal entry существует и заполнен | `kilo-notebook-v3` |
-| Codex review done | Codex прочитал journal, проверил файлы, дал verdict | Codex |
-| Human check done | Человек подтвердил, что результат соответствует ожиданиям | Human |
+|---|---|---|
+| Repo root valid | `git rev-parse --show-toplevel` дал правильный repo root, все relative paths разрешались от него | `kilo-notebook-v3` |
+| Package valid | manifest/checksums/paths валидны | `kilo-notebook-v3` |
+| Journal created | journal draft существует как подробный import trace | `kilo-notebook-v3` |
+| Navigation updated | lifecycle entry обновлена как короткий индекс цикла | `kilo-notebook-v3` |
+| Codex review done | Codex проверил journal и реальные файлы | Codex |
+| Human check done | человек дал verdict | Human |
 
-Если любой из gates не пройден, import считается невалидным.
+## 4. Verdict enum
 
-## 3. Нормализация verdict enum
-
-Codex verdict и human verdict — разные enum. Они не должны смешиваться.
-
-### Codex verdict (фиксируется в journal до human review)
+### Codex verdict
 
 ```yaml
 codex_verdict:
-  - accept            # результат годен
-  - accept_with_notes # результат годен, но с замечаниями
-  - revision_needed   # нужна доработка
-  - reject            # результат не годен
+  - accept
+  - accept_with_notes
+  - revision_needed
+  - reject
 ```
 
-См. [`v3_codex_review_contract.md`](v3_codex_review_contract.md).
-
-### Human verdict (финальное решение человека)
+### Human verdict
 
 ```yaml
 human_verdict:
-  - accept    # принято
-  - revision  # отправить на доработку
-  - reject    # отклонено
+  - accept
+  - revision
+  - reject
 ```
 
-### 3.1. `accept` (human verdict)
+## 5. Что считается accept/revision/reject
 
-- Результат годен.
-- Файлы остаются в репозитории.
-- Journal entry обновляется: `human_review_status: approved`.
-- V3 navigation обновляется.
-- raw ZIP удаляется из staging.
+### `accept`
 
-### 3.2. `revision` (human verdict)
+- import реально выполнен;
+- файлы соответствуют задаче;
+- scope соблюдён;
+- Codex verdict = `accept` или `accept_with_notes`;
+- человек подтвердил.
 
-- Результат частично годен, но требует доработки.
-- Файлы остаются (не удаляются до следующей попытки).
-- Создаётся revision request (по [`v3_revision_contract.md`](v3_revision_contract.md)).
-- Journal entry обновляется: `human_review_status: revision_requested`.
-- Максимум 2 revision цикла.
+### `revision`
 
-### 3.3. `reject` (human verdict)
+- package/import частично годен;
+- проблемы исправимы через revision loop;
+- acceptance ещё не наступил.
 
-- Результат не годен.
-- Файлы могут быть удалены (по решению человека) или оставлены для анализа.
-- Journal entry обновляется: `human_review_status: rejected`.
-- raw ZIP перемещается в `.ai/v3/staging/rejected/`.
-- Задача возвращается на уровень нового V3 request или блокируется.
+### `reject`
 
-## 4. Когда нужен human check
+- manifest invalid;
+- checksums не совпадают;
+- repo root не определён или relative paths были разрешены не от git repo root;
+- scope грубо нарушен;
+- package/import lane невалиден;
+- revision loop исчерпан;
+- или import вообще не должен был начинаться из-за несоблюдения gates.
 
-Human check обязателен, если:
+## 6. Что не является acceptance
 
-- scope: `workflow_docs`, `schemas`, `scripts`, `product_code`;
-- это первый V3 import (pilot);
-- Codex явно запросил human review;
-- меняются workflow rules;
-- пакет содержит исполняемые файлы (scripts scope).
+- валидный ZIP package без import;
+- pre-Kilo package review;
+- setup guide без реального UI confirmation;
+- Codex verdict без human verdict;
+- наличие файлов в repo без полного review chain.
 
-Human check suggested (но не обязателен), если:
+## 7. Rule for notebook-v3 import run
 
-- scope: `docs_only`;
-- изменения касаются только документации;
-- Codex не видит рисков.
+Запуск `Kilo Notebook V3` нельзя делать до выполнения import gates из секции 2.
 
-## 5. Как human verdict фиксируется
-
-### 5.1. В journal entry
-
-После human verdict journal entry обновляется:
-
-```yaml
-human_review:
-  reviewer: "human"  # или имя человека
-  verdict: "accept"  # accept | revision | reject
-  timestamp: "2026-05-27T16:00:00Z"
-  notes: "Все файлы проверены. Контракты согласованы. Можно принимать."
-  codex_recommendation: "accept"
-```
-
-### 5.2. В V3 navigation
-
-После `accept`:
-
-- в `V3_navigation.md` добавляется запись об импортированных контрактах/файлах;
-- статус обновляется.
-
-### 5.3. В Git
-
-После `accept`:
-
-- принятые файлы (contracts, journal entry, navigation) коммитятся как workflow checkpoint;
-- commit message использует стандартный формат: `Workflow: accept Kilo task NNNN` (см. [`AGENTS.md`](../../../AGENTS.md), раздел Git truth).
-
-## 6. Что считается reject / revision / accept
-
-### 6.1. Критерии accept
-
-- Все файлы из `expected_files` созданы.
-- Содержимое соответствует задаче.
-- Scope соблюдён.
-- Allowed paths соблюдены.
-- Forbidden paths не нарушены.
-- Codex verdict — `accept` или `accept_with_notes`.
-- Human явно подтвердил.
-
-### 6.2. Критерии revision
-
-- Часть файлов не создана (skipped по исправимой причине).
-- Содержимое частично не соответствует задаче.
-- Все проблемы исправимы через доработку внешнего чата.
-- Не превышен лимит revision попыток.
-
-### 6.3. Критерии reject
-
-- Manifest невалиден.
-- Checksums не совпадают.
-- Пакет содержит нелегальные файлы.
-- Scope грубо нарушен.
-- Два revision цикла провалились.
-- Внешний чат не соблюдал контракт (например, утверждал, что изменил репозиторий).
-
-## 7. Verdict flow diagram
+Если gates не выполнены, корректный статус:
 
 ```text
-kilo-notebook-v3 import
-  ↓
-journal created (human_review_status: pending)
-  ↓
-Codex review
-  ↓
-Codex verdict: accept / revision_needed / reject
-  ↓
-Human reviews journal + files + Codex notes
-  ↓
-Human verdict:
-  ├── accept → files persistent, navigation updated, staging cleaned
-  ├── revision → revision request, external chat re-engaged
-  └── reject  → files removed (or kept for analysis), staging cleaned
+external_package_received_but_not_import_ready
 ```
 
-## 8. Что НЕ является acceptance
+или:
 
-- Codex verdict без human confirmation — не acceptance.
-- Импорт без journal — не acceptance.
-- Наличие файлов в репозитории без human verdict — не acceptance.
-- Утверждение внешнего чата, что «всё готово» — не acceptance.
-
-Acceptance — это только явный human verdict после полного review chain.
-
----
+```text
+package_reviewed
+```
 
 ## Связанные контракты
 
-- [`v3_codex_review_contract.md`](v3_codex_review_contract.md) — Codex review до human verdict.
-- [`v3_revision_contract.md`](v3_revision_contract.md) — revision flow, если human verdict — revision.
-- [`v3_journal_contract.md`](v3_journal_contract.md) — как verdict фиксируется в journal.
-- [`v3_storage_policy.md`](v3_storage_policy.md) — что становится persistent после accept.
-- [`v3_scope_policy.md`](v3_scope_policy.md) — acceptance gates для разных scope уровней.
+- [`v3_storage_policy.md`](v3_storage_policy.md)
+- [`v3_request_contract.md`](v3_request_contract.md)
+- [`v3_journal_contract.md`](v3_journal_contract.md)
+- [`v3_codex_review_contract.md`](v3_codex_review_contract.md)

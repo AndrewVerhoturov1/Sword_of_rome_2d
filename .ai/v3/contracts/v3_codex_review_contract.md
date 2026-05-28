@@ -8,7 +8,7 @@
 
 ## 1. Суть Codex review
 
-После того как `kilo-notebook-v3` импортировал V3 artifact package и создал journal entry, Codex выполняет review.
+После того как `kilo-notebook-v3` импортировал V3 artifact package, создал journal entry и обновил lifecycle entry в `V3_navigation.md`, Codex выполняет review.
 
 Codex review — это обязательный шаг между импортом и human verdict. Без Codex review результат не может быть принят человеком.
 
@@ -16,8 +16,9 @@ Codex не доверяет package на слово. Он проверяет:
 
 1. journal entry (что было импортировано);
 2. реальные файлы (что физически появилось в репозитории);
-3. сверку результата с V3 request и scope;
-4. риски и соответствие acceptance criteria.
+3. lifecycle entry в `V3_navigation.md` (краткий индекс цикла);
+4. сверку результата с V3 request и scope;
+5. риски и соответствие acceptance criteria.
 
 ## 2. Порядок review
 
@@ -42,7 +43,18 @@ Codex открывает каждый файл из `imported_files` и пров
 
 Codex не проверяет только journal. Он всегда смотрит реальные файлы.
 
-### Шаг 3. Сверить с request и scope
+### Шаг 3. Проверить lifecycle entry
+
+Codex сверяет `V3_navigation.md` с journal:
+
+- статус соответствует фактической стадии;
+- `Journal Location` указывает на правильный journal;
+- `Created Files` совпадают с imported files по сути;
+- `Summary` краткая и не дублирует весь journal.
+
+`V3_navigation.md` не должен копировать verification notes, skipped reasons и другие подробные поля journal.
+
+### Шаг 4. Сверить с request и scope
 
 Codex сверяет результат с V3 request:
 
@@ -53,7 +65,7 @@ Codex сверяет результат с V3 request:
 - action соответствует (`create` для MVP);
 - acceptance criteria из request выполнены.
 
-### Шаг 4. Оценить риски
+### Шаг 5. Оценить риски
 
 Codex оценивает:
 
@@ -61,7 +73,7 @@ Codex оценивает:
 - нужно ли запросить V2 review для сложных изменений;
 - нужно ли явно указать человеку, что проверить вручную.
 
-### Шаг 5. Сформировать verdict
+### Шаг 6. Сформировать verdict
 
 Codex формирует один из verdict-ов:
 
@@ -69,7 +81,7 @@ Codex формирует один из verdict-ов:
 - `revision_needed` — нужна доработка (см. [`v3_revision_contract.md`](v3_revision_contract.md)).
 - `reject` — результат не годен, импорт откатывается или блокируется.
 
-### Шаг 6. Обновить journal
+### Шаг 7. Обновить journal
 
 Codex обновляет journal entry:
 

@@ -27,6 +27,8 @@ import_status: "<imported | partial | failed | blocked>"
 
 source_package:
   package_id: "<v3_id из manifest>"
+  source_type: "<archive_link | local_archive_path | repo_local_staging>"
+  source_value: "<сама ссылка или путь>"
   manifest_path: "<путь к manifest.yaml в staging>"
   # Пример: .ai/v3/staging/V3-20260527-153000-v3-contracts/manifest.yaml
   zip_archive: "<путь к сохранённому ZIP>"
@@ -128,3 +130,16 @@ human_review_status: "pending"
 #   - attempt: 2
 #     package_id: "<V3-YYYYMMDD-HHMMSS-<slug>-attempt-2>"
 #     result: "<pending | accept | reject>"
+
+# === Напоминание о границе с V3_navigation ===
+#
+# Этот journal НЕ должен дублировать lifecycle-строку из V3_navigation.md.
+# В V3_navigation.md остаются только:
+# - V3 ID
+# - статус
+# - topic
+# - request/prompt/journal links
+# - created files
+# - краткая summary
+#
+# Подробные технические детали import-run живут только здесь.

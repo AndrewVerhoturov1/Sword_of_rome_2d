@@ -1,462 +1,361 @@
 # План внедрения V3 workflow и режима `Kilo Notebook V3`
 
-Версия: 0.5
-Статус: Phase 0 завершён, Phase 1 завершён (2026-05-27), Phase 2 завершён (2026-05-27), Phase 3 завершён (2026-05-27), Phase 4 завершён (2026-05-27)
-Назначение: зафиксировать repo-grounded план внедрения V3 как третьего workflow route и как отдельного Kilo mode для artifact-producing задач.
+Версия: 0.8
+Статус: Phase 0 завершён, Phase 1 завершён (2026-05-27), Phase 2 завершён (2026-05-27), Phase 3 завершён (2026-05-27), Phase 4 завершён (2026-05-27), Phase 5A завершён (2026-05-28), Phase 5B завершён (2026-05-28), Phase 5C завершён (2026-05-28), Phase 5D import pilot выполнен (2026-05-28, human verdict pending)
+Назначение: зафиксировать repo-grounded план внедрения V3 как отдельного workflow route и отдельного Kilo mode для artifact-producing задач.
 
 ---
 
 ## 1. Входные источники
 
-План опирается на четыре слоя:
+План опирается на:
 
 1. V1-ответ [`V1-20260527-181041`](../../external_chats/notebook/2026-05-27_V1-20260527-181041_plan-vnedreniya-v3-artifact-producing-workflow-v-tekuschuyu.md).
-2. Текущий draft-contract [`v3_artifact_producing_workflow_contract.md`](v3_artifact_producing_workflow_contract.md).
-3. Текущий V2 protocol [`../../external_reviews/README.md`](../../external_reviews/README.md).
-4. Текущие repo-ограничения по mode/role в [`../../../AGENTS.md`](../../../AGENTS.md), [`../../README.md`](../../README.md), [`../../rules/agent_protocol.md`](../../rules/agent_protocol.md), [`../../rules/kilo_mode_contract.md`](../../rules/kilo_mode_contract.md), [`../../../scripts/validate_kilo_contract.py`](../../../scripts/validate_kilo_contract.py).
+2. Root-cause analysis [`V1-20260528-031912`](../../external_chats/notebook/2026-05-28_V1-20260528-031912_updated-root-cause-analysis-after-user-clarified-that.md).
+3. Draft-contract [`v3_artifact_producing_workflow_contract.md`](v3_artifact_producing_workflow_contract.md).
+4. Repo-level workflow rules в [`../../../AGENTS.md`](../../../AGENTS.md) и `.ai/rules/*`.
 
 ---
 
 ## 2. Что фиксируем как целевое решение
 
-### 2.1. V3 остается отдельным workflow route
-
-Финальная формула остается такой:
+### 2.1. V3 остаётся отдельным workflow route
 
 - V1 = внешний prompt-only анализ.
 - V2 = внешний senior review зафиксированного WIP/snapshot.
 - V3 = внешний artifact-producing workflow.
 
-### 2.2. Для V3 создается отдельный Kilo mode
-
-Это решение зафиксировано отдельно и не считается optional:
+### 2.2. Для V3 создаётся отдельный Kilo mode
 
 - внутреннее mode-значение: `kilo-notebook-v3`;
 - UI-значение: `Kilo Notebook V3`;
-- основная роль: `Notebook Agent`.
+- task role: `Notebook Agent`.
 
 Важно:
 
-- существующий `kilo-notebook` остается строго `/v1-only`;
-- существующий `kilo-recorder` остается строго `/r1-only`;
-- V3 не должен перегружать или переопределять `kilo-notebook`;
-- для V3 нужен собственный mode-specific contract, а не скрытый reuse старого notebook flow.
+- `kilo-notebook` остаётся `/v1-only`;
+- `kilo-recorder` остаётся `/r1-only`;
+- V3 не подменяет `kilo-notebook`;
+- setup guide не равен факту, что режим уже настроен в живом UI.
 
-### 2.3. V3 не вводит глобический запрет на product code
+### 2.3. V3 не равен немедленному import-stage
 
-Здесь принимается ключевая мысль из V1:
+После root-cause анализа фиксируем важную поправку:
 
-- V3 core не запрещает `product_code` навсегда;
-- scope задается в каждом конкретном V3 request;
-- но MVP и первый pilot идут в безопасном режиме `docs_only` / `workflow_docs` / `schemas`.
+```text
+V3 route в целом включает import-stage,
+но текущий rollout должен различать:
+external artifact generation,
+pre-Kilo package review,
+Kilo UI setup,
+Kilo import.
+```
 
----
-
-## 3. Repo-specific поправка к V1
-
-V1 правильно описывает целевую архитектуру, но в текущем repo есть важное ограничение: новый режим нельзя считать существующим, пока он не проведен через canon и tooling.
-
-Сейчас в repo:
-
-- допустимые `Kilo mode` перечислены явно;
-- `kilo-notebook` закреплен как `/v1-only`;
-- `kilo-recorder` закреплен как `/r1-only`;
-- список mode-значений зашит не только в docs, но и в validator/script layer.
-
-Следствие:
-
-1. Внедрение V3 надо начинать не с ZIP-автоматики, а с contract alignment.
-2. `Kilo Notebook V3` должен появиться одновременно в правилах, навигации, шаблонах, валидаторах и bootstrap-подсказках.
-3. Без этого получится декоративный режим, который описан в тексте, но ломается в validator/preflight.
+Нельзя считать, что получение ZIP автоматически означает готовность к Kilo import.
 
 ---
 
-## 4. Целевое состояние V3 в этом repo
+## 3. Целевое состояние V3 в этом repo
 
-После внедрения в repo должны существовать:
+После rollout в repo должны существовать:
 
-- отдельный workflow-слой `.ai/v3/`;
-- отдельный жизненный цикл V3 request -> external artifact package -> V3 import -> journal -> Codex review -> human verdict;
-- отдельный mode-specific contract для `kilo-notebook-v3`;
-- отдельная навигация `V3_navigation.md`;
-- отдельные шаблоны request/manifest/journal/review/revision;
-- отдельный manual setup для `Kilo Notebook V3`;
-- отдельный validator/staging слой для V3 packages;
-- отдельные acceptance gates для docs/script/product-code scopes.
-
----
-
-## 5. Роль V1, V2 и Kilo в rollout
-
-### 5.1. Как использовать V1
-
-V1 здесь нужен не для исполнения, а для внешней критики и refinement:
-
-- review структуры V3 contracts;
-- review wording для external prompts;
-- review package schema и review gates;
-- critique пилотного процесса до hardening.
-
-### 5.2. Как использовать V2
-
-V2 нужен не в начале, а после появления реальных V3 scripts/rules diff:
-
-- bounded review validator/staging scripts;
-- review safety логики импортера;
-- review narrow product-code expansion rules;
-- review risky workflow-rule changes на живом branch snapshot.
-
-### 5.3. Как использовать Kilo
-
-Основная substantive работа идет через последовательные Kilo-задачи:
-
-- docs/rules sync;
-- prompt/template layer;
-- validator/script layer;
-- pilot import;
-- hardening после внешнего review.
+- отдельный `.ai/v3/` workflow-слой;
+- отдельный lifecycle `request -> external package -> import -> journal -> Codex review -> human verdict`;
+- mode-specific contract для `kilo-notebook-v3`;
+- отдельная V3 navigation;
+- request/prompt/template layer;
+- setup guide;
+- validator/staging support;
+- явные process gates между pre-Kilo и import-stage.
 
 ---
 
-## 6. Фазы внедрения
+## 4. Роль V1, V2 и Kilo в rollout
 
-## Phase 0. Contract Alignment ✅ (завершён — 2026-05-27)
+### 4.1. V1
 
-Цель: узаконить сам факт нового режима `kilo-notebook-v3`.
+V1 нужен для:
 
-Нужно сделать:
+- critique contracts/prompts;
+- process root-cause analysis;
+- review rollout wording и phase split.
 
-- добавить `kilo-notebook-v3` и `Kilo Notebook V3` в canon-списки допустимых mode-значений;
-- зафиксировать, что `kilo-notebook` остается `/v1-only`;
-- ввести mode-specific contract для `kilo-notebook-v3`;
-- зафиксировать границу между `kilo-notebook-v3`, `kilo-notebook`, `kilo-recorder`, `kilo-handoff-runner`;
-- решить, нужен ли отдельный shortcut `/v3` сейчас или это более поздний слой.
+### 4.2. V2
 
-Файлы impact surface минимум:
+V2 нужен позже:
 
-- [`../../../AGENTS.md`](../../../AGENTS.md)
-- [`../../README.md`](../../README.md)
-- [`../../rules/agent_protocol.md`](../../rules/agent_protocol.md)
-- [`../../rules/codex_orchestrator.md`](../../rules/codex_orchestrator.md)
-- [`../../rules/kilo_mode_contract.md`](../../rules/kilo_mode_contract.md)
-- [`../../rules/model_roster.md`](../../rules/model_roster.md)
-- [`../../../scripts/validate_kilo_contract.py`](../../../scripts/validate_kilo_contract.py)
+- для bounded review risky validator/staging logic;
+- для review scripted support;
+- для review расширения в более сильные scopes.
 
-Выход фазы:
+### 4.3. Kilo
 
-- новый режим canonically разрешен;
-- validator/preflight знает про него;
-- mode naming и role naming больше не конфликтуют.
+Kilo делает substantive execution только там, где шаг уже реально вошёл в его lane.
 
-## Phase 1. V3 Docs Foundation ✅ (завершён — 2026-05-27)
+Критично:
 
-Цель: сделать V3 discoverable как самостоятельный workflow layer.
+- Kilo не должен появляться слишком рано как будто import-stage уже доступен;
+- substantive run для `kilo-notebook-v3` допустим только после выполнения import gates.
 
-Создано:
+---
 
-- [`.ai/v3/README.md`](../../v3/README.md)
-- [`.ai/v3/V3_navigation.md`](../../v3/V3_navigation.md)
-- [`.ai/v3/contracts/README.md`](../../v3/contracts/README.md)
-- [`.ai/v3/templates/README.md`](../../v3/templates/README.md)
-- [`.ai/v3/prompts/README.md`](../../v3/prompts/README.md)
-- [`.ai/v3/docs/README.md`](../../v3/docs/README.md)
+## 5. Завершённые фазы
 
-Обновлено:
+### Phase 0. Contract Alignment ✅
 
-- [`../../repo_navigation.md`](../../repo_navigation.md) — секция V3 расширена, добавлены ссылки на foundation layer.
+Узаконен сам факт режима `kilo-notebook-v3`.
 
-Выполнено через Kilo handoff [`0031_v3_phase1_docs_foundation`](../../handoffs/0031_v3_phase1_docs_foundation.md), report [`0031_v3_phase1_docs_foundation_report.md`](../../reports/0031_v3_phase1_docs_foundation_report.md).
+### Phase 1. V3 Docs Foundation ✅
 
-Выход фазы:
+Создан `.ai/v3/` foundation layer.
 
-- V3 виден в repo navigation;
-- любой новый оркестратор понимает, где лежит V3 canon;
-- foundation layer создан, но без operational обещаний.
+### Phase 2. Contract Pack ✅
 
-## Phase 2. Contract Pack ✅ (завершён — 2026-05-27)
+Создано 9 V3-контрактов.
 
-Цель: описать V3 как формальный процесс, а не как идею.
+### Phase 3. Prompt and Template Layer ✅
 
-Создано:
+Создан prompt/template layer.
 
-- [`v3_request_contract.md`](../../v3/contracts/v3_request_contract.md)
-- [`v3_artifact_package_contract.md`](../../v3/contracts/v3_artifact_package_contract.md)
-- [`v3_manifest_contract.md`](../../v3/contracts/v3_manifest_contract.md)
-- [`v3_journal_contract.md`](../../v3/contracts/v3_journal_contract.md)
-- [`v3_codex_review_contract.md`](../../v3/contracts/v3_codex_review_contract.md)
-- [`v3_revision_contract.md`](../../v3/contracts/v3_revision_contract.md)
-- [`v3_storage_policy.md`](../../v3/contracts/v3_storage_policy.md)
-- [`v3_scope_policy.md`](../../v3/contracts/v3_scope_policy.md)
-- [`v3_acceptance_policy.md`](../../v3/contracts/v3_acceptance_policy.md)
+### Phase 4. Runtime Mode Integration ✅
 
-Обновлено:
+Создан setup guide и synced docs для ручной настройки режима.
 
-- [`../../v3/README.md`](../../v3/README.md) — статус Phase 2
-- [`../../v3/V3_navigation.md`](../../v3/V3_navigation.md) — contracts отметка
-- [`../../v3/contracts/README.md`](../../v3/contracts/README.md) — полный список
-- [`../../repo_navigation.md`](../../repo_navigation.md) — статус Phase 2
+Важно: завершение Phase 4 не означает, что import pilot уже можно запускать автоматически.
 
-Выполнено через Kilo handoff [`0032_v3_phase2_contract_pack`](../../handoffs/0032_v3_phase2_contract_pack.md), report — [`0032_v3_phase2_contract_pack_report.md`](../../reports/0032_v3_phase2_contract_pack_report.md).
+---
 
-Ключевые решения этой фазы:
+## 6. Phase 5 - Safe Pilot (split after root-cause analysis)
 
-- поддерживать `scope` как поле запроса;
-- MVP ограничить `action: create`;
-- raw ZIP и staging хранить local-only по умолчанию;
-- stable docs/contracts/templates хранить tracked.
+Старое описание `Phase 5 = первый живой V3-cycle` было слишком грубым. Теперь делим его на четыре явные подфазы.
 
-## Phase 3. Prompt and Template Layer ✅ (завершён — 2026-05-27)
+### Phase 5A. External Artifact Generation Pilot ✅
 
-Цель: дать рабочие заготовки для каждого шага V3.
+Цель:
 
-Создано:
+- проверить, что внешний чат умеет читать commit-pinned GitHub links;
+- проверить, что он умеет собрать валидный V3 artifact package;
+- не трогать Kilo import.
 
-- [`create_v3_request_prompt.md`](../../v3/prompts/create_v3_request_prompt.md)
-- [`kilo_notebook_v3_mode_prompt.md`](../../v3/prompts/kilo_notebook_v3_mode_prompt.md)
-- [`codex_v3_review_prompt.md`](../../v3/prompts/codex_v3_review_prompt.md)
-- [`v3_revision_request_prompt.md`](../../v3/prompts/v3_revision_request_prompt.md)
-- [`v3_request_template.md`](../../v3/templates/v3_request_template.md)
-- [`v3_manifest_template.yaml`](../../v3/templates/v3_manifest_template.yaml)
-- [`v3_journal_template.yaml`](../../v3/templates/v3_journal_template.yaml)
-- [`v3_codex_review_template.md`](../../v3/templates/v3_codex_review_template.md)
-- [`v3_revision_request_template.md`](../../v3/templates/v3_revision_request_template.md)
+Ограничения:
 
-Обновлено:
+- scope: безопасный docs-layer, для текущего цикла `workflow_docs`;
+- один узкий package test;
+- без Kilo import;
+- без manual staging как обязательства для человека;
+- без заявлений, что repo уже изменён.
 
-- [`../../v3/prompts/README.md`](../../v3/prompts/README.md) — статус Phase 3, полный список.
-- [`../../v3/templates/README.md`](../../v3/templates/README.md) — статус Phase 3, полный список.
-- [`../../v3/README.md`](../../v3/README.md) — статус Phase 3.
-- [`../../v3/V3_navigation.md`](../../v3/V3_navigation.md) — prompt/template layer, закрыта future additions секция для Phase 3.
-- [`../../repo_navigation.md`](../../repo_navigation.md) — статус Phase 3, добавлены ссылки на prompts/templates.
-- [`v3_workflow_implementation_plan.md`](v3_workflow_implementation_plan.md) — Phase 3 отмечен завершённым.
+Выход:
 
-Выполнено через Kilo handoff [`0033_v3_phase3_prompt_and_template_layer`](../../handoffs/0033_v3_phase3_prompt_and_template_layer.md), report — [`0033_v3_phase3_prompt_and_template_layer_report.md`](../../reports/0033_v3_phase3_prompt_and_template_layer_report.md).
+- внешний ZIP/package реально существует;
+- package можно review-ить;
+- package ещё не imported.
 
-Ключевые решения этой фазы:
+Фактический результат:
 
-- Узаконен 5-template pack (v3_revision_request_template.md добавлен как обязательный).
-- Template count inconsistency между plan (4) и navigation/docs (5) закрыта в пользу 5-template pack.
-- Prompt для внешнего чата требует artifact package, а не совет.
-- Prompt для `Kilo Notebook V3` описывает безопасный import flow без обещания готового runtime.
-- Prompt для Codex review проверяет journal и реальные файлы, использует нормализованный verdict enum.
+- цикл `V3-20260528-195750-phase5A-5C-deep-doc-pack` вернул валидный ZIP package;
+- package содержит 3 больших русскоязычных `.md`-файла по `5A`, `5B`, `5C`;
+- package не делает ложных claims про repo write, import, journal или update navigation.
 
-## Phase 4. Runtime Mode Integration ✅ (завершён — 2026-05-27)
+### Phase 5B. Pre-Kilo Package Review ✅
 
-Цель: сделать новый режим реально запускаемым, а не только описанным.
+Цель:
 
-Выполнено:
+- проверить ZIP, manifest, checksums, список файлов, allowed/forbidden paths;
+- отделить качество package от готовности import-stage.
 
-- Создан setup guide [`../v3/docs/manual_kilo_notebook_v3_setup.md`](../v3/docs/manual_kilo_notebook_v3_setup.md).
-- Обновлены portable bootstrap docs (manual_setup_checklist.md, verification_checklist.md) — добавлен шестой режим `Kilo Notebook V3`.
-- Синхронизирован V3 docs layer (README.md, V3_navigation.md, docs/README.md).
-- Обновлены global rules: AGENTS.md, .ai/README.md, agent_protocol.md, kilo_mode_contract.md — убран stale Phase 0 wording, зафиксирован актуальный статус.
-- Обновлён repo_navigation.md (фаза V3, добавлена ссылка на setup guide).
-- Синхронизирован prompt wording в kilo_notebook_v3_mode_prompt.md (версия 0.1 → 0.2).
+Проверяется:
 
-Выполнено через Kilo handoff [`0034_v3_phase4_runtime_mode_integration`](../../handoffs/0034_v3_phase4_runtime_mode_integration.md), report — [`0034_v3_phase4_runtime_mode_integration_report.md`](../../reports/0034_v3_phase4_runtime_mode_integration_report.md).
+- структура ZIP;
+- совпадает ли набор `expected files`;
+- валиден ли manifest;
+- совпадают ли hashes;
+- нет ли scope drift.
 
-Ключевые решения этой фазы:
+Выход:
 
-- Setup guide описывает ручную настройку режима без scripted support.
-- Bootstrap portable docs честно указывают, что V3 mode требует ручной настройки в UI.
-- Global rules синхронизированы: больше нет утверждений, что `.ai/v3/` subsystem «ещё не создана».
-- Phase 4 не включает `/v3` shortcut, не создаёт `scripts/v3/*`, не запускает pilot.
+- `external_package_received`;
+- `pre_kilo_package_review`;
+- package либо `valid_for_future_import`, либо `needs_revision`.
 
-Выход фазы:
+Фактический результат:
 
-- новый режим имеет manual setup guide;
-- bootstrap/docs знают о ручной настройке шестого режима;
-- global/runtime docs больше не отстают от факта существования `.ai/v3/` слоя и prompt/template layer.
+- ZIP проверен по структуре, manifest, checksums и содержанию файлов;
+- критичных проблем не найдено;
+- pre-Kilo verdict: `valid_for_future_import`;
+- import-stage ещё не начат.
 
-## Phase 5. Safe Pilot
+### Phase 5C. Kilo Notebook V3 UI Setup ✅
 
-Цель: провести первый живой V3-cycle в безопасной зоне.
+Цель:
 
-Ограничения первого pilot:
+- реально настроить `Kilo Notebook V3` в живом UI;
+- зафиксировать, что режим существует не только в docs.
 
-- scope: `docs_only` или `workflow_docs`;
-- allowed paths: только `.ai/v3/` и при необходимости `.ai/` workflow-слой;
-- без product code;
-- без overwrite существующих product files;
-- без auto-execution scripts;
-- с обязательным journal и `V3_navigation.md`.
+Проверки:
 
-Первый pilot должен доказать:
+- режим виден в UI;
+- выбран правильный mode name;
+- если UI поддерживает mode prompt, он связан с V3-specific prompt;
+- человек подтверждает дату/факт настройки.
 
-- внешний чат может стабильно собирать package нужной структуры;
-- `Kilo Notebook V3` может его безопасно импортировать;
-- Codex может проверить результат по реальным файлам;
-- человек может дать понятный verdict.
+Выход:
 
-## Phase 6. External Hardening
+- `kilo_mode_configured`;
+- import-stage теперь теоретически возможен, но ещё не выполнен.
 
-Цель: не доверять первому working варианту слишком рано.
+Фактический результат:
 
-Нужны два review-круга:
+- режим `Kilo Notebook V3` создан в UI;
+- режим пережил restart VS Code;
+- `Kilo Notebook V3` отделён от старого `Kilo Notebook`.
 
-- V1-круг для critique contracts/prompts/manual flow;
-- V2-круг для review реального validator/stager diff и safety logic.
+### Phase 5D. Kilo Import Pilot ✅
 
-После review:
+Цель:
 
-- исправить rules;
-- исправить prompts/templates;
-- исправить validator/stager;
-- обновить `V3_navigation.md` и master docs.
+- дать уже проверенный package в `Kilo Notebook V3`;
+- пройти import/check/write/journal flow;
+- потом перейти к Codex review и human verdict.
 
-## Phase 7. Scripted Support
+Только здесь допустимы:
 
-Цель: убрать ручную рутину там, где это уже безопасно.
+- реальный import-run через `Kilo Notebook V3`;
+- package source для raw input;
+- staging/inbox, если он выбран как текущий transport path;
+- реальный journal draft.
 
-Кандидаты на scripts:
+Фактический результат:
 
-- `scripts/v3/validate_v3_package.py`
-- `scripts/v3/stage_v3_package.py`
-- `scripts/v3/write_v3_journal.py`
+- import pilot выполнен на package `V3-20260528-195750-phase5A-5C-deep-doc-pack`;
+- 3 docs-файла импортированы в `.ai/v3/docs/`;
+- journal draft создан;
+- lifecycle entry обновлена;
+- первый run записал результат не в workspace root, а во внешний `Documents` root, после чего import был восстановлен в правильный repo root;
+- human verdict ещё pending.
 
-Что не делать раньше времени:
+---
 
-- `apply_v3_package.py` с агрессивной автозаписью;
-- авто-commit/push;
-- broad import в product paths;
-- сложный schema stack до подтверждения реальной полезности MVP.
+## 7. Hard gates before import-stage
 
-## Phase 8. Expansion to Product-Code Scopes
+Запуск `Kilo Notebook V3` нельзя делать, пока одновременно не выполнены все условия:
 
-Цель: допустить V3 к более сильным задачам только после доказанного безопасного MVP.
+1. Реальный external package уже получен.
+2. Package прошёл pre-Kilo review или хотя бы признан пригодным к import-test.
+3. `Kilo Notebook V3` реально настроен в UI.
+4. Явно выбран transport method.
+5. Человек подтвердил, что сейчас тестируется import-stage, а не только artifact generation.
 
-Условия входа:
+Если хотя бы один gate не выполнен, статус должен оставаться в одном из pre-Kilo состояний:
 
-- хотя бы один успешный docs-only pilot;
-- отработанный journal flow;
-- V2 review validator/stager logic;
-- понятные overwrite и rollback rules;
-- явные acceptance gates для product-code scope.
+- `waiting_external_package`
+- `external_package_received`
+- `pre_kilo_package_review`
+- `kilo_mode_not_configured`
 
-Для `product_code` обязательно:
+---
 
-- узкий `allowed_paths`;
-- expected diff;
-- forbidden paths;
-- explicit overwrite policy;
-- test/verification plan;
+## 8. Transport policy for current system state
+
+До scripted support нельзя притворяться, что transport уже canonically solved.
+
+Для текущего состояния системы правильно так:
+
+- внешний чат возвращает package;
+- человек может хранить ZIP локально;
+- Codex/человек могут review-ить package до import-stage;
+- `.ai/v3/staging/` используется только если уже начался import-stage и выбран repo-local staging fallback;
+- человек не обязан заранее руками раскладывать ZIP по repo-paths до explicit import-stage.
+
+---
+
+## 9. Следующие substantive шаги после process fix
+
+1. Получить human verdict по первому `Phase 5D` import pilot.
+2. Ужесточить preset `Kilo Notebook V3`: относить все target paths только к current workspace root.
+3. Убрать ambiguity между package-local scope и downstream import permission wording.
+4. После этого решить, нужен ли второй clean import pilot уже без recovery.
+
+---
+
+## 10. Полезные выводы из первого внешнего V3 package cycle
+
+Первый успешный цикл `V3-20260528-195750-phase5A-5C-deep-doc-pack` дал не только package, но и полезную process-подсветку:
+
+- `5A`, `5B`, `5C` действительно нужно держать отдельными шагами;
+- внешний чат способен вернуть не советы, а валидный artifact package;
+- pre-Kilo review как отдельный gate оправдан и полезен;
+- `5C` надо делать как живой UI-check, а не считать docs доказательством готового режима;
+- до `5D` нельзя смешивать transport, import, journal и acceptance.
+- preset `Kilo Notebook V3` обязан жёстко фиксировать current workspace root, иначе notebook может создать параллельную `.ai/` вне repo.
+
+---
+
+## 11. MVP boundary
+
+V3 MVP в текущем понимании достигается не тогда, когда просто есть mode prompt, а когда одновременно есть:
+
+- canonically разрешённый режим;
+- setup guide;
+- request/prompt/template/contracts layer;
+- хотя бы один успешный `Phase 5A` package test;
+- хотя бы один `Phase 5B` package review;
+- подтверждённый `Kilo Notebook V3` UI setup;
+- хотя бы один `Phase 5D` import pilot;
+- journal;
 - Codex review;
-- human review;
-- при крупных изменениях рекомендуется V2 review до принятия.
-
----
-
-## 7. Последовательность Kilo-задач
-
-Ниже не один шаг, а рекомендуемая полная последовательность rollout.
-
-1. Kilo Task A: обновить canon и mode-contract под `kilo-notebook-v3`.
-2. Kilo Task B: создать `.ai/v3/` foundation и `V3_navigation.md`.
-3. Kilo Task C: создать contracts/templates/prompts pack.
-4. V1 Round 1: отдать эти материалы на внешний critique и собрать замечания.
-5. Kilo Task D: встроить принятые V1 замечания.
-6. Kilo Task E: обновить validators/bootstrap/prompt helpers под новый mode.
-7. Kilo Task F: создать V3 validator/staging scripts draft.
-8. V2 Round 1: провести bounded review scripts и risky workflow diff.
-9. Kilo Task G: исправить замечания после V2.
-10. Kilo Task H: провести первый docs-only pilot через `Kilo Notebook V3`.
-11. Kilo Task I: зафиксировать итоги pilot в V3 docs/navigation и принять решение о расширении scope.
-
-Все эти задачи должны идти последовательно: один запуск -> review -> следующий запуск.
-
----
-
-## 8. MVP boundary
-
-MVP V3 считается достигнутым, когда одновременно есть:
-
-- разрешенный в canon режим `kilo-notebook-v3`;
-- UI-имя `Kilo Notebook V3`;
-- `.ai/v3/README.md`;
-- `.ai/v3/V3_navigation.md`;
-- contracts/templates/prompts для V3;
-- manual setup guide для нового режима;
-- рабочий validator/staging минимум;
-- первый docs-only package;
-- первый V3 journal;
-- первый Codex review;
-- первый human verdict.
+- human verdict.
 
 MVP не требует:
 
 - product-code pilot;
 - auto-apply;
 - auto-commit/push;
-- переноса V3 в central core;
-- shortcut `/v3`, если mode уже можно использовать вручную.
+- `/v3` shortcut;
+- `scripts/v3/*` до Phase 7.
 
 ---
 
-## 9. Основные риски
+## 12. Главные риски
 
-### Риск 1. Новый mode будет описан в тексте, но не проведен через tooling
-
-Это даст ложную готовность.
+### Риск 1. Смешать target-state и current-state
 
 Контрмера:
 
-- считать Phase 0 и Phase 4 обязательными;
-- не объявлять режим готовым, пока validator/preflight не знают про него.
+- явно различать pre-Kilo и import-stage;
+- писать operational status отдельным блоком.
 
-### Риск 2. V3 начнет подменять Codex decision layer
-
-Контрмера:
-
-- внешний чат только генерирует package;
-- `Kilo Notebook V3` только импортирует по правилам;
-- Codex делает review;
-- человек принимает решение.
-
-### Риск 3. Слишком рано открыть product-code scope
+### Риск 2. Считать setup guide доказательством готового режима
 
 Контрмера:
 
-- docs-only MVP;
-- V2 hardening перед расширением;
-- отдельные gates для product code.
+- требовать явный UI confirmation gate.
 
-### Риск 4. Перегрузить V3 лишней автоматизацией в самом начале
+### Риск 3. Навесить на человека manual staging как будто это canon
 
 Контрмера:
 
-- сначала contracts, prompts, journal, validator;
-- потом staged scripts;
-- auto-apply и push только после доказанной зрелости.
+- staging включать только как selected transport method внутри import-stage.
+
+### Риск 4. Считать валидный ZIP доказательством рабочего import flow
+
+Контрмера:
+
+- package quality и import readiness review-ить отдельно.
 
 ---
 
-## 10. Acceptance gates
+## 13. Итоговая формула
 
-Минимальные gates для внедрения самого V3 режима:
+V3 надо внедрять не как один туманный pilot, а как staged subsystem:
 
-1. Canon gate: новый mode добавлен во все обязательные rule files и validator lists.
-2. Discoverability gate: `.ai/v3/` и `V3_navigation.md` видны в navigation.
-3. Prompt gate: есть рабочий request/template layer.
-4. Runtime gate: `Kilo Notebook V3` имеет явный contract и setup guide.
-5. Safety gate: есть manifest/journal/storage policy.
-6. Review gate: есть Codex review template и реальный review flow.
-7. Pilot gate: пройден хотя бы один docs-only pilot.
-8. Human gate: человек подтверждает, что процесс понятен и воспроизводим.
-
----
-
-## 11. Итоговая формула внедрения
-
-V3 в этом repo надо внедрять не как одну фичу и не как один prompt, а как отдельный workflow subsystem:
-
-- с собственным режимом `kilo-notebook-v3`;
-- с собственным `.ai/v3/` слоем;
-- с собственными contracts/templates/prompts/navigation;
-- с обязательным journal и Codex review;
-- с V1 как внешним critique-инструментом;
-- с V2 как hardening/review-инструментом;
-- с поэтапным переходом от docs-only pilot к более сильным scope.
+- внешний package test;
+- pre-Kilo review;
+- UI setup;
+- import pilot;
+- review;
+- verdict.
 
 Главное правило:
 
-> `Kilo Notebook V3` должен появиться не номинально, а как полностью проведенный через canon, tooling и pilot workflow отдельный режим.
+> `Kilo Notebook V3` нельзя считать следующим шагом по умолчанию после получения ZIP. Сначала надо доказать, что package валиден, режим реально настроен, и текущая задача действительно вошла в import-stage.

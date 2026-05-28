@@ -1,31 +1,65 @@
-# create_v3_request_prompt.md — Промпт для подготовки V3 Request
+# create_v3_request_prompt.md - Промпт для подготовки V3 Request
 
-Версия: 0.1 (Phase 3)
-Назначение: промпт для Codex или человека, который готовит V3-запрос к внешнему чату. Опирается на Phase 2 контракты.
-Статус: рабочий prompt. Runtime-валидация и исполнение — в следующих фазах.
+Версия: 0.2
+Назначение: промпт для Codex или человека, который готовит V3-запрос к внешнему чату.
+Статус: рабочий prompt. Уточнён после Phase 5 root-cause analysis.
 
 ---
 
 ## 1. Когда использовать этот промпт
 
-Этот промпт используется, когда Codex или человек готовит V3-запрос — структурированную постановку задачи для внешнего чата, от которого ожидается artifact package (ZIP), а не текстовый совет.
+Этот промпт используется, когда Codex или человек готовит V3 external request - структурированную постановку задачи для внешнего чата, от которого ожидается artifact package, а не просто текстовый совет.
 
-Это **не** `/v1` вопрос о мнении/анализе и **не** `/r1` full external launch package. Это V3 artifact-producing workflow: внешний чат должен создать готовые файлы в ZIP-пакете, а не только текстовый ответ.
+Это не `/v1` и не `/r1`.
+
+## 2. Главные правила перед отправкой
+
+### 2.1. GitHub-first rule
+
+По умолчанию V3 external request должен использовать:
+
+- commit-pinned GitHub raw links;
+- при необходимости blob links как вспомогательные;
+- ручные excerpts только как fallback.
+
+Внешний чат должен сам читать контекст по ссылкам. Человек не обязан вручную прикладывать context files, если fallback не объявлен явно.
+
+### 2.2. Не путать package generation и import-stage
+
+Если текущий шаг - только внешний package test, request не должен делать вид, что import уже начинается прямо сейчас.
+
+Корректная формулировка:
+
+```text
+Ты создаёшь artifact package.
+Дальше package может быть review-нут отдельно.
+Import-stage начнётся позже, только если он будет явно выбран.
+```
+
+### 2.3. Не обещать Kilo import без gates
+
+Request не должен обещать, что package немедленно уйдёт в Kilo import, если:
+
+- package ещё не существует;
+- режим не подтверждён в UI;
+- import-stage ещё не выбран.
 
 ---
 
-## 2. Промпт
+## 3. Промпт
 
-Скопируй блок ниже и заполни `[placeholder-ы]`. Передай заполненный промпт внешнему чату **вместе** с project-specific контекстом (README.md, repo_navigation.md, файлы контрактов V3).
+Скопируй блок ниже и заполни `[placeholder-ы]`.
 
 ```text
 Ты участвуешь в V3 artifact-producing workflow.
 
-Это не prompt-only анализ и не обычный текстовый ответ. Твоя задача — создать artifact package (ZIP), содержащий готовые файлы для GitHub-репозитория.
+Это не prompt-only анализ и не обычный текстовый ответ. Твоя задача - создать artifact package (ZIP), содержащий готовые файлы для GitHub-репозитория.
 
-У тебя нет прямого доступа к репозиторию. Ты не пишешь файлы напрямую. Ты создаёшь ZIP-пакет, который человек скачает и передаст в Kilo Notebook V3 для безопасного импорта.
+У тебя нет прямого доступа к репозиторию. Ты не пишешь файлы напрямую. Ты создаёшь ZIP-пакет. Пакет сначала может быть отдельно проверен Codex/человеком. Import-stage через Kilo Notebook V3 запускается только позже, если будет явно выбран.
 
 НЕ утверждай, что ты уже изменил репозиторий. НЕ пиши, что файлы уже записаны.
+
+Используй commit-pinned GitHub raw links из этого prompt как основной источник project context. Не ожидай, что человек вручную приложит тебе context files, если явно не сказано обратное.
 
 ---
 
@@ -38,28 +72,31 @@
 - **Action:** create (MVP)
 - **Scope:** [docs_only / workflow_docs / schemas / scripts / product_code]
 
+### Current Stage
+[external_artifact_generation_only | pre_kilo_package_revision | import_stage]
+
 ### Контекст задачи
-[Опиши кратко: что за проект, что уже сделано, зачем эта задача. Дай ссылки на README, repo_navigation.md, контракты V3, project context — их человек передаст отдельно.]
+[Краткий контекст задачи и commit-pinned GitHub links на README, repo_navigation, V3 contracts, prompts и другие нужные project docs.]
 
 ### Описание задачи
-[Конкретно опиши, что должно быть создано. Какие файлы. Какую проблему они решают. Какой ожидаемый результат.]
+[Что именно нужно создать. Какие файлы. Какой ожидаемый результат.]
 
 ### Allowed Paths
-[Список project-relative путей, куда разрешено писать файлы. Пример: .ai/v3/]
+[Список project-relative путей.]
 
 ```
 [список путей]
 ```
 
 ### Forbidden Paths
-[Список project-relative путей, куда запрещено писать. По умолчанию запрещены: .git/, node_modules/, dist/, build/, coverage/, lock-файлы, .env.]
+[Список project-relative путей.]
 
 ```
 [список путей]
 ```
 
 ### Expected Files
-[Список project-relative target paths ожидаемых файлов. Внешний пакет кладёт их под files/<project-relative-path>.]
+[Список project-relative target paths.]
 
 ```
 [список путей]
@@ -71,24 +108,24 @@
 
 ```
 V3-YYYYMMDD-HHMMSS-<slug>/
-  manifest.yaml          # обязателен (см. v3_manifest_contract.md)
-  README_FOR_KILO.md     # обязателен (инструкция для импортёра)
-  README_FOR_CODEX.md    # обязателен (инструкция для Codex)
-  checksums.sha256       # обязателен (SHA-256 хэши всех файлов из files/)
-  files/                 # обязателен
+  manifest.yaml
+  README_FOR_KILO.md
+  README_FOR_CODEX.md
+  checksums.sha256
+  files/
     <project-relative-path-1>
     <project-relative-path-2>
 ```
 
 ### Acceptance Criteria
-[Список критериев, по которым Codex и человек будут оценивать результат.]
+[Проверяемые критерии.]
 
 ```
 [список критериев]
 ```
 
 ### Known Risks
-[Известные риски задачи.]
+[Известные риски.]
 
 ```
 [список рисков]
@@ -98,102 +135,37 @@ V3-YYYYMMDD-HHMMSS-<slug>/
 Подтверди, что ты понимаешь:
 - У тебя нет доступа к репозиторию.
 - Ты создаёшь ZIP-пакет, а не записываешь файлы напрямую.
-- Финальная запись в репозиторий — задача Kilo Notebook V3.
-- Проверка результата — задача Codex.
-- Принятие решения — задача человека.
-
----
-
-## Требования к ответу
-
-1. **Создай artifact package (ZIP)** со строгой внутренней структурой, описанной выше.
-2. **manifest.yaml должен содержать все обязательные поля** согласно v3_manifest_contract.md:
-   - v3_id, task_title, generated_by, action, scope
-   - write_policy (mode: create_only, require_codex_review: true, require_human_review: true, allow_overwrite: false)
-   - allowed_paths, forbidden_paths
-   - files (каждый: path, source_in_zip, action: create, required, sha256, purpose)
-   - acceptance_criteria, known_risks
-3. **README_FOR_KILO.md** должен объяснять: как распаковать, режим записи, allowed paths, что делать при конфликте/несовпадении хэша, что писать в journal, когда остановиться.
-4. **README_FOR_CODEX.md** должен объяснять: зачем пакет, какие файлы, критерии приёмки, что проверить особенно внимательно, какие ручные проверки попросить, признаки для отклонения.
-5. **checksums.sha256** должен содержать SHA-256 хэш каждого файла из files/.
-6. **Все файлы из files/ должны быть перечислены в manifest.yaml.** Файл в files/ без записи в manifest — нелегален.
-7. **Форматы файлов:**
-   - manifest.yaml — валидный YAML.
-   - checksums.sha256 — формат: `<sha256>  files/<project-relative-path>`.
-   - README_FOR_KILO.md и README_FOR_CODEX.md — markdown.
-   - Файлы в files/ — в соответствии с задачей (обычно markdown).
-
----
-
-## Правила, на которые опирается этот запрос
-
-Внешний чат должен соблюдать следующие контракты (человек передаст их отдельно):
-
-- `v3_request_contract.md` — обязательные поля V3 request.
-- `v3_artifact_package_contract.md` — структура V3 ZIP-пакета.
-- `v3_manifest_contract.md` — обязательные поля manifest.yaml.
-- `v3_scope_policy.md` — уровни scope и допустимые пути.
-- `v3_storage_policy.md` — что tracked, что local-only.
-
-Эти контракты описывают V3 как формальный процесс. Внешний чат не должен их нарушать.
-
----
-
-## Что внешний чат НЕ делает
-
-- НЕ утверждает, что изменил репозиторий.
-- НЕ пишет файлы напрямую.
-- НЕ игнорирует manifest.
-- НЕ создаёт файлы вне files/.
-- НЕ добавляет бинарные файлы без явного разрешения.
-- НЕ использует action кроме create (MVP).
-- НЕ выходит за allowed_paths.
-- НЕ заходит в forbidden_paths.
+- Package может быть отдельно review-нут до import-stage.
+- Финальная запись в репозиторий возможна только позже, если import-stage будет явно выбран.
+- Проверка результата - задача Codex.
+- Финальное решение - задача человека.
 ```
 
 ---
 
-## 3. Правила для Codex при подготовке V3 request
+## 4. Правила для Codex при подготовке V3 request
 
-### 3.1. Обязательные проверки до отправки
+### Обязательные проверки
 
 - [ ] `v3_id` в формате `V3-YYYYMMDD-HHMMSS-<slug>`.
-- [ ] `action` установлен в `create` (MVP).
-- [ ] `scope` выбран из допустимых значений: `docs_only`, `workflow_docs`, `schemas`, `scripts`, `product_code`.
-- [ ] `allowed_paths` согласованы со `scope` (см. [`v3_scope_policy.md`](../contracts/v3_scope_policy.md)).
-- [ ] `forbidden_paths` включают минимум: `.git/`, `node_modules/`, `dist/`, `build/`, `coverage/`, lock-файлы.
-- [ ] `expected_files` — конкретный список project-relative target paths.
-- [ ] `acceptance_criteria` проверяемы (не абстрактны).
-- [ ] `known_risks` не пусты (хотя бы один риск).
-- [ ] `no_repo_access_statement` явно присутствует.
+- [ ] `action = create`.
+- [ ] `scope` выбран корректно.
+- [ ] `Current Stage` указан явно.
+- [ ] В prompt есть commit-pinned GitHub raw links.
+- [ ] Request не обещает немедленный Kilo import без import gates.
+- [ ] `allowed_paths` согласованы со `scope`.
+- [ ] `expected_files` конкретны.
+- [ ] `acceptance_criteria` проверяемы.
 
-### 3.2. Что Codex НЕ делает
+### Что Codex не делает
 
-- НЕ создаёт manifest.yaml (его создаёт внешний чат).
-- НЕ создаёт checksums (их создаёт внешний чат).
-- НЕ пишет README_FOR_KILO.md (его создаёт внешний чат).
-- НЕ пишет README_FOR_CODEX.md (его создаёт внешний чат).
-- НЕ обещает внешнему чату доступ к репозиторию.
-- НЕ путает V3 request с `/r1` full external launch package.
+- не вручает внешнему чату локальные пути как основной context mode;
+- не обещает import-stage раньше времени;
+- не подменяет request transport/inbox/staging правилами, которых ещё нет в canon.
 
-### 3.3. Scope и allowed_paths: таблица совместимости
+## Связанные документы
 
-| Scope | Допустимые allowed_paths |
-|-------|--------------------------|
-| `docs_only` | Только `.md` файлы (не `.ai/v3/contracts/`) |
-| `workflow_docs` | `.ai/`, `docs/` |
-| `schemas` | `.ai/v3/`, `canon/`, `docs/schemas/` |
-| `scripts` | `scripts/` |
-| `product_code` | `table-sandbox/`, `src/` (с усиленными gates) |
-
----
-
-## 4. Связанные документы
-
-- [`v3_request_contract.md`](../contracts/v3_request_contract.md) — формальный контракт V3 request.
-- [`v3_artifact_package_contract.md`](../contracts/v3_artifact_package_contract.md) — структура artifact package.
-- [`v3_manifest_contract.md`](../contracts/v3_manifest_contract.md) — контракт manifest.yaml.
-- [`v3_scope_policy.md`](../contracts/v3_scope_policy.md) — уровни scope.
-- [`v3_storage_policy.md`](../contracts/v3_storage_policy.md) — политика хранения.
-- [`v3_request_template.md`](../templates/v3_request_template.md) — шаблон V3 request.
-- [`v3_workflow_implementation_plan.md`](../../plans/master/v3_workflow_implementation_plan.md) — план внедрения V3.
+- [`../contracts/v3_request_contract.md`](../contracts/v3_request_contract.md)
+- [`../contracts/v3_storage_policy.md`](../contracts/v3_storage_policy.md)
+- [`../templates/v3_request_template.md`](../templates/v3_request_template.md)
+- [`../../plans/master/v3_workflow_implementation_plan.md`](../../plans/master/v3_workflow_implementation_plan.md)

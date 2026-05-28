@@ -1,149 +1,115 @@
 # V3 Request Contract
 
-Версия: 0.1 (Phase 2)
-Назначение: формальный контракт V3-запроса — что должно быть в запросе, который Codex или человек передаёт внешнему чату для генерации artifact package.
-Статус: контракт Phase 2. Описывает обязательные правила, но не является готовым runtime/prompt-шаблоном (шаблоны — в Phase 3).
+Версия: 0.2
+Назначение: формальный контракт V3-запроса к внешнему чату.
+Статус: contract layer. Уточнён после Phase 5 root-cause analysis.
 
 ---
 
 ## 1. Суть V3 request
 
-V3 request — это структурированная постановка задачи для внешнего чата. Это не обычный prompt, не `/v1` вопрос и не `/r1` full external launch package.
+V3 request - это структурированная постановка задачи для внешнего чата, который должен подготовить artifact package.
 
-V3 request говорит внешнему чату:
+Важно:
 
-- какую задачу нужно решить;
-- в каком формате вернуть результат;
-- какие файлы создать;
-- куда их положить внутри пакета;
-- какие зоны запрещены;
-- что модель не имеет доступа к репозиторию и не должна утверждать обратное.
+- request не равен package;
+- package не равен imported result;
+- imported result не равен accepted result.
 
-## 2. Обязательные поля V3 request
+## 2. Обязательные поля
 
-Любой V3 request, независимо от scope и action, обязан содержать:
+Любой V3 request обязан содержать:
 
 | Поле | Описание |
 |------|----------|
-| `v3_id` | Уникальный идентификатор запроса в формате `V3-YYYYMMDD-HHMMSS-<slug>` |
-| `task_title` | Короткое название задачи на русском или английском |
-| `generated_by` | Кто подготовил запрос: `codex`, `human` или `codex+human` |
-| `action` | Действие. Для MVP допустимо только `create` |
-| `scope` | Уровень scope запроса (см. [`v3_scope_policy.md`](v3_scope_policy.md)) |
-| `context_summary` | Краткое описание контекста: что за проект, что уже сделано, зачем эта задача |
-| `task_description` | Конкретное описание задачи: что должно быть создано и зачем |
-| `allowed_paths` | Список project-relative путей, куда разрешено писать файлы |
-| `forbidden_paths` | Список project-relative путей, куда запрещено писать файлы |
-| `expected_files` | Список ожидаемых файлов — project-relative target paths (например, `.ai/v3/contracts/v3_request_contract.md`). Внешний пакет кладёт их под `files/<project-relative-path>`. |
-| `package_format` | Формат пакета. Для MVP: `zip` |
-| `acceptance_criteria` | Критерии приёмки результата |
-| `known_risks` | Известные риски задачи |
-| `no_repo_access_statement` | Явное указание, что модель не имеет доступа к репозиторию |
+| `v3_id` | Идентификатор в формате `V3-YYYYMMDD-HHMMSS-<slug>` |
+| `task_title` | Короткое название задачи |
+| `generated_by` | `codex`, `human` или `codex+human` |
+| `action` | Для MVP только `create` |
+| `scope` | Уровень scope |
+| `current_stage` | `external_artifact_generation_only`, `pre_kilo_package_revision` или `import_stage` |
+| `context_summary` | Краткий контекст |
+| `task_description` | Что именно нужно создать |
+| `allowed_paths` | Куда разрешено писать |
+| `forbidden_paths` | Куда писать нельзя |
+| `expected_files` | Ожидаемые project-relative target paths |
+| `package_format` | Для MVP: `zip` |
+| `acceptance_criteria` | Проверяемые критерии |
+| `known_risks` | Известные риски |
+| `no_repo_access_statement` | Явное указание, что у внешнего чата нет repo access |
 
-### 2.1. `scope` как обязательное поле
+## 3. Current stage - обязательный разделитель
 
-`scope` задаёт уровень допустимых изменений. Возможные значения:
+`current_stage` нужен, чтобы не смешивать разные части V3 lifecycle.
 
-- `docs_only` — только документация (`.md` файлы);
-- `workflow_docs` — workflow-документация (`.ai/` и `docs/`);
-- `schemas` — схемы данных, контракты, спецификации;
-- `scripts` — скрипты и утилиты;
-- `product_code` — код продукта (в MVP не используется).
+### `external_artifact_generation_only`
 
-Scope определяет, какие пути могут быть в `allowed_paths`. Нельзя указать `scope: docs_only` и `allowed_paths: src/`.
+Используется, когда:
 
-Подробнее — в [`v3_scope_policy.md`](v3_scope_policy.md).
+- нужен только package generation test;
+- Kilo import ещё не начался;
+- package позже может быть review-нут отдельно.
 
-### 2.2. `action` для MVP
+При этом request не должен обещать немедленный import.
 
-На Phase 2 допустимо только одно значение:
+### `pre_kilo_package_revision`
 
-- `action: create` — создание новых файлов.
+Используется, когда:
 
-`action: update`, `action: delete`, `action: overwrite` в MVP не поддерживаются и не должны использоваться в V3 request на текущей фазе.
+- package уже существует;
+- сейчас нужен review package/revision loop;
+- import-stage ещё не выбран.
 
-## 3. Allowed paths и forbidden paths
+### `import_stage`
 
-### 3.1. Правила allowed paths
+Используется только когда:
 
-- Пути задаются как project-relative (от корня репозитория).
-- Можно использовать префиксы директорий (например, `.ai/v3/` покрывает всю вложенность).
-- Можно указывать конкретные файлы.
-- Allowed paths должны быть согласованы со `scope`.
+- package уже реально существует;
+- package review уже пройден;
+- `Kilo Notebook V3` реально настроен в UI;
+- import-stage выбран явно.
 
-### 3.2. Правила forbidden paths
+## 4. GitHub-first external context mode
 
-- Forbidden paths имеют приоритет над allowed paths: если путь попадает и в allowed, и в forbidden, он ЗАПРЕЩЁН.
-- По умолчанию всегда запрещены:
-  - `.git/`
-  - `node_modules/`
-  - `dist/`, `build/`
-  - `coverage/`
-  - lock-файлы (`package-lock.json`, `yarn.lock`, `pnpm-lock.yaml`)
-  - `.env` и файлы с секретами
-- Дополнительные forbidden paths задаются в каждом конкретном request.
+По умолчанию request должен передавать внешний контекст так:
 
-### 3.3. Пример
-
-```yaml
-allowed_paths:
-  - ".ai/v3/"
-  - "docs/v3/"
-
-forbidden_paths:
-  - ".git/"
-  - "node_modules/"
-  - "dist/"
-  - "src/"
+```text
+commit-pinned GitHub raw links -> внешний чат читает их сам
 ```
 
-## 4. V3 request не равен artifact package
+Правила:
 
-Важное различие:
+- локальный путь сам по себе бесполезен для внешнего чата;
+- ручная передача context files не является default mode;
+- fallback excerpts допустимы только если GitHub link невозможен или явно недостаточен.
 
-- **V3 request** — это постановка задачи, которую Codex/человек передаёт внешнему чату.
-- **V3 artifact package** — это результат работы внешнего чата: ZIP с manifest, README, checksums и файлами.
+## 5. Allowed/forbidden paths
 
-Внешний чат получает request и создаёт package. Он не должен:
+- пути всегда project-relative;
+- `forbidden_paths` имеют приоритет над `allowed_paths`;
+- `allowed_paths` должны быть согласованы со `scope`.
 
-- утверждать, что уже изменил репозиторий;
-- подменять процесс импорта;
-- писать файлы напрямую;
-- игнорировать manifest.
+## 6. Request не должен обещать то, что не доказано
 
-См. [`v3_artifact_package_contract.md`](v3_artifact_package_contract.md).
+Request не должен:
 
-## 5. Что request НЕ содержит
+- обещать, что package уже будет импортирован;
+- обещать, что `Kilo Notebook V3` уже настроен;
+- обещать, что staging path уже canonicalized;
+- делать вид, что внешний чат видит локальный repo без GitHub links/excerpts.
 
-Request не содержит:
+## 7. Итог
 
-- готовый manifest (его создаёт внешний чат в ответ);
-- checksums (их создаёт внешний чат);
-- инструкции для KiloCode (их внешний чат пишет в `README_FOR_KILO.md`);
-- инструкции для Codex (их внешний чат пишет в `README_FOR_CODEX.md`);
-- файлы проекта (их внешний чат кладёт в `files/`).
+Корректный V3 request обязан:
 
-Request — это только постановка задачи. Всё остальное создаётся внешним чатом.
-
-## 6. Итоговый контракт
-
-Любой V3 request обязан:
-
-- содержать все обязательные поля из секции 2;
-- использовать `action: create` (MVP);
-- задавать `scope` одним из допустимых значений;
-- явно отделять request от package;
-- содержать `no_repo_access_statement`;
-- не обещать внешнему чату доступ к репозиторию.
-
-Нарушение любого из этих пунктов делает request невалидным для V3 workflow.
-
----
+- явно отделять request-stage от import-stage;
+- использовать GitHub-first context mode по умолчанию;
+- честно показывать `current_stage`;
+- не подменять package review и import ложной готовностью.
 
 ## Связанные контракты
 
-- [`v3_artifact_package_contract.md`](v3_artifact_package_contract.md) — структура V3 artifact package.
-- [`v3_manifest_contract.md`](v3_manifest_contract.md) — контракт manifest.yaml.
-- [`v3_scope_policy.md`](v3_scope_policy.md) — уровни scope и acceptance gates.
-- [`v3_storage_policy.md`](v3_storage_policy.md) — что tracked, что local-only.
-- [`v3_acceptance_policy.md`](v3_acceptance_policy.md) — как человек принимает/отклоняет результат.
+- [`v3_scope_policy.md`](v3_scope_policy.md)
+- [`v3_artifact_package_contract.md`](v3_artifact_package_contract.md)
+- [`v3_storage_policy.md`](v3_storage_policy.md)
+- [`v3_acceptance_policy.md`](v3_acceptance_policy.md)

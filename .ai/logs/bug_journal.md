@@ -8,6 +8,88 @@ Do not record every tiny typo. Record issues that may help future debugging.
 
 ## Entries
 
+### BUG-20260528-006 - Kilo Notebook V3 resolves relative target paths against wrong root
+
+Status: still open
+
+Area:
+V3 import workflow, `kilo-notebook-v3`, repeated in multiple pilots
+
+Symptoms:
+Notebook report may claim successful import into repo-relative paths, but actual writes happen under wrong filesystem root.
+
+Observed recurrences:
+- first Phase 5D docs pilot wrote `.ai/v3/...` into `C:\Users\andre\Documents\.ai\v3\...` instead of active repo `D:\Codex+Kilocode\projects\sword-of-rome-web`;
+- later pink calculator pilot again used wrong workspace/root logic on first attempt and required correction before final file ended up in repo.
+
+Cause:
+Mode instructions still do not force a hard repo-root detection step before any file write. Notebook can resolve relative paths against VS Code workspace, user documents, or another external root instead of actual git repo root.
+
+Current mitigation:
+- imported artifacts can be recovered into real repo root after the fact;
+- journal and lifecycle entry can then be recreated or corrected in repo.
+
+Required durable fix:
+- mode instructions must explicitly require `git rev-parse --show-toplevel` before any file write;
+- all relative target paths are resolved against current workspace root;
+- never create or use a parallel `.ai/` tree near archive source or inside user documents;
+- if current workspace root is unclear, stop with `blocked`.
+
+Verification:
+- `Get-ChildItem 'C:\\Users\\andre\\Documents\\.ai\\v3' -Recurse`
+- `Get-ChildItem '.ai\\v3' -Recurse`
+- `Test-Path` for expected repo files before and after recovery
+- manual comparison of shadow-root files vs recovered repo files
+- repeated repro during `V3-20260529-000139-pink-calculator-html-pilot`
+
+Human check:
+suggested
+
+Related files:
+- [V3_navigation.md](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/v3/V3_navigation.md)
+- [V3-20260528-195750-phase5A-5C-deep-doc-pack_journal.yaml](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/v3/journals/drafts/V3-20260528-195750-phase5A-5C-deep-doc-pack_journal.yaml)
+- [manual_kilo_notebook_v3_setup.md](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/v3/docs/manual_kilo_notebook_v3_setup.md)
+- [V3-20260529-000139-pink-calculator-html-pilot_journal.yaml](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/v3/journals/drafts/V3-20260529-000139-pink-calculator-html-pilot_journal.yaml)
+
+Notes for future agents:
+If notebook says import succeeded but repo files are missing, immediately search for stray `.ai/v3/` trees outside workspace root. First suspect: path resolution against user documents or archive-adjacent folder.
+
+### BUG-20260528-005 - V2 cycle: содержательный patch остаётся в review-ветке и не возвращается в рабочую ветку
+
+Status: fixed
+
+Area:
+V2 external review workflow, branch choreography, Handoff 0034
+
+Symptoms:
+После V2 snapshot/review содержательные Phase 4 изменения оказались в `review/v2/20260527-210800-v3-phase4-runtime`, но не были возвращены в рабочую ветку `codex/editor-play-visual-continuity-plan`. На рабочей ветке `git status` был чистым, хотя Kilo report утверждал, что Phase 4 выполнен.
+
+Cause:
+В протоколе V2 не был жёстко зафиксирован обязательный post-review шаг возврата content patch из `review/v2/...` обратно в исходную рабочую ветку. В результате review-ветка использовалась не только как временный snapshot/runtime слой, но и как место, где фактически осталась реализация.
+
+Fix:
+В [`.ai/external_reviews/README.md`](D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/external_reviews/README.md) добавлен обязательный `restore-to-working-branch` step. Теперь после V2 implementation Kilo обязан:
+- явно вернуться в исходную рабочую ветку;
+- перенести обратно только content patch;
+- проверить `git status --short` и `git diff --name-only` уже на рабочей ветке;
+- убедиться, что непредусмотренные `.ai/external_reviews/` изменения не попали в рабочую ветку.
+
+Verification:
+- `git reflog --date=iso -n 30`
+- `git log --oneline --decorate review/v2/20260527-210800-v3-phase4-runtime -n 8`
+- `git diff --name-only 51458eb..review/v2/20260527-210800-v3-phase4-runtime`
+- ручная проверка, что Phase 4 patch присутствовал только в review-ветке
+
+Human check:
+not needed
+
+Related files:
+- [`.ai/external_reviews/README.md`](D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/external_reviews/README.md)
+- [0034_v3_phase4_runtime_mode_integration_report.md](D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/reports/0034_v3_phase4_runtime_mode_integration_report.md)
+
+Notes for future agents:
+`review/v2/...` — временная review-площадка, а не финальное место реализации. Если содержательный patch есть только там, задача не завершена. Перед финальным report нужно проверить, что expected diff существует именно в исходной рабочей ветке.
+
 ### BUG-20260527-004 — V2 snapshot: потеря untracked-файлов при git stash без --include-untracked
 
 Status: fixed

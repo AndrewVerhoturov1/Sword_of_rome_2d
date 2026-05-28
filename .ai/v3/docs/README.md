@@ -4,23 +4,33 @@
 
 ## Текущий статус
 
-**Phase 4 (2026-05-27):** создан setup guide [`manual_kilo_notebook_v3_setup.md`](manual_kilo_notebook_v3_setup.md). Остальная документация — в следующих фазах.
+**Phase 4 (2026-05-27):** создан setup guide [`manual_kilo_notebook_v3_setup.md`](manual_kilo_notebook_v3_setup.md).
+
+**Phase 5 process split:** docs теперь различают:
+
+- pre-Kilo external artifact generation;
+- pre-Kilo package review;
+- Kilo UI setup;
+- raw-input import pilot.
 
 ## Содержимое
 
 | Файл | Назначение | Статус |
-|------|------------|--------|
-| [`manual_kilo_notebook_v3_setup.md`](manual_kilo_notebook_v3_setup.md) | Ручная настройка режима `Kilo Notebook V3` в интерфейсе Kilo | ✅ Phase 4 |
+|---|---|---|
+| [`manual_kilo_notebook_v3_setup.md`](manual_kilo_notebook_v3_setup.md) | Ручная настройка режима `Kilo Notebook V3` и правила перед первым import-run | Phase 4+, обновлён под raw-input flow |
 
-## Ожидаемое содержимое (следующие фазы)
+## Что важно
 
-- **Safety rules** — правила безопасности: какие файлы можно перезаписывать, staging vs direct write.
-- **Storage policy** — где хранить raw ZIP, staging-файлы, journal; что tracked, что local-only.
-- **Pilot notes** — заметки после первого docs-only pilot (Phase 5+).
+- setup guide не доказывает, что режим уже настроен в живом UI;
+- внешний ZIP package можно тестировать до Kilo import;
+- `.ai/v3/staging/` не является обязательным human-step до import-stage;
+- `Kilo Notebook V3` работает как raw-input mode;
+- `V3_navigation.md` ведётся как lifecycle/archive index, как в `V1` и `V2`.
 
 ## Сейчас доступно
 
-- [`../README.md`](../README.md) — общее описание V3 и текущий статус.
-- [`../V3_navigation.md`](../V3_navigation.md) — навигация по V3-слою.
-- [`../../plans/master/v3_artifact_producing_workflow_contract.md`](../../plans/master/v3_artifact_producing_workflow_contract.md) — проектный контракт V3.
-- [`../../plans/master/v3_workflow_implementation_plan.md`](../../plans/master/v3_workflow_implementation_plan.md) — план внедрения.
+- [`../README.md`](../README.md) - общее описание V3 и current status.
+- [`../V3_navigation.md`](../V3_navigation.md) - навигация и lifecycle archive.
+- [`../contracts/v3_storage_policy.md`](../contracts/v3_storage_policy.md) - storage/input policy.
+- [`../contracts/v3_acceptance_policy.md`](../contracts/v3_acceptance_policy.md) - acceptance и import rules.
+- [`../../plans/master/v3_workflow_implementation_plan.md`](../../plans/master/v3_workflow_implementation_plan.md) - master plan.

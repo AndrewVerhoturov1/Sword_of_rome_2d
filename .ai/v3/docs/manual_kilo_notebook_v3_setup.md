@@ -1,114 +1,161 @@
 # Ручная настройка режима Kilo Notebook V3
 
-Этот гайд объясняет, как человеку вручную добавить и проверить режим `Kilo Notebook V3` в интерфейсе Kilo Code.
+Этот гайд объясняет, как вручную добавить и проверить режим `Kilo Notebook V3` в интерфейсе Kilo Code.
 
-## Текущий статус (Phase 4)
+Важно: это setup guide, а не доказательство, что режим уже настроен.
 
-- Режим `kilo-notebook-v3` / `Kilo Notebook V3` canonically разрешён в правилах и валидаторе.
-- `.ai/v3/` foundation, контракты (Phase 2), промпты и шаблоны (Phase 3) уже созданы.
-- Этот setup guide (Phase 4) делает ручную настройку режима возможной без скриптов.
-- `/v3` shortcut **не активирован**.
-- `scripts/v3/*` **не созданы** (будут в Phase 7).
-- Первый pilot **ещё не проведён** (Phase 5).
+## Текущий статус
+
+- Режим `kilo-notebook-v3` / `Kilo Notebook V3` canonically разрешён в правилах.
+- `.ai/v3/` foundation, contracts, prompts и templates уже созданы.
+- Этот setup guide существует.
+- Но live UI status режима нужно подтверждать отдельно.
+
+### Operational status fields
+
+При фактической настройке человек должен явно зафиксировать:
+
+```text
+Kilo Notebook V3 mode configured in UI: yes / no
+Date:
+Who confirmed:
+Notes:
+```
+
+Пока такого подтверждения нет, import-stage нельзя считать готовым.
+
+## Что этот документ не доказывает
+
+Этот документ не доказывает, что:
+
+- режим уже создан в живом Kilo UI;
+- Kilo уже умеет принимать ZIP;
+- import-stage уже начался;
+- `.ai/v3/staging/` уже является обязательным input path.
+
+## Когда использовать этот guide
+
+Этот guide нужен только на переходе в `Phase 5C - Kilo Notebook V3 UI Setup`.
+
+Он не нужен для:
+
+- `Phase 5A - External Artifact Generation Pilot`;
+- `Phase 5B - Pre-Kilo Package Review`.
+
+До этих стадий внешний package можно тестировать без настройки режима.
 
 ## 1. Добавить режим в интерфейс Kilo
 
-Режим `Kilo Notebook V3` добавляется вручную через интерфейс Kilo Code. Repo-level canon фиксирует контракт, но не заменяет ручную настройку UI.
-
-### Что нужно сделать
-
-1. Откройте интерфейс Kilo Code в VS Code.
+1. Откройте интерфейс Kilo Code.
 2. Найдите список доступных Kilo modes.
-3. Добавьте новый режим со следующими параметрами:
+3. Добавьте новый режим:
    - **Внутреннее mode-значение:** `kilo-notebook-v3`
    - **UI-имя:** `Kilo Notebook V3`
-   - **Описание:** Безопасный импорт артефактов из внешнего V3 artifact package. Проверка manifest, путей и хэшей. Запись только разрешённых файлов. Journaling.
-4. Убедитесь, что новый режим виден в выпадающем списке Kilo modes.
+   - **Описание:** безопасный raw-input import/check/write/journal flow для V3 artifact package
+4. Убедитесь, что новый режим виден в списке modes.
 
 ### Рекомендуемая связка
-
-При запуске V3-задачи используйте:
 
 - `Kilo mode = Kilo Notebook V3`
 - `Task role = Notebook Agent`
 
-Не путайте:
-- `Kilo Notebook` — это `/v1-only` (staged local persistence для prompt-only ответов).
-- `Kilo Notebook V3` — это отдельный V3 import/check/write/journal режим.
-- `Kilo Recorder` — это `/r1-only` (response capture для External Web Chat).
+Не путать:
 
-## 2. Проверить существование режима в правилах
+- `Kilo Notebook` — `/v1-only`
+- `Kilo Recorder` — `/r1-only`
+- `Kilo Notebook V3` — отдельный V3 import mode
 
-После добавления в UI убедитесь, что режим описан в repo-level документах:
+## 2. Проверить repo-level canon
 
-- [`AGENTS.md`](../../../AGENTS.md) — раздел допустимых Kilo mode.
-- [`.ai/README.md`](../../README.md) — раздел Kilo modes.
-- [`.ai/rules/agent_protocol.md`](../../rules/agent_protocol.md) — режим `kilo-notebook-v3`.
-- [`.ai/rules/kilo_mode_contract.md`](../../rules/kilo_mode_contract.md) — контракт `kilo-notebook-v3`.
-- [`.ai/README.md`](../../README.md) — role vs mode.
+После настройки в UI убедитесь, что repo-level docs уже знают про этот режим:
 
-Если режим упомянут во всех этих файлах с корректным статусом, repo-level canon согласован.
+- [`AGENTS.md`](../../../AGENTS.md)
+- [`.ai/README.md`](../../README.md)
+- [`.ai/rules/agent_protocol.md`](../../rules/agent_protocol.md)
+- [`.ai/rules/kilo_mode_contract.md`](../../rules/kilo_mode_contract.md)
 
-## 3. Что нужно для ручного запуска V3 (Phase 4 manual runtime)
+## 3. Hard gate before first import run
 
-На текущей фазе (Phase 4) V3-цикл выполняется вручную. Для запуска нужны:
+Запуск `Kilo Notebook V3` нельзя делать, пока одновременно не выполнены все условия:
 
-### 3.1. Входы
+1. Есть реальный внешний artifact package.
+2. Package уже прошёл pre-Kilo package review.
+3. Режим реально настроен в UI.
+4. Известен raw package source: archive link или local archive path.
+5. Человек подтвердил, что текущий шаг — это import pilot.
+6. `git rev-parse --show-toplevel` показывает правильный repo root.
 
-1. **V3 artifact package** (ZIP-файл), созданный внешним чатом по контракту [`v3_artifact_package_contract.md`](../contracts/v3_artifact_package_contract.md).
-2. **Исходный V3 request** — текст запроса, который был отправлен внешнему чату.
-3. **Mode prompt** — [`kilo_notebook_v3_mode_prompt.md`](../prompts/kilo_notebook_v3_mode_prompt.md).
+Если это не так, текущий статус должен оставаться в pre-Kilo состоянии, а не в import-state.
 
-### 3.2. Ручной порядок импорта (до Phase 7)
+## 4. Input source
 
-Поскольку `scripts/v3/*` ещё не созданы, импорт делается вручную:
+До scripted support input source нельзя считать автоматически решённым.
 
-1. **Распаковать ZIP** в staging-зону: `.ai/v3/staging/<имя_корневой_папки>/`.
-2. **Проверить manifest.yaml** — обязательные поля, `v3_id`, `action: create`, `allowed_paths`, `forbidden_paths`, список `files`.
-3. **Проверить checksums.sha256** — вычислить SHA-256 для каждого файла и сверить.
-4. **Скопировать файлы** из `files/` в целевые project-relative пути.
-5. **Создать journal entry** вручную по шаблону [`v3_journal_template.yaml`](../templates/v3_journal_template.yaml) в `.ai/v3/journals/drafts/`.
-6. **Передать journal + файлы Codex** для review (по [`codex_v3_review_prompt.md`](../prompts/codex_v3_review_prompt.md)).
-7. **Дождаться human verdict** (accept / revision / reject).
+Правильное правило:
 
-Подробный пошаговый контракт импорта описан в [`kilo_notebook_v3_mode_prompt.md`](../prompts/kilo_notebook_v3_mode_prompt.md).
+- `.ai/v3/staging/` — это import-stage tool;
+- это не обязательная human-обязанность до import-stage;
+- если выбран repo-local staging fallback, это должно быть сказано явно в текущем run;
+- если import-stage ещё не начался, ZIP можно просто хранить локально и review-ить без staging;
+- базовый raw input для режима: archive link или local archive path;
+- короткая note из ответа внешнего чата опциональна.
 
-## 4. Текущие границы (Phase 4)
+## 4A. Repo root detection
 
-- **Без `/v3` shortcut.** Режим запускается только вручную через выбор в интерфейсе Kilo.
-- **Без `scripts/v3/*`.** Импорт, проверка manifest, сверка хэшей и journaling выполняются вручную.
-- **Без auto-apply.** Ни один файл не записывается автоматически без ручной проверки.
-- **Без pilot.** Первый живой V3-cycle ещё не проведён (Phase 5).
-- **MVP-ограничения:** только `action: create`, без overwrite, без delete, без бинарных файлов без явного разрешения.
-- **Scope первого pilot:** только `docs_only` (см. [`v3_scope_policy.md`](../contracts/v3_scope_policy.md)).
+Перед любыми файловыми операциями режим обязан сначала определить реальный git repo root:
 
-## 5. Human preflight checklist перед первым pilot
+```text
+git rev-parse --show-toplevel
+```
 
-Перед первым живым V3-циклом (Phase 5) проверьте:
+Это обязательный preflight.
 
-- [ ] Режим `Kilo Notebook V3` добавлен в интерфейс Kilo и виден в выпадающем списке.
-- [ ] Все 9 контрактов V3 читаются и понятны (`.ai/v3/contracts/`).
-- [ ] Промпт для внешнего чата [`create_v3_request_prompt.md`](../prompts/create_v3_request_prompt.md) готов к использованию.
-- [ ] Mode prompt [`kilo_notebook_v3_mode_prompt.md`](../prompts/kilo_notebook_v3_mode_prompt.md) прочитан.
-- [ ] Шаблон journal entry [`v3_journal_template.yaml`](../templates/v3_journal_template.yaml) понятен.
-- [ ] Человек понимает разницу между V1 (prompt-only), V2 (bounded technical review) и V3 (artifact package import).
-- [ ] Staging-зона `.ai/v3/staging/` существует.
-- [ ] Папка для journal drafts `.ai/v3/journals/drafts/` существует.
-- [ ] Человек знает, что первый pilot идёт только в scope `docs_only`.
+Правила:
 
-## 6. Что изменится в следующих фазах
+- все relative target paths считаются только от найденного git repo root;
+- journal draft создаётся только внутри этого repo root;
+- `V3_navigation.md` обновляется только внутри этого repo root;
+- local archive path в `Downloads` или `Documents` не влияет на target root;
+- открытая папка VS Code сама по себе не источник истины, если она не совпадает с git repo root.
 
-- **Phase 5 (Safe Pilot):** первый живой V3-cycle в безопасной зоне `docs_only`.
-- **Phase 6 (External Hardening):** V1 critique + V2 review реального diff.
-- **Phase 7 (Scripted Support):** появятся `scripts/v3/validate_v3_package.py`, `scripts/v3/stage_v3_package.py`, `scripts/v3/write_v3_journal.py`. Ручной импорт заменится на скриптованный.
-- **Phase 8 (Product-Code Scopes):** расширение scope за пределы `docs_only`.
+Если repo root не определяется или режим видит другой root, import-run должен остановиться с `blocked` и ничего не записывать.
+
+## 5. Что нужно для import-stage
+
+Только после перехода в `Phase 5D` нужны:
+
+1. Реальный V3 artifact package.
+2. Исходный V3 request или хотя бы `V3 ID`.
+3. Operating reference [`../prompts/kilo_notebook_v3_mode_prompt.md`](../prompts/kilo_notebook_v3_mode_prompt.md).
+4. Явный package source.
+5. Подтверждённый repo root.
+
+## 6. Human preflight checklist
+
+Перед первым import pilot проверьте:
+
+- [ ] Есть реальный внешний package.
+- [ ] Package уже review-нут на уровне ZIP/manifest/files/checksums.
+- [ ] Режим `Kilo Notebook V3` реально добавлен в UI.
+- [ ] Человек понимает, что сейчас идёт именно import test, а не только external package test.
+- [ ] Известен archive link или local archive path.
+- [ ] `git rev-parse --show-toplevel` показывает нужный repo root.
+- [ ] Operating reference прочитан.
+- [ ] Journal template понятен.
+
+## 7. Что изменится позже
+
+- **Phase 5A:** внешний package test без Kilo import.
+- **Phase 5B:** pre-Kilo package review.
+- **Phase 5C:** UI setup режима.
+- **Phase 5D:** import pilot.
+- **Phase 7:** появятся `scripts/v3/*`, и часть ручных шагов уйдёт в scripted support.
 
 ## Связанные документы
 
-- [`../README.md`](../README.md) — главный вход в V3.
-- [`../V3_navigation.md`](../V3_navigation.md) — навигация по V3-слою.
-- [`../contracts/README.md`](../contracts/README.md) — 9 контрактов V3 (Phase 2).
-- [`../prompts/README.md`](../prompts/README.md) — 4 промпта V3 (Phase 3).
-- [`../templates/README.md`](../templates/README.md) — 5 шаблонов V3 (Phase 3).
-- [`../../../AGENTS.md`](../../../AGENTS.md) — workflow contract репозитория.
-- [`../../plans/master/v3_workflow_implementation_plan.md`](../../plans/master/v3_workflow_implementation_plan.md) — план внедрения V3.
+- [`../README.md`](../README.md)
+- [`../V3_navigation.md`](../V3_navigation.md)
+- [`../prompts/kilo_notebook_v3_mode_prompt.md`](../prompts/kilo_notebook_v3_mode_prompt.md)
+- [`../contracts/v3_storage_policy.md`](../contracts/v3_storage_policy.md)
+- [`../contracts/v3_acceptance_policy.md`](../contracts/v3_acceptance_policy.md)
+- [`../../plans/master/v3_workflow_implementation_plan.md`](../../plans/master/v3_workflow_implementation_plan.md)

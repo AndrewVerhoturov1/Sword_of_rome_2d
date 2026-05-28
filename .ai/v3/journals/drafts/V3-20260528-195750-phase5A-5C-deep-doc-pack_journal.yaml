@@ -1,0 +1,60 @@
+v3_id: "V3-20260528-195750-phase5A-5C-deep-doc-pack"
+timestamp: "2026-05-28T18:53:39.3257738Z"
+
+import_status: "imported"
+
+source_package:
+  package_id: "V3-20260528-195750-phase5A-5C-deep-doc-pack"
+  source_type: "local_archive_path"
+  source_value: "C:\\Users\\andre\\Downloads\\V3-20260528-195750-phase5A-5C-deep-doc-pack.zip"
+  manifest_path: ".tmp/v3_phase5A_5C_review/V3-20260528-195750-phase5A-5C-deep-doc-pack/manifest.yaml"
+  zip_archive: "C:\\Users\\andre\\Downloads\\V3-20260528-195750-phase5A-5C-deep-doc-pack.zip"
+  checksums_verified: true
+
+imported_files:
+  - path: ".ai/v3/docs/phase5A_external_artifact_generation_pilot_detailed_implementation.md"
+    action: "create"
+    sha256_match: true
+    notes: "Recovered into repo root after notebook wrote same file into external Documents-root shadow path."
+
+  - path: ".ai/v3/docs/phase5B_pre_kilo_package_review_detailed_implementation.md"
+    action: "create"
+    sha256_match: true
+    notes: "Recovered into repo root after notebook wrote same file into external Documents-root shadow path."
+
+  - path: ".ai/v3/docs/phase5C_kilo_notebook_v3_ui_setup_detailed_implementation.md"
+    action: "create"
+    sha256_match: true
+    notes: "Recovered into repo root after notebook wrote same file into external Documents-root shadow path."
+
+skipped_files: []
+
+verification_notes:
+  manifest_valid: true
+  all_files_in_manifest: true
+  no_extra_files: true
+  checksums_all_match: true
+  allowed_paths_valid: true
+  forbidden_paths_respected: true
+
+human_review_status: "pending"
+
+codex_review:
+  reviewer: "codex"
+  verdict: "accept_with_notes"
+  timestamp: "2026-05-28T18:53:39.3257738Z"
+  summary: "Package valid, imported docs recovered into correct repo root, import pilot usable for human verdict."
+  checks:
+    journal_valid: true
+    files_exist: true
+    files_match_request: true
+    scope_respected: true
+    allowed_paths_respected: true
+    forbidden_paths_respected: true
+    acceptance_criteria_met: true
+  notes: "Original notebook run wrote files, journal, and lifecycle entry into C:\\Users\\andre\\Documents\\.ai\\v3\\... instead of current workspace root. Contents were recovered into repo root and verified against manifest and hashes. This is a mode/root-resolution bug, not a package-content bug."
+  human_review_required: true
+  human_review_items:
+    - "Открыть три новых файла в .ai/v3/docs/ и убедиться, что это именно те большие русские документы, которые ожидались от внешнего пакета."
+    - "Проверить, что режим Kilo Notebook V3 после рестарта реально существует и не смешан со старым Kilo Notebook."
+    - "Подтвердить, что можно считать этот import pilot принятым несмотря на recovery из неправильного внешнего root."

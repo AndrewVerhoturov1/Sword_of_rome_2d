@@ -8,7 +8,7 @@
 
 ## 1. Суть artifact package
 
-V3 artifact package — это ZIP-архив со строгой внутренней структурой. Внешний чат создаёт его в ответ на [`v3_request_contract.md`](v3_request_contract.md) и возвращает человеку. Человек скачивает ZIP и передаёт в `kilo-notebook-v3` для безопасного импорта.
+V3 artifact package — это ZIP-архив со строгой внутренней структурой. Внешний чат создаёт его в ответ на [`v3_request_contract.md`](v3_request_contract.md) и возвращает человеку. Человек потом передаёт его в `kilo-notebook-v3` как raw input: archive link, local archive path или другой явно выбранный package source.
 
 Пакет — это транспортный контейнер. Он не является источником истины сам по себе. Источник истины — связка:
 

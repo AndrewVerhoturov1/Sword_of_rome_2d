@@ -1,0 +1,45 @@
+v3_id: "V3-20260529-000139-pink-calculator-html-pilot"
+timestamp: "2026-05-28T19:14:36.0000000Z"
+
+import_status: "imported"
+
+source_package:
+  package_id: "V3-20260529-000139-pink-calculator-html-pilot"
+  source_type: "local_archive_path"
+  source_value: "C:\\Users\\andre\\Downloads\\V3-20260529-000139-pink-calculator-html-pilot.zip"
+  manifest_path: ".ai/v3/_tmp_unpack/V3-20260529-000139-pink-calculator-html-pilot/manifest.yaml"
+  zip_archive: "C:\\Users\\andre\\Downloads\\V3-20260529-000139-pink-calculator-html-pilot.zip"
+  checksums_verified: true
+
+imported_files:
+  - path: "table-sandbox/v3-pilots/pink_calculator.html"
+    action: "create"
+    sha256_match: true
+    notes: "Standalone pink calculator pilot. First write attempt targeted C:\\Users\\andre\\Documents\\table-sandbox\\ (wrong workspace root), corrected to D:\\Codex+Kilocode\\projects\\sword-of-rome-web\\table-sandbox\\v3-pilots\\ (actual repo root). SHA256 verified: fb19602fe0d6e6b4e41a3d5fa730e1243a5a54b028fc38bdf464311b9b091afd."
+
+skipped_files: []
+
+verification_notes:
+  manifest_valid: true
+  all_files_in_manifest: true
+  no_extra_files: true
+  checksums_all_match: true
+  allowed_paths_valid: true
+  forbidden_paths_respected: true
+  target_did_not_exist: true
+
+human_review_status: "pending"
+
+codex_review:
+  reviewer: "codex"
+  verdict: "pending"
+  timestamp: null
+  summary: null
+  checks: {}
+  notes: null
+  human_review_required: true
+  human_review_items:
+    - "Open table-sandbox/v3-pilots/pink_calculator.html locally and verify pink visual style."
+    - "Test: 2+2=4, 7-10=-3, 3*4=12, 8/2=4, 1.5+2.25=3.75, 5/0 shows division-by-zero error."
+    - "Check C resets to 0, decimal point cannot be entered twice, keyboard input works."
+    - "Confirm no existing repository files were modified."

@@ -8,7 +8,7 @@
 
 ## 1. Суть journal
 
-Journal entry — это запись факта импорта V3 artifact package. Она создаётся `kilo-notebook-v3` после того, как пакет распакован, проверен и разрешённые файлы записаны.
+Journal entry — это подробный технический trace одного import-run. Он создаётся `kilo-notebook-v3` после того, как пакет получен, проверен и разрешённые файлы записаны.
 
 Journal — не просто лог. Это источник фактов для Codex review: Codex проверяет journal до того, как смотреть реальные файлы.
 
@@ -16,7 +16,29 @@ Journal не является:
 
 - решением о приёмке (verdict делает Codex + человек);
 - репозиторием артефактов (raw ZIP хранится отдельно);
-- заменой manifest (manifest — часть пакета, journal — запись импорта).
+- заменой manifest (manifest — часть пакета, journal — запись импорта);
+- заменой [`../V3_navigation.md`](../V3_navigation.md).
+
+### 1.1. Граница между journal и V3_navigation
+
+`V3_navigation.md` хранит короткий lifecycle index цикла:
+
+- `V3 ID`
+- статус
+- тема
+- краткую summary
+- ссылки на request/prompt/journal
+- список created files
+
+Journal хранит только подробности конкретного import-run:
+
+- какой package source использован;
+- какие проверки прошли;
+- какие файлы imported;
+- какие skipped и почему;
+- технические verification notes.
+
+Если journal начинает повторять целиком строку из `V3_navigation.md`, это уже drift и лишнее дублирование.
 
 ## 2. Обязательные поля journal entry
 
@@ -43,13 +65,15 @@ Journal не является:
 
 ### 2.4. `source_package`
 
-Информация об исходном пакете:
+Информация об исходном пакете и конкретном input source:
 
 ```yaml
 source_package:
   package_id: "V3-20260527-153000-v3-contracts"
-  manifest_path: "<path внутри staging>"
-  zip_archive: "<путь к сохранённому ZIP>"
+  source_type: "<archive_link | local_archive_path | repo_local_staging>"
+  source_value: "<сама ссылка или путь>"
+  manifest_path: "<path внутри staging или extracted package>"
+  zip_archive: "<путь к сохранённому ZIP, если он был локально сохранён>"
   checksums_verified: true
 ```
 
@@ -126,6 +150,8 @@ Pending journal drafts (до human accept) хранятся в `.ai/v3/journals/
 Accepted journal entries хранятся в `.ai/v3/journals/` и являются tracked (часть audit trail V3 workflow).
 
 Codex может читать pending local journal draft до human accept в рамках review flow.
+
+`V3_navigation.md` при этом хранит только ссылку на journal и короткую summary, а не копию полей journal.
 
 ## 4. Инварианты journal
 

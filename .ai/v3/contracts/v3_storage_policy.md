@@ -1,130 +1,174 @@
 # V3 Storage Policy
 
-Версия: 0.1 (Phase 2)
-Назначение: формальная политика хранения V3 артефактов — какие файлы tracked, какие local-only, что считается persistent repo-layer, что — локальным runtime.
-Статус: контракт Phase 2. Описывает правила хранения, но не является готовым runtime/cleanup script.
+Версия: 0.3
+Назначение: формальная политика хранения V3 артефактов и input sources.
+Статус: contract layer. Уточнена под raw-input notebook flow и lifecycle archive model.
 
 ---
 
 ## 1. Принцип
 
-V3 workflow создаёт несколько типов артефактов. Не все они должны попадать в Git. Разделение:
+V3 создаёт несколько разных слоёв:
 
-- **Persistent repo-layer** — файлы, которые должны быть в Git: контракты, навигация, accepted journal entries, stable docs.
-- **Local runtime** — артефакты, которые создаются и используются в рамках одного workflow цикла: raw ZIP, staging-папки, temporary journal drafts, rejected packages.
-- **Human-decision zone** — артефакты, которые становятся persistent только после явного решения человека (accepted journal entries, V3 navigation updates).
+- persistent repo-layer;
+- request/archive layer;
+- local package/input layer;
+- import/runtime layer;
+- human decision layer.
+
+Главная поправка:
+
+```text
+Внешний package может существовать и review-иться
+до того, как он вообще войдёт в import lane.
+```
+
+И ещё:
+
+```text
+Kilo Notebook V3 принимает raw input.
+Raw input != handoff.
+```
 
 ## 2. Классификация артефактов
 
-### 2.1. Persistent (tracked в Git)
+### 2.1. Persistent tracked layer
 
 | Артефакт | Путь | Условие |
-|----------|------|---------|
-| V3 contracts | `.ai/v3/contracts/*.md` | Сразу после создания |
-| V3 README | `.ai/v3/README.md` | Сразу после создания |
-| V3 navigation | `.ai/v3/V3_navigation.md` | После каждого accepted import |
-| V3 journal (accepted) | `.ai/v3/journals/V3-*_journal.yaml` | Только после human accept |
-| V3 docs | `.ai/v3/docs/*.md` | После принятия |
-| V3 prompts | `.ai/v3/prompts/*.md` | После принятия (Phase 3) |
-| V3 templates | `.ai/v3/templates/*` | После принятия (Phase 3) |
+|---|---|---|
+| V3 contracts | `.ai/v3/contracts/*.md` | tracked |
+| V3 README | `.ai/v3/README.md` | tracked |
+| V3 navigation | `.ai/v3/V3_navigation.md` | tracked |
+| Stable V3 docs | `.ai/v3/docs/*.md` | tracked |
+| V3 prompts | `.ai/v3/prompts/*.md` | tracked |
+| V3 templates | `.ai/v3/templates/*` | tracked |
+| Accepted journal | `.ai/v3/journals/V3-*_journal.yaml` | только после human accept |
 
-### 2.2. Local-only (не трекаются в Git)
-
-| Артефакт | Путь | Правило |
-|----------|------|---------|
-| Raw ZIP | `.ai/v3/staging/*.zip` | Удаляется после успешного импорта или при очистке |
-| Staging распаковка | `.ai/v3/staging/V3-*/` | Удаляется после импорта |
-| Rejected packages | `.ai/v3/staging/rejected/` | Хранятся до очистки, не публикуются |
-| Temporary journal drafts | `.ai/v3/journals/drafts/` | Удаляются после финализации. Codex может читать pending draft до human accept в рамках review flow |
-| Revision attempt packages | `.ai/v3/staging/revisions/` | Хранятся до завершения revision цикла |
-
-### 2.3. Human-decision zone
+### 2.2. Request/archive layer
 
 | Артефакт | Путь | Правило |
-|----------|------|---------|
-| Journal entry (pending) | `.ai/v3/journals/drafts/V3-*_journal.yaml` | Не публикуется до human accept; после accept перемещается в `.ai/v3/journals/` и становится persistent |
-| V3 navigation update | `.ai/v3/V3_navigation.md` | Не коммитится до accept всего V3 import |
-| Review notes | journal entry | Аналогично journal |
+|---|---|---|
+| V3 request files | `.ai/v3/requests/*_request.md` | обычно tracked после принятого process update |
+| V3 prompt files | `.ai/v3/requests/*_prompt.md` | обычно tracked после принятого process update |
+| V3 send notes / helper notes | `.ai/v3/requests/*_send_note.md` | допускаются как request-layer artifacts |
+| Lifecycle entry | `.ai/v3/V3_navigation.md` | обновляется по стадиям, как в `V1`/`V2` |
 
-## 3. Правила по умолчанию
+### 2.3. Local package/input layer
 
-### 3.1. Не публиковать по умолчанию
+| Артефакт | Место | Правило |
+|---|---|---|
+| Внешний ZIP package | local-only path, archive link, human-provided source | может существовать до import-stage |
+| Short external note | human-provided raw text | optional |
+| Package review notes | Codex/human review context | package можно review-ить без import |
 
-Ни один V3 runtime артефакт не публикуется в Git по умолчанию. Публикация — это явное действие после human accept.
+Важно:
 
-Исключение: stable contracts, README, navigation, journal (после accept). Эти файлы могут быть включены в коммит как часть workflow checkpoint.
+- до import-stage человек не обязан раскладывать ZIP в `.ai/v3/staging/`;
+- внешний ZIP сам по себе не считается imported;
+- raw input для `Kilo Notebook V3` может быть ссылкой на архив или локальным путём к архиву.
 
-### 3.2. Raw ZIP и staging — local-only
+### 2.4. Local import/runtime layer
 
-- Raw ZIP-архивы хранятся в `.ai/v3/staging/`.
-- После успешного импорта raw ZIP может быть удалён.
-- staging-папки не попадают в Git.
+| Артефакт | Путь | Правило |
+|---|---|---|
+| Raw ZIP в import lane | `.ai/v3/staging/*.zip` | только если выбран repo-local staging fallback |
+| Staging распаковка | `.ai/v3/staging/V3-*/` | только внутри import-stage |
+| Rejected packages | `.ai/v3/staging/rejected/` | local-only |
+| Revision packages | `.ai/v3/staging/revisions/` | local-only |
+| Temporary journal drafts | `.ai/v3/journals/drafts/` | local-only до accept |
 
-### 3.3. Cleanup после accept
+### 2.5. Human-decision layer
 
-После human accept:
+| Артефакт | Путь | Правило |
+|---|---|---|
+| Pending journal draft | `.ai/v3/journals/drafts/V3-*_journal.yaml` | не tracked до accept |
+| Accepted journal | `.ai/v3/journals/V3-*_journal.yaml` | tracked после accept |
+| Navigation update | `.ai/v3/V3_navigation.md` | обновляется по lifecycle стадиям, не только после accept |
 
-- raw ZIP удаляется из staging;
-- staging-папка очищается;
-- journal entry (теперь accepted) остаётся как persistent;
-- V3 navigation обновляется.
+## 3. Current input policy
 
-### 3.4. Cleanup после reject
+До scripted support input не canonicalized полностью.
 
-После human reject:
+Сейчас допустимо:
 
-- raw ZIP перемещается в `.ai/v3/staging/rejected/` для возможного анализа;
-- journal entry помечается как `rejected`;
-- staging-папка очищается.
+- человек просто хранит ZIP локально;
+- Codex/человек делают pre-Kilo package review без staging;
+- import-stage позже использует archive link, local archive path или selected repo-local staging fallback;
+- `Kilo Notebook V3` получает raw input, а не обязательный handoff.
 
-## 4. Что НЕЛЬЗЯ публиковать
+Сейчас недопустимо считать по умолчанию, что:
 
-Следующие артефакты никогда не должны публиковаться в Git:
+- человек обязан класть ZIP в `.ai/v3/staging/inbox/`;
+- `.ai/v3/staging/` уже обязательный universal path;
+- любой полученный ZIP автоматически перешёл в import lane.
 
-- бинарные файлы из ZIP (если не были явно разрешены);
-- external chat response, содержащие V3 package в текстовой форме;
-- секреты, токены, пароли, ключи;
-- внутренние draft-версии контрактов (только финальные);
-- rejected packages (могут храниться локально для анализа, но не публикуются).
+## 3A. Repo-root binding rule
 
-## 5. V staging directory
+Для `kilo-notebook-v3` все project-relative target paths, journal paths и lifecycle paths должны разрешаться только относительно реального git repo root.
 
-```
-.ai/v3/staging/
-  V3-YYYYMMDD-HHMMSS-<slug>/
-    ... распакованный ZIP ...
-  rejected/
-    V3-YYYYMMDD-HHMMSS-<slug>/
-      ... rejected package ...
-  revisions/
-    V3-YYYYMMDD-HHMMSS-<slug>-attempt-2/
-      ... revision package ...
-```
+Обязательный preflight:
 
-## 6. Persistent storage (tracked)
-
-```
-.ai/v3/
-  contracts/
-    v3_request_contract.md
-    v3_artifact_package_contract.md
-    v3_manifest_contract.md
-    v3_journal_contract.md
-    v3_codex_review_contract.md
-    v3_revision_contract.md
-    v3_storage_policy.md
-    v3_scope_policy.md
-    v3_acceptance_policy.md
-  journals/
-    V3-YYYYMMDD-HHMMSS-<slug>_journal.yaml  (только accepted)
-  V3_navigation.md
-  README.md
+```text
+git rev-parse --show-toplevel
 ```
 
----
+Недопустимо:
+
+- выводить target root из local archive path;
+- выводить target root из `Downloads` или `Documents`;
+- выводить target root только из текущего VS Code workspace, если он не совпадает с git repo root;
+- создавать parallel `.ai/` tree вне текущего репозитория.
+
+Если repo root не определяется или не совпадает с intended repository root, import-run обязан остановиться с `blocked`.
+
+## 4. Repo-local staging fallback
+
+Если текущий import-stage явно выбрал repo-local staging fallback, тогда:
+
+- ZIP может быть сохранён в `.ai/v3/staging/`;
+- package может быть распакован в `.ai/v3/staging/V3-*/`;
+- staging cleanup идёт после accept/reject.
+
+Но это только selected input method, а не default human obligation для pre-Kilo phase.
+
+## 5. Lifecycle archive rule
+
+`V3_navigation.md` должен вести lifecycle/archive по аналогии с `V1` и `V2`.
+
+Минимум:
+
+- запись создаётся на стадии request/prompt;
+- обновляется после получения внешнего package;
+- обновляется после import-run;
+- обновляется после verdict.
+
+Поле `Created Files` в `V3_navigation.md` должно содержать итоговые созданные project files, если import уже был.
+
+## 6. Cleanup
+
+### После accept
+
+- import-lane staging очищается, если использовался;
+- accepted journal становится persistent;
+- lifecycle entry переводится в `accepted`.
+
+### После reject
+
+- package может быть перенесён в rejected local-only зону;
+- imported result не считается accepted;
+- lifecycle entry переводится в `rejected`.
+
+## 7. Что нельзя публиковать
+
+Нельзя публиковать по умолчанию:
+
+- raw external ZIP как runtime artifact;
+- staging распаковки;
+- rejected packages;
+- временные drafts.
 
 ## Связанные контракты
 
-- [`v3_journal_contract.md`](v3_journal_contract.md) — journal entry, который переходит из local-only в persistent после accept.
-- [`v3_acceptance_policy.md`](v3_acceptance_policy.md) — после какого verdict артефакты становятся persistent.
-- [`v3_codex_review_contract.md`](v3_codex_review_contract.md) — review-шаг, после которого определяется статус.
+- [`v3_request_contract.md`](v3_request_contract.md)
+- [`v3_acceptance_policy.md`](v3_acceptance_policy.md)
+- [`v3_journal_contract.md`](v3_journal_contract.md)

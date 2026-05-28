@@ -172,7 +172,8 @@ codex_review:
 - НЕ принимаешь решение за человека.
 - НЕ выполняешь импорт или запись файлов (это задача Kilo Notebook V3).
 - НЕ изменяешь импортированные файлы без явного revision request.
-- НЕ обновляешь V3_navigation.md до human accept.
+- НЕ превращаешь V3_navigation.md в дубль journal.
+- V3_navigation.md уже может быть обновлён как lifecycle index до human accept.
 ```
 
 ---
