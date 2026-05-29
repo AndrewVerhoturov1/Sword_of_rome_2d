@@ -1,8 +1,8 @@
 # V3 Storage Policy
 
-Версия: 0.4
-Назначение: формальная политика хранения V3 артефактов и input sources.
-Статус: contract layer. Уточнена под raw-input notebook flow, lifecycle archive model и machine-check reports.
+Версия: 0.5 (Phase 6 lifecycle hardening)
+Назначение: формальная политика хранения V3 артефактов и input sources. Жёстко закреплены правила accepted journal, tester prompt и machine-check report.
+Статус: contract layer. Уточнена под raw-input notebook flow, lifecycle archive model и machine-check reports. Добавлены accepted journal promotion rules и политика local-only для tester prompt / machine-check report (Phase 6).
 
 ---
 
@@ -76,16 +76,39 @@ Raw input != handoff.
 | Rejected packages | `.ai/v3/staging/rejected/` | local-only |
 | Revision packages | `.ai/v3/staging/revisions/` | local-only |
 | Temporary journal drafts | `.ai/v3/journals/drafts/` | local-only до accept |
-| Tester prompt copies | `.ai/v3/test_prompts/<V3-ID>_post_import_test_prompt.md` | local, создаётся `Kilo Notebook V3` после импорта, если в пакете есть `POST_IMPORT_TEST_PROMPT.md` и `mode != waived`. Ordinary Kilo code run и человек используют этот файл как основной prompt source. |
-| Machine-check reports | `.ai/v3/test_reports/<V3-ID>_machine_check_report.md` | local, создаётся ordinary Kilo code run после post-import machine checks. Не journal. Не lifecycle registry. Codex читает этот файл как главный источник machine-check результатов. |
+| Tester prompt copies | `.ai/v3/test_prompts/<V3-ID>_post_import_test_prompt.md` | local workflow artifact. Создаётся `Kilo Notebook V3` после импорта, если в пакете есть `POST_IMPORT_TEST_PROMPT.md` и `mode != waived`. Не journal. Не lifecycle registry. Не external artifact. Не replacement for human verdict. Source для обычного Kilo code run. |
+| Machine-check reports | `.ai/v3/test_reports/<V3-ID>_machine_check_report.md` | local workflow artifact. Создаётся ordinary Kilo code run после post-import machine checks. Не journal. Не lifecycle registry. Не external artifact. Не replacement for human verdict. Source-of-truth для Codex machine-check review. |
 
 ### 2.5. Human-decision layer
 
 | Артефакт | Путь | Правило |
 |---|---|---|
-| Pending journal draft | `.ai/v3/journals/drafts/V3-*_journal.yaml` | не tracked до accept |
-| Accepted journal | `.ai/v3/journals/V3-*_journal.yaml` | tracked после accept |
+| Pending journal draft | `.ai/v3/journals/drafts/V3-*_journal.yaml` | local-only. Не tracked до human accept. Существует с момента import run. |
+| Accepted journal | `.ai/v3/journals/V3-*_journal.yaml` | tracked только после human verdict `accept`. Повышается из `drafts/` в корень `journals/`. |
 | Navigation update | `.ai/v3/V3_navigation.md` | обновляется по lifecycle стадиям, не только после accept |
+
+### 2.6. Accepted journal promotion rule
+
+Journal draft проходит следующий путь:
+
+```text
+draft (.ai/v3/journals/drafts/) → accepted (.ai/v3/journals/)
+```
+
+Переход происходит только после human verdict `accept`. До этого момента:
+
+- journal draft остаётся в `drafts/` и является local-only;
+- journal draft не считается tracked;
+- machine-check report **не повышается** в journal и **не заменяет** journal;
+- tester prompt copy **не повышается** в journal и **не заменяет** journal.
+
+После human accept:
+
+- journal перемещается из `drafts/` в корень `journals/`;
+- journal становится tracked;
+- tester prompt copy и machine-check report остаются local-only (не tracked, не journal);
+- lifecycle entry в `V3_navigation.md` обновляется до `accepted`.
+
 
 ## 3. Current input policy
 

@@ -1,8 +1,8 @@
 # V3 Artifact Package Contract
 
-Версия: 0.3 (Phase 5+ post-import testing flow hardening)
+Версия: 0.4 (Phase 6 lifecycle hardening)
 Назначение: формальный контракт структуры V3 artifact package — ZIP-архива, который внешний чат создаёт в ответ на V3 request.
-Статус: контракт Phase 2+. Добавлен `POST_IMPORT_TEST_PROMPT.md` как допустимый root-level control file (post-import testing correction).
+Статус: контракт Phase 2+. Добавлен `POST_IMPORT_TEST_PROMPT.md` как допустимый root-level control file (post-import testing correction). Добавлены lifecycle closure rules (Phase 6).
 
 ---
 
@@ -219,14 +219,37 @@ Prompt также обязан:
 
 ## 6. MVP-ограничения
 
-На текущей стадии (Phase 5+):
+На текущей стадии (Phase 6):
 
 - `action` только `create` (новые файлы);
 - перезапись существующих файлов (`overwrite`) не поддерживается;
 - удаление файлов (`delete`) не поддерживается;
 - бинарные файлы в `files/` не допускаются без явного разрешения в request.
 
-Эти ограничения — часть контракта, а не временное неудобство. Они снимаются только после Phase 5 (Safe Pilot) и Phase 8 (Expansion to Product-Code Scopes).
+Эти ограничения — часть контракта, а не временное неудобство. Они снимаются только после Phase 6 (Lifecycle Hardening) и Phase 8 (Expansion to Product-Code Scopes).
+
+## 7. Lifecycle closure rule
+
+Фундаментальное правило V3 lifecycle:
+
+```text
+imported != accepted
+```
+
+Импортированный package не равен финальному accepted результату. Импорт — это только первый шаг после pre-Kilo review. После импорта lifecycle продолжается:
+
+1. **Tester prompt handoff** — если `post_import_testing.mode != waived`, `Kilo Notebook V3` сохраняет tester prompt в `.ai/v3/test_prompts/<V3-ID>_post_import_test_prompt.md`. Человек передаёт его в обычный Kilo code run.
+2. **Machine-check report** — обычный Kilo code run выполняет machine checks и пишет report в `.ai/v3/test_reports/<V3-ID>_machine_check_report.md`. Machine-check report не является journal и не заменяет journal.
+3. **Human checks** — человек выполняет ручные проверки (визуальные, UX, смысловые).
+4. **Codex review** — Codex читает journal, реальные файлы, machine-check report (если `mode = required`), и формирует verdict.
+5. **Human verdict** — человек принимает (`accept`), отправляет на доработку (`revision`) или отклоняет (`reject`).
+
+Только после human verdict `accept` цикл считается завершённым:
+
+- journal draft из `.ai/v3/journals/drafts/` повышается в `.ai/v3/journals/` и становится tracked;
+- lifecycle entry в `V3_navigation.md` обновляется до `accepted`.
+
+До human verdict цикл остаётся в статусе `imported` (или `staged`), и ни один артефакт не считается tracked accepted result.
 
 ---
 

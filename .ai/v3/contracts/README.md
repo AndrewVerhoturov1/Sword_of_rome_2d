@@ -4,7 +4,7 @@
 
 ## Текущий статус
 
-**Phase 2 завершён, Phase 5+ коррекция (post-import testing):** все 9 контрактов созданы и обновлены. V3 описан как формальный процесс с post-import testing layer.
+**Phase 2 завершён, Phase 6 lifecycle hardening:** все 9 контрактов созданы и обновлены. V3 описан как формальный процесс с post-import testing layer, lifecycle closure rules и accepted journal policy.
 
 ## Содержимое
 
@@ -22,10 +22,10 @@
 
 ## Что будет дальше
 
-Следующие фазы (Phase 3+):
+Phase 6 завершает lifecycle hardening. Далее:
 
-- templates/ — шаблоны V3 request, manifest.yaml, journal, Codex review, revision request.
-- prompts/ — промпты create_v3_request_prompt, kilo_notebook_v3_mode_prompt, codex_v3_review_prompt, v3_revision_request_prompt.
+- Phase 7: scripted support (`scripts/v3/*`, validator/staging helpers, import tooling).
+- `/v3` shortcut активация.
 
 ## Связанные документы
 

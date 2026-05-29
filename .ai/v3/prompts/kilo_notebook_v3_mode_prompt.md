@@ -1,8 +1,8 @@
 # kilo_notebook_v3_mode_prompt.md
 
-Версия: 0.7
+Версия: 0.8 (Phase 6 lifecycle hardening)
 Назначение: operating reference для режима `Kilo Notebook V3`.
-Статус: raw-input mode reference. Добавлена поддержка post-import testing prompt display.
+Статус: raw-input mode reference. Добавлена поддержка post-import testing prompt display. Добавлены accepted journal awareness и Phase 6 alignment.
 
 ---
 
@@ -230,6 +230,19 @@
 - режим уже настроен в UI;
 - ZIP import уже опробован вживую;
 - scripted support уже существует.
+
+**Phase 6 note (2026-05-29):** Phase 5 практически доказан. Import/check/write/journal flow работает. Текущая фаза — lifecycle hardening, а не proof-of-import. Режим `Kilo Notebook V3` остаётся в рамках import/check/write/journal без расширения в accepted journal promotion (это задача Codex/human после review).
+
+## 12. Accepted journal awareness
+
+`Kilo Notebook V3` создаёт journal draft в `.ai/v3/journals/drafts/`, но не повышает его до accepted journal. Это важно:
+
+- journal draft — local-only artifact, создаваемый при import run;
+- accepted journal (`.ai/v3/journals/V3-*_journal.yaml`) появляется только после human verdict `accept`;
+- `Kilo Notebook V3` не отвечает за promotion journal draft → accepted journal;
+- режим не ждёт human verdict и не блокирует import run из-за отсутствия accepted journal;
+- tester prompt copy и machine-check report создаются как local-only workflow artifacts и не повышаются в journal.
+
 
 ## Связанные документы
 

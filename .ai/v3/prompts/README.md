@@ -4,12 +4,13 @@
 
 ## Текущий статус
 
-**Phase 3 завершён (2026-05-27), Phase 5+ коррекция (post-import testing):** prompt layer создан и обновлён.
+**Phase 3 завершён (2026-05-27), Phase 6 lifecycle hardening:** prompt layer создан и обновлён.
 
-Позже уточнено:
+Уточнено в Phase 6:
 
-- `create_v3_request_prompt.md` — это внешний request layer. Теперь включает инструкции по post-import testing.
-- `kilo_notebook_v3_mode_prompt.md` — это не handoff prompt, а raw-input operating reference для `Kilo Notebook V3`. Теперь включает post-import test prompt display.
+- `kilo_notebook_v3_mode_prompt.md` — добавлены accepted journal awareness и Phase 6 alignment.
+- `codex_v3_review_prompt.md` — усилен machine-check report lookup, добавлено accepted journal awareness.
+- `create_v3_request_prompt.md` — внешний request layer, включает post-import testing.
 - review и revision prompts остаются отдельными.
 
 ## Содержимое

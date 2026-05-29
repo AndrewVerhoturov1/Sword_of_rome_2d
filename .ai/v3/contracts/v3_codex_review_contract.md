@@ -1,8 +1,8 @@
 # V3 Codex Review Contract
 
-Версия: 0.3 (Phase 5+ post-import testing flow hardening)
+Версия: 0.4 (Phase 6 lifecycle hardening)
 Назначение: формальный контракт того, как Codex проверяет импортированные V3 артефакты — journal, реальные файлы, сверку с request/scope, риски.
-Статус: контракт Phase 2+. Добавлен post-import testing gate с canonical machine-check report file.
+Статус: контракт Phase 2+. Добавлен post-import testing gate с canonical machine-check report file. Усилены правила machine-check report lookup, human check separation и accepted journal awareness (Phase 6).
 
 ---
 
@@ -72,29 +72,36 @@ Codex проверяет `manifest.post_import_testing.mode`:
 
 **Если `mode = required`:**
 
-Codex проверяет:
-- был ли `POST_IMPORT_TEST_PROMPT.md` в пакете;
-- был ли выполнен machine-check run через обычный Kilo code run;
-- существует ли machine-check report по canonical пути: `.ai/v3/test_reports/<V3-ID>_machine_check_report.md`;
-- Codex читает этот report-файл как главный источник machine-check результатов, а не требует длинный pasted summary в чате;
-- если machine-check report отсутствует, Codex не может дать verdict `accept`.
+Codex **обязан сначала** проверить наличие machine-check report по canonical пути: `.ai/v3/test_reports/<V3-ID>_machine_check_report.md`. Это первое действие для данного шага, а не опциональная проверка в конце.
 
-Если testing не был выполнен, Codex может:
-- запросить его выполнение (verdict `revision_needed`);
-- или принять явный testing waiver от человека (verdict `accept_with_notes`).
+- Codex читает этот report-файл как главный источник machine-check результатов. Не требует длинный pasted summary от человека.
+- Если machine-check report отсутствует — это жёсткий blocker. Codex **не может** дать verdict `accept`. Возможны только `revision_needed` (запросить выполнение testing) или `accept_with_notes` (при явном testing waiver от человека).
+- Если report существует — Codex оценивает результаты machine checks. Негативные результаты могут привести к `revision_needed` или `reject`.
 
 **Если `mode = optional`:**
 
-Testing не блокирует acceptance. Если machine-check report есть — Codex учитывает его. Если нет — это не препятствие для `accept`.
+Machine-check report из `.ai/v3/test_reports/` может быть. Если есть — Codex читает и учитывает. Если нет — **это не скрытый blocker** и не препятствие для `accept`. `optional` не должен превращаться в неявное требование.
 
 **Если `mode = waived`:**
 
-Testing не требуется. Codex пропускает этот шаг.
+Testing не требуется. Codex пропускает этот шаг полностью.
 
-Testing waiver — это лёгкий механизм, а не новая сущность:
+Testing waiver — лёгкий механизм:
 - человек явно говорит Codex «testing не нужен, принимаем без тестов»;
 - Codex фиксирует waiver как explicit note/decision в review chain;
 - waiver не требует нового журнала или нового статуса.
+
+### Шаг 5A. Проверить accepted journal status
+
+Codex должен понимать различие между draft и accepted journal:
+
+- journal draft в `.ai/v3/journals/drafts/` — это local-only artifact, созданный `Kilo Notebook V3`;
+- journal draft не является tracked accepted result;
+- accepted journal появляется только после human verdict `accept`;
+- Codex review происходит до human verdict, поэтому journal на момент review всегда draft;
+- Codex не должен требовать accepted journal до human accept.
+
+Это важно: Codex проверяет draft journal и machine-check report, но финальное решение о переводе journal в accepted остаётся за human verdict.
 
 ### Шаг 6. Оценить риски
 

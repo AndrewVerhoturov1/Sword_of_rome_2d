@@ -1,8 +1,8 @@
 # codex_v3_review_prompt.md — Промпт для Codex Review после V3 Import
 
-Версия: 0.2 (Phase 5+ post-import testing flow hardening)
+Версия: 0.3 (Phase 6 lifecycle hardening)
 Назначение: промпт для Codex, выполняющего review после того, как `Kilo Notebook V3` импортировал V3 artifact package и создал journal entry.
-Статус: рабочий prompt. Опирается на Phase 2 контракты, особенно [`v3_codex_review_contract.md`](../contracts/v3_codex_review_contract.md). Добавлен machine-check report как главный источник результатов.
+Статус: рабочий prompt. Опирается на Phase 2 контракты, особенно [`v3_codex_review_contract.md`](../contracts/v3_codex_review_contract.md). Добавлен machine-check report как главный источник результатов. Добавлены accepted journal awareness и усиленный machine-check report lookup (Phase 6).
 
 ---
 
@@ -81,20 +81,23 @@ Codex review — обязательный шаг между импортом и 
 
 ### Шаг 4. Проверить post-import testing status
 
+**Первое действие для `mode = required`:** проверь существование machine-check report по canonical пути — `.ai/v3/test_reports/<V3-ID>_machine_check_report.md`. Это не опциональная проверка в конце, а обязательное первое действие для этого шага.
+
 Если `manifest.post_import_testing.mode = required`:
 
-1. Проверь, существует ли machine-check report по canonical пути: `.ai/v3/test_reports/<V3-ID>_machine_check_report.md`.
+1. **Сначала** проверь, существует ли machine-check report по canonical пути: `.ai/v3/test_reports/<V3-ID>_machine_check_report.md`.
 2. **Сначала читай этот report-файл** — это главный источник machine-check результатов. Не требуй длинный pasted summary от человека.
-3. Если report существует — оцени результаты. Если report отсутствует — зафиксируй это.
-4. Если report отсутствует, Codex не может дать verdict `accept`. Возможны только `revision_needed` (запросить testing) или `accept_with_notes` (при явном testing waiver от человека).
+3. Если report существует — оцени результаты. Если report отсутствует — зафиксируй это как blocker.
+4. Если report отсутствует, Codex **не может** дать verdict `accept`. Возможны только `revision_needed` (запросить testing) или `accept_with_notes` (при явном testing waiver от человека).
 
 Если `manifest.post_import_testing.mode = optional`:
 
-- Machine-check report из `.ai/v3/test_reports/` может быть. Если есть — прочитай и учти. Если нет — не препятствие.
+- Machine-check report из `.ai/v3/test_reports/` может быть. Если есть — прочитай и учти.
+- Если нет — **это не скрытый blocker**. `optional` не должен превращаться в неявное требование. Не блокирует `accept`.
 
 Если `manifest.post_import_testing.mode = waived`:
 
-- Пропусти этот шаг.
+- Пропусти этот шаг полностью.
 
 ### Шаг 5. Оценить риски
 

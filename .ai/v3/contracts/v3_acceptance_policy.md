@@ -1,8 +1,8 @@
 # V3 Acceptance Policy
 
-Версия: 0.5
-Назначение: формальная политика того, как человек принимает, отклоняет или отправляет на доработку результат V3 import-stage.
-Статус: contract layer. Добавлен post-import testing gate с canonical machine-check report и waiver path.
+Версия: 0.6 (Phase 6 lifecycle hardening)
+Назначение: формальная политика того, как человек принимает, отклоняет или отправляет на доработку результат V3 import-stage. Добавлены accepted journal promotion rules.
+Статус: contract layer. Добавлен post-import testing gate с canonical machine-check report и waiver path. Добавлены accepted journal promotion rules и разделение draft/accepted (Phase 6).
 
 ---
 
@@ -106,13 +106,20 @@ human_verdict:
 - файлы соответствуют задаче;
 - scope соблюдён;
 - Codex verdict = `accept` или `accept_with_notes`;
+- если `manifest.post_import_testing.mode = required`, machine-check report существует и не содержит критических проблем (или есть testing waiver);
 - человек подтвердил.
+
+После human accept:
+- journal draft из `.ai/v3/journals/drafts/V3-*_journal.yaml` повышается в `.ai/v3/journals/V3-*_journal.yaml` и становится tracked;
+- tester prompt copy и machine-check report остаются local-only (не tracked, не journal);
+- lifecycle entry в `V3_navigation.md` обновляется до `accepted`.
 
 ### `revision`
 
 - package/import частично годен;
 - проблемы исправимы через revision loop;
-- acceptance ещё не наступил.
+- acceptance ещё не наступил;
+- journal draft остаётся в `drafts/`.
 
 ### `reject`
 
@@ -123,6 +130,11 @@ human_verdict:
 - package/import lane невалиден;
 - revision loop исчерпан;
 - или import вообще не должен был начинаться из-за несоблюдения gates.
+
+После reject:
+- journal draft остаётся в `drafts/` как historical record (не tracked);
+- package может быть перенесён в rejected local-only зону;
+- lifecycle entry в `V3_navigation.md` обновляется до `rejected`.
 
 ## 6. Что не является acceptance
 
