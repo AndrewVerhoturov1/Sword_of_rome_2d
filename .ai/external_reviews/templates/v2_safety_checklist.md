@@ -19,11 +19,34 @@ YYYY-MM-DD
 
 До push допустимо `not yet committed`. После push, до создания instantiated prompt, это поле обязано быть заменено на фактический snapshot hash.
 
-## Git Status Summary
+## Original workspace state (before snapshot)
+
+- Original branch: `<branch name>`
+- Original HEAD: `<commit hash>`
+
+### Pre-snapshot `git status --short --branch`
 
 ```
-<вывод git status --short --branch>
+<вывод git status --short --branch до любых snapshot-операций>
 ```
+
+## Snapshot method
+
+- [ ] `separate-worktree` — **preferred**: snapshot готовится в отдельном временном git worktree, основной workspace не трогается
+- [ ] `same-worktree-with-restore` — **fallback**: snapshot в том же workspace с обязательным patch/backup restore
+- [ ] `other` — **только с явным объяснением**: описать метод и получить human approval
+
+## Git Status Summary (на момент snapshot)
+
+```
+<вывод git status --short --branch на review-ветке или в worktree>
+```
+
+## WIP files that must remain locally after V2 push
+
+| Файл | Состояние до V2 (M/A/D/untracked) | Должен остаться локально после push? |
+|------|-----------------------------------|--------------------------------------|
+| `path/to/file` | M | `yes` / `no` / `n/a (not a WIP file)` |
 
 ## Файлы
 
@@ -91,6 +114,30 @@ YYYY-MM-DD
 - [ ] Compare link сформирован (`base...snapshot`)
 
 Если safety artifact используется дальше после push, эти post-push пункты должны быть обновлены до фактического состояния. Нельзя выдавать внешний prompt, если здесь остаются pre-push placeholders.
+
+## Local workspace preservation / restore
+
+### Post-push verification
+
+- [ ] Возврат на исходную ветку (`<original branch>`)
+- [ ] Исходный workspace всё ещё содержит ожидаемые WIP-файлы
+- [ ] `git status --short --branch` проверен после push
+- [ ] Ни один ожидаемый локальный WIP-файл не потерян
+- [ ] Если локальное состояние намеренно изменено, человек явно подтвердил
+
+### Restore result (выбрать один)
+
+- [ ] `preserved` — workspace не менялся (separate-worktree), WIP на месте
+- [ ] `restored` — workspace восстановлен после same-worktree-with-restore
+- [ ] `restore_failed` — восстановление не удалось; дальнейший lifecycle блокирован
+- [ ] `discarded_by_human_decision` — человек явно разрешил не сохранять WIP
+- [ ] `unknown_legacy` — только для backfill старых записей V2_navigation.md
+
+### Примечания к local workspace
+
+```
+<если restore_failed или discarded_by_human_decision — объяснить причину>
+```
 
 ## Итог
 

@@ -194,7 +194,9 @@
 
 - Kilo обязан поставить обычную debug/build попытку на паузу, кратко зафиксировать WIP state, перейти в `/v2 preview`.
 - Explicit user `/v2` — это не `blocked-v2-recommended`. При explicit `/v2` не требуется blocked report и не требуется три неудачные попытки. Достаточно краткого WIP summary.
-- После V2-цикла Kilo возвращается к исходной задаче или завершает её по новому решению.
+- **Возврат к исходной задаче после `/v2` interrupt разрешён только после `local_workspace_verified`.** Если verification pending или failed, возврат блокируется, и Kilo обязан завершить run blocked-отчётом.
+- **`review/v2/...` не может быть единственной оставшейся копией WIP.** Если содержательный patch остался только в `review/v2/...`, а в исходной рабочей ветке его нет, V2 cycle считается незавершённым.
+- **Pending или failed local verification блокирует дальнейший V2 lifecycle:** нельзя выдавать prompt, возвращаться к исходной задаче или завершать V2 cycle (cleanup).
 
 ### YOLO и V2 escalation
 

@@ -470,6 +470,12 @@ Codex поддерживает пять коротких repo-level entry-ком
 - перейти в `/v2 preview`;
 - после V2-цикла вернуться к исходной задаче или завершить её по новому решению.
 
+**Возврат к исходной задаче после `/v2` interrupt разрешён только после `local_workspace_verified`.** Если verification pending или failed, возврат блокируется, и Kilo обязан завершить run blocked-отчётом.
+
+**`review/v2/...` не может быть единственной оставшейся копией WIP.** Если содержательный patch остался только в `review/v2/...`, а в исходной рабочей ветке его нет, V2 cycle считается незавершённым.
+
+**Pending или failed local verification блокирует дальнейший V2 lifecycle:** нельзя выдавать prompt, возвращаться к исходной задаче или завершать V2 cycle (cleanup), пока `local_workspace_verified` не пройден.
+
 Это отличается от `blocked-v2-recommended`:
 - `blocked-v2-recommended` — Kilo сам достиг blocker, требуется blocked report.
 - Explicit user `/v2` — человек явно вызвал interrupt, blocked report не требуется, достаточно WIP summary.
