@@ -37,7 +37,7 @@ V3 request - это структурированная постановка за
 | `acceptance_criteria` | Проверяемые критерии |
 | `known_risks` | Известные риски |
 | `post_import_testing` | Режим post-import testing: `required`, `optional` или `waived`. Для `docs_only` по умолчанию `waived`. Если `mode = required`, request должен требовать `POST_IMPORT_TEST_PROMPT.md` от внешнего чата |
-| `no_repo_access_statement` | Явное указание, что у внешнего чата нет repo access |
+| `no_repo_access_statement` | Явное указание модели доступа внешнего чата: может читать публичный GitHub-контекст по ссылкам из prompt, не имеет прямого repo write access, не имеет локального filesystem-доступа к workspace |
 
 ## 3. Current stage - обязательный разделитель
 

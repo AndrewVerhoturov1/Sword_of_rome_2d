@@ -193,7 +193,7 @@ Prompt содержит commit-pinned GitHub raw links.
 
 ## Границы V3
 
-- Внешний чат не имеет repo write access.
+- Внешний чат может читать публичный GitHub-контекст по ссылкам из prompt. Внешний чат не имеет прямого repo write access и не имеет локального filesystem-доступа к workspace. Внешний чат создаёт ZIP artifact package, а не делает прямой repo write.
 - Artifact package не равен imported result.
 - Pre-Kilo package review не равен import.
 - Setup guide не равен факту, что режим уже настроен в UI.

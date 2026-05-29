@@ -335,7 +335,17 @@ Correction протянут через следующие файлы:
 6. Человек приносит результат (machine-check report + human check notes) в Codex.
 7. Codex даёт финальный verdict с учётом testing status.
 
-## 10. Следующие substantive шаги после post-import testing correction
+## 10. Process clarification: external chat access wording (2026-05-29)
+
+После реальных V3-циклов уточнена модель доступа внешнего чата во всей V3-системе:
+
+- внешний чат может читать публичный GitHub-контекст по ссылкам из prompt;
+- внешний чат не имеет прямого repo write access и не имеет локального filesystem-доступа к workspace;
+- внешний чат создаёт ZIP artifact package, а не делает прямой repo write.
+
+Старая грубая формулировка «нет доступа к репозиторию» заменена на точное разведение read/write/filesystem semantics во всех V3 canon-файлах, шаблонах и prompt-слое. Исторические request-файлы прошлых циклов не переписывались.
+
+## 11. Следующие substantive шаги после post-import testing correction
 
 1. Зафиксировать human verdict по чистому docs-only import cycle `V3-20260529-040855-project-and-sword-of-rome-briefs` и считать `Phase 5` practically proven для docs-only route.
 2. Отдельно решить, нужен ли ещё один bounded product-code pilot как acceptance check, или уже достаточно двух product-code stress-тестов и одного чистого docs-only run.
@@ -346,7 +356,7 @@ Correction протянут через следующие файлы:
 
 ---
 
-## 11. Полезные выводы из первого внешнего V3 package cycle
+## 12. Полезные выводы из первого внешнего V3 package cycle
 
 Первый успешный цикл `V3-20260528-195750-phase5A-5C-deep-doc-pack` дал не только package, но и полезную process-подсветку:
 
@@ -360,7 +370,7 @@ Correction протянут через следующие файлы:
 
 ---
 
-## 12. MVP boundary
+## 13. MVP boundary
 
 V3 MVP в текущем понимании достигается не тогда, когда просто есть mode prompt, а когда одновременно есть:
 
@@ -390,7 +400,7 @@ MVP не требует:
 
 ---
 
-## 13. Главные риски
+## 14. Главные риски
 
 ### Риск 1. Смешать target-state и current-state
 
@@ -419,7 +429,7 @@ MVP не требует:
 
 ---
 
-## 14. Итоговая формула
+## 15. Итоговая формула
 
 V3 надо внедрять не как один туманный pilot, а как staged subsystem:
 
