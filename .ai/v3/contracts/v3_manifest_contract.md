@@ -1,8 +1,8 @@
 # V3 Manifest Contract
 
-Версия: 0.1 (Phase 2)
+Версия: 0.2 (Phase 5+ post-import testing correction)
 Назначение: формальный контракт `manifest.yaml` — главного файла V3 artifact package, который описывает всё содержимое пакета и правила импорта.
-Статус: контракт Phase 2. Описывает обязательные поля и инварианты manifest, но не является готовым runtime/validator (скрипты — в Phase 7).
+Статус: контракт Phase 2+. Добавлен блок `post_import_testing` (post-import testing correction).
 
 ---
 
@@ -169,7 +169,49 @@ known_risks:
   - "Documentation must not claim V3 is fully operational unless it is."
 ```
 
-## 3. Необязательные поля
+## 3. Блок post_import_testing
+
+### 3.1. Назначение
+
+Блок `post_import_testing` управляет тем, требуется ли post-import testing после импорта пакета через `Kilo Notebook V3`.
+
+### 3.2. Структура
+
+Блок использует трёхрежимную модель:
+
+```yaml
+post_import_testing:
+  mode: "required"   # required | optional | waived
+  prompt_file: "POST_IMPORT_TEST_PROMPT.md"  # обязательно при mode=required, опционально при mode=optional
+```
+
+### 3.3. Три режима
+
+| mode | Семантика | Prompt в package | Acceptance gate | Показ prompt после импорта |
+|------|-----------|-----------------|-----------------|---------------------------|
+| `required` | Testing обязателен для acceptance | Обязателен | Да — без machine-check report или waiver accept невозможен | Да, всегда |
+| `optional` | Prompt полезен, но не обязателен. Не блокирует acceptance | Опционален | Нет | Да, если prompt есть в package |
+| `waived` | Testing явно не нужен (например, чистый docs_only без рисков) | Не требуется | Нет | Нет, даже если prompt случайно есть |
+
+### 3.4. Правила
+
+| Правило | Описание |
+|---------|----------|
+| `mode` | `required`, `optional` или `waived`. Определяет acceptance gate и поведение notebook-v3. |
+| `prompt_file` | Имя control file с test prompt в корне ZIP. По умолчанию `POST_IMPORT_TEST_PROMPT.md`. |
+| `docs_only` default | Для `scope: docs_only` по умолчанию `mode: waived`, если request явно не усиливает testing до `optional` или `required`. |
+| `product_code`/`scripts` default | Для code-affecting scope обычно `mode: required`. |
+
+### 3.5. Инварианты
+
+- Если `mode = required`, в корне ZIP должен присутствовать `POST_IMPORT_TEST_PROMPT.md`.
+- Если `mode = required`, а `POST_IMPORT_TEST_PROMPT.md` отсутствует — это проблема пакета.
+- Если `mode = optional`, prompt может быть, а может отсутствовать. Если есть — показывается.
+- Если `mode = waived`, prompt не требуется, и его наличие игнорируется.
+- `POST_IMPORT_TEST_PROMPT.md` не перечисляется в секции `files` как project target file.
+- Блок `post_import_testing` не вводит новые lifecycle статусы в `V3_navigation.md`.
+
+## 4. Необязательные поля
 
 Следующие поля могут быть добавлены по мере maturity workflow:
 
@@ -179,24 +221,26 @@ known_risks:
 
 Эти поля не обязательны для MVP, но их наличие повышает traceability.
 
-## 4. Инварианты manifest
+## 5. Инварианты manifest
 
 | Инвариант | Правило |
 |-----------|---------|
 | `v3_id` уникален | В рамках одного workflow задача не должна иметь два manifest с одинаковым `v3_id` |
 | `action` согласован | `action` в manifest должен совпадать с `action` в V3 request |
 | `scope` согласован | `scope` в manifest должен совпадать с `scope` в V3 request |
+| `post_import_testing.mode == "required"` согласован с package | `POST_IMPORT_TEST_PROMPT.md` должен быть в корне ZIP |
 | `allowed_paths` покрывают все `files[].path` | Каждый target path входит хотя бы в один allowed_path |
 | Ни один `files[].path` не входит в `forbidden_paths` | Все target paths валидны |
 | Каждый `files[].source_in_zip` существует | Файл реально присутствует в ZIP под этим путём |
 | SHA-256 совпадает | Хэш из manifest совпадает с реальным содержимым файла |
 
-## 5. Что manifest не должен содержать
+## 6. Что manifest не должен содержать
 
 - Пути, не связанные с содержимым пакета.
 - Утверждения, что файлы уже записаны в репозиторий.
 - Инструкции для импортёра (они в `README_FOR_KILO.md`).
 - Инструкции для Codex (они в `README_FOR_CODEX.md`).
+- Инструкции для post-import testing (они в `POST_IMPORT_TEST_PROMPT.md`, если есть).
 - Секреты, токены, пароли.
 
 ---

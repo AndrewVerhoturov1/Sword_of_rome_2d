@@ -1,8 +1,8 @@
 # kilo_notebook_v3_mode_prompt.md
 
-Версия: 0.5
+Версия: 0.6
 Назначение: operating reference для режима `Kilo Notebook V3`.
-Статус: raw-input mode reference. Это не handoff-шаблон и не external request prompt.
+Статус: raw-input mode reference. Добавлена поддержка post-import testing prompt display.
 
 ---
 
@@ -116,6 +116,44 @@
 10. Создать journal draft внутри этого же repo root.
 11. Обновить или дополнить запись в [`../V3_navigation.md`](../V3_navigation.md) внутри этого же repo root.
 12. Вернуть список created/skipped files и путь к journal draft.
+13. Проверить `manifest.post_import_testing.mode`. Если `mode = required` или `mode = optional` — проверить наличие `POST_IMPORT_TEST_PROMPT.md` и показать его после successful import summary согласно таблице в секции 7A.
+
+## 7A. Post-import testing prompt display
+
+После успешного импорта режим проверяет `manifest.post_import_testing.mode` и наличие `POST_IMPORT_TEST_PROMPT.md`.
+
+### Правила показа prompt
+
+| mode | Prompt есть | Prompt отсутствует |
+|------|------------|-------------------|
+| `required` | Показать prompt. Сообщить: testing обязателен для acceptance | Сообщить: testing required, но prompt отсутствует — проблема пакета |
+| `optional` | Показать prompt. Сообщить: prompt полезен, но не блокирует acceptance | Ничего не показывать — testing опционален |
+| `waived` | Не показывать — testing waived | Ничего не показывать |
+
+### Что режим делает при показе prompt
+
+- Выводит содержимое `POST_IMPORT_TEST_PROMPT.md` человеку.
+- Объясняет, что это prompt для обычного Kilo code run.
+- Объясняет, что `Kilo Notebook V3` не выполняет тесты сам.
+- Указывает, что Machine checks нужно скопировать в обычный Kilo code run, а Human checks выполнить вручную.
+- При `mode = required`: явно сообщает, что testing обязателен для acceptance.
+- При `mode = optional`: явно сообщает, что prompt полезен, но не блокирует acceptance.
+
+### Что режим НЕ делает
+
+- Не запускает тесты.
+- Не создаёт новый handoff между `Kilo Notebook V3` и обычным код-режимом.
+- Не обновляет `V3_navigation.md` новыми тестовыми статусами.
+- Не создаёт test journal или test report.
+- Не заменяет обычный Kilo code run.
+- Не теряет optional prompt — если `mode = optional` и prompt есть, он показывается.
+
+### Если mode = required, но prompt отсутствует
+
+Это считается проблемой пакета. Режим должен:
+- отметить это в import result/report;
+- явно сказать человеку, что testing required, но prompt-файл отсутствует;
+- не блокировать импорт из-за отсутствия prompt (prompt — support artifact, импорт файлов уже выполнен).
 
 ## 8. Что обновлять в V3_navigation
 

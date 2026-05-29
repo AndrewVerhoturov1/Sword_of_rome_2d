@@ -1,8 +1,8 @@
 # V3 Request Contract
 
-Версия: 0.2
+Версия: 0.3
 Назначение: формальный контракт V3-запроса к внешнему чату.
-Статус: contract layer. Уточнён после Phase 5 root-cause analysis.
+Статус: contract layer. Уточнён после Phase 5 root-cause analysis. Добавлена поддержка post-import testing.
 
 ---
 
@@ -36,6 +36,7 @@ V3 request - это структурированная постановка за
 | `package_format` | Для MVP: `zip` |
 | `acceptance_criteria` | Проверяемые критерии |
 | `known_risks` | Известные риски |
+| `post_import_testing` | Режим post-import testing: `required`, `optional` или `waived`. Для `docs_only` по умолчанию `waived`. Если `mode = required`, request должен требовать `POST_IMPORT_TEST_PROMPT.md` от внешнего чата |
 | `no_repo_access_statement` | Явное указание, что у внешнего чата нет repo access |
 
 ## 3. Current stage - обязательный разделитель
@@ -98,14 +99,62 @@ Request не должен:
 - обещать, что staging path уже canonicalized;
 - делать вид, что внешний чат видит локальный repo без GitHub links/excerpts.
 
-## 7. Итог
+## 7. Post-import testing в request
+
+### 7.1. Три режима
+
+Request обязан явно указать один из трёх режимов post-import testing:
+
+| mode | Семантика | Prompt в package | Acceptance gate |
+|------|-----------|-----------------|-----------------|
+| `required` | Testing обязателен. Внешний чат должен создать `POST_IMPORT_TEST_PROMPT.md` | Обязателен | Да |
+| `optional` | Prompt полезен, но не блокирует acceptance. Внешний чат может создать prompt | Опционален | Нет |
+| `waived` | Testing явно не нужен | Не требуется | Нет |
+
+### 7.2. Что request НЕ делает
+
+Request не должен:
+
+- писать заранее весь конкретный test prompt сам — финальные файлы создаёт внешний чат;
+- требовать `POST_IMPORT_TEST_PROMPT.md` вообще всегда без разбора scope;
+- подменять `optional` на `required` или наоборот без явного обоснования.
+
+### 7.3. Правила по scope
+
+| Scope | Default mode | Примечание |
+|-------|-------------|------------|
+| `docs_only` | `waived` | Если request явно не усиливает testing до `optional` или `required` |
+| `workflow_docs` | `waived` или `optional` | Зависит от рисков |
+| `schemas` | `optional` или `required` | Зависит от того, нужна ли проверка schema integrity |
+| `scripts` | `required` | Скрипты нужно проверять перед запуском |
+| `product_code` | `required` | Code-affecting изменения требуют machine-check |
+
+### 7.4. Что request требует от внешнего чата
+
+**При `mode = required`:**
+- Создать `POST_IMPORT_TEST_PROMPT.md` в корне ZIP.
+- Разделить prompt на `Machine checks` и `Human checks`.
+- Не выдумывать результаты тестов.
+- Не утверждать, что внешний чат уже запускал тесты.
+- Сгенерировать конкретный prompt по фактически созданным файлам, а не абстрактный.
+
+**При `mode = optional`:**
+- Внешний чат **может** создать `POST_IMPORT_TEST_PROMPT.md`, если считает проверки полезными.
+- Если prompt создан — он будет показан человеку после импорта, но не блокирует acceptance.
+- Требования к содержимому те же, что при `required`.
+
+**При `mode = waived`:**
+- `POST_IMPORT_TEST_PROMPT.md` не требуется.
+
+## 8. Итог
 
 Корректный V3 request обязан:
 
 - явно отделять request-stage от import-stage;
 - использовать GitHub-first context mode по умолчанию;
 - честно показывать `current_stage`;
-- не подменять package review и import ложной готовностью.
+- не подменять package review и import ложной готовностью;
+- явно указывать `post_import_testing.mode` как `required`, `optional` или `waived`.
 
 ## Связанные контракты
 

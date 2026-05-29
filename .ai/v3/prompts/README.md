@@ -4,20 +4,20 @@
 
 ## Текущий статус
 
-**Phase 3 завершён (2026-05-27):** prompt layer создан.
+**Phase 3 завершён (2026-05-27), Phase 5+ коррекция (post-import testing):** prompt layer создан и обновлён.
 
 Позже уточнено:
 
-- `create_v3_request_prompt.md` — это внешний request layer;
-- `kilo_notebook_v3_mode_prompt.md` — это не handoff prompt, а raw-input operating reference для `Kilo Notebook V3`;
+- `create_v3_request_prompt.md` — это внешний request layer. Теперь включает инструкции по post-import testing.
+- `kilo_notebook_v3_mode_prompt.md` — это не handoff prompt, а raw-input operating reference для `Kilo Notebook V3`. Теперь включает post-import test prompt display.
 - review и revision prompts остаются отдельными.
 
 ## Содержимое
 
 | Файл | Назначение |
 |---|---|
-| [`create_v3_request_prompt.md`](create_v3_request_prompt.md) | Промпт для Codex/человека: как подготовить V3-запрос к внешнему чату. Требует artifact package, а не текстовый совет. Опирается на [`v3_request_contract.md`](../contracts/v3_request_contract.md). |
-| [`kilo_notebook_v3_mode_prompt.md`](kilo_notebook_v3_mode_prompt.md) | Raw-input operating reference для `Kilo Notebook V3`: как режим принимает archive link/path, проверяет package, создаёт journal и обновляет `V3_navigation.md`. |
+| [`create_v3_request_prompt.md`](create_v3_request_prompt.md) | Промпт для Codex/человека: как подготовить V3-запрос к внешнему чату. Требует artifact package, а не текстовый совет. Включает post-import testing instructions. Опирается на [`v3_request_contract.md`](../contracts/v3_request_contract.md). |
+| [`kilo_notebook_v3_mode_prompt.md`](kilo_notebook_v3_mode_prompt.md) | Raw-input operating reference для `Kilo Notebook V3`: как режим принимает archive link/path, проверяет package, создаёт journal, обновляет `V3_navigation.md` и показывает `POST_IMPORT_TEST_PROMPT.md` после импорта. |
 | [`codex_v3_review_prompt.md`](codex_v3_review_prompt.md) | Промпт для Codex после V3 import: проверка journal и реальных файлов, сверка с request/scope, нормализованный verdict enum, human review gates. Опирается на [`v3_codex_review_contract.md`](../contracts/v3_codex_review_contract.md). |
 | [`v3_revision_request_prompt.md`](v3_revision_request_prompt.md) | Промпт для запроса доработки внешнему чату: что исправить, что reuse, traceability между attempts, лимиты. Опирается на [`v3_revision_contract.md`](../contracts/v3_revision_contract.md). |
 

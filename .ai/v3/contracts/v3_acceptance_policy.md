@@ -1,8 +1,8 @@
 # V3 Acceptance Policy
 
-Версия: 0.3
+Версия: 0.4
 Назначение: формальная политика того, как человек принимает, отклоняет или отправляет на доработку результат V3 import-stage.
-Статус: contract layer. Уточнена под raw-input notebook flow.
+Статус: contract layer. Добавлен post-import testing gate и waiver path.
 
 ---
 
@@ -47,8 +47,35 @@ Acceptance/import chain нельзя начинать, пока одноврем
 | Package valid | manifest/checksums/paths валидны | `kilo-notebook-v3` |
 | Journal created | journal draft существует как подробный import trace | `kilo-notebook-v3` |
 | Navigation updated | lifecycle entry обновлена как короткий индекс цикла | `kilo-notebook-v3` |
-| Codex review done | Codex проверил journal и реальные файлы | Codex |
+| Post-import testing done (если mode=required) | Machine-check report из обычного Kilo code run или явный testing waiver | Human / Kilo code run |
+| Codex review done | Codex проверил journal, реальные файлы и (если mode=required) testing status | Codex |
 | Human check done | человек дал verdict | Human |
+
+### 3A. Post-import testing gate
+
+Acceptance gate зависит от `manifest.post_import_testing.mode`:
+
+**`mode = required`:**
+Acceptance не может быть выполнен без одного из двух:
+1. **Machine-check report** — результат обычного Kilo code run, который выполнил Machine checks из `POST_IMPORT_TEST_PROMPT.md`.
+2. **Testing waiver** — явное решение человека пропустить testing.
+
+**`mode = optional`:**
+Testing не блокирует acceptance. Machine-check report может быть учтён, но его отсутствие — не препятствие.
+
+**`mode = waived`:**
+Testing gate не применяется.
+
+Testing waiver — лёгкий механизм:
+- не новая сущность и не новый журнал;
+- explicit note/decision в review chain;
+- человек явно говорит Codex «testing не нужен, принимаем без тестов»;
+- Codex фиксирует waiver в review notes.
+
+### 3B. Когда testing gate не обязателен
+
+- `mode = optional` или `mode = waived` — testing gate не применяется.
+- `docs_only` простые пакеты не должны внезапно становиться тяжёлыми из-за обязательных тестов.
 
 ## 4. Verdict enum
 
@@ -103,7 +130,8 @@ human_verdict:
 - pre-Kilo package review;
 - setup guide без реального UI confirmation;
 - Codex verdict без human verdict;
-- наличие файлов в repo без полного review chain.
+- наличие файлов в repo без полного review chain;
+- import без post-import testing, если `manifest.post_import_testing.mode = required` и нет waiver.
 
 ## 7. Rule for notebook-v3 import run
 

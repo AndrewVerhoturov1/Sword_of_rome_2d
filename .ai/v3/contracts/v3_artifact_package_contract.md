@@ -1,8 +1,8 @@
 # V3 Artifact Package Contract
 
-Версия: 0.1 (Phase 2)
+Версия: 0.2 (Phase 5+ post-import testing correction)
 Назначение: формальный контракт структуры V3 artifact package — ZIP-архива, который внешний чат создаёт в ответ на V3 request.
-Статус: контракт Phase 2. Описывает обязательную структуру, но не является готовым importer/runtime (скрипты — в Phase 7).
+Статус: контракт Phase 2+. Добавлен `POST_IMPORT_TEST_PROMPT.md` как допустимый root-level control file (post-import testing correction).
 
 ---
 
@@ -119,18 +119,75 @@ files/.ai/v3/contracts/v3_request_contract.md
 | Все пути в `allowed_paths` | Каждый target path входит в `allowed_paths` из manifest | Файл заблокирован |
 | Ни один путь не в `forbidden_paths` | Каждый target path НЕ входит в `forbidden_paths` | Файл заблокирован |
 
-## 4. Что НЕ является artifact package
+## 4. Опциональный root-level control file: POST_IMPORT_TEST_PROMPT.md
+
+`POST_IMPORT_TEST_PROMPT.md` — это опциональный root-level control file V3 artifact package.
+
+### 4.1. Назначение
+
+Это не project target file. Он не пишется в репозиторий как импортированный файл. Он служит только как post-import support artifact: после успешного импорта `Kilo Notebook V3` показывает этот prompt человеку для дальнейшего тестирования.
+
+### 4.2. Правила размещения
+
+- Находится в корне ZIP-пакета, рядом с `manifest.yaml`, `README_FOR_KILO.md`, `README_FOR_CODEX.md`, `checksums.sha256`.
+- Не входит в `files/`.
+- Не перечисляется в секции `files` manifest как project target file.
+- Не учитывается в `checksums.sha256`.
+
+### 4.3. Когда обязателен
+
+Обязательность `POST_IMPORT_TEST_PROMPT.md` регулируется полем `post_import_testing.mode` в `manifest.yaml`:
+
+- `mode = required` — prompt обязателен, отсутствие = проблема пакета;
+- `mode = optional` — prompt опционален, если есть — будет показан, если нет — не проблема;
+- `mode = waived` — prompt не требуется, даже если есть — игнорируется.
+
+### 4.4. Требования к содержимому
+
+`POST_IMPORT_TEST_PROMPT.md` должен содержать два слоя проверок:
+
+#### Machine checks
+
+Вещи, которые человеку делать неудобно:
+- команды (build, lint, typecheck, запуск);
+- file/path checks;
+- static checks;
+- простые runtime checks, если они безопасны и реально доступны.
+
+#### Human checks
+
+Вещи, которые машине трудно оценить по смыслу:
+- визуальный результат;
+- UX/удобство;
+- смысл текста;
+- соответствие ожидаемому результату;
+- всё, что user-facing и лучше проверяется глазами.
+
+Prompt также обязан:
+- не выдумывать результаты;
+- если команда недоступна, писать это честно;
+- не утверждать, что внешний чат уже запускал тесты;
+- вернуть структурированный machine-check report для Codex.
+
+### 4.5. Что НЕ является POST_IMPORT_TEST_PROMPT.md
+
+- Это не project target file.
+- Это не инструкция для импортёра (для этого есть `README_FOR_KILO.md`).
+- Это не инструкция для Codex (для этого есть `README_FOR_CODEX.md`).
+- Это не замена реального тестирования через обычный Kilo code run.
+
+## 5. Что НЕ является artifact package
 
 - ZIP без `manifest.yaml` — не artifact package.
 - ZIP с файлами, но без `checksums.sha256` — не artifact package.
 - ZIP без `README_FOR_KILO.md` — не artifact package.
 - ZIP без `README_FOR_CODEX.md` — не artifact package.
-- ZIP с project target files вне `files/` — не artifact package. Только package control files могут быть в корне ZIP: `manifest.yaml`, `README_FOR_KILO.md`, `README_FOR_CODEX.md`, `checksums.sha256`.
+- ZIP с project target files вне `files/` — не artifact package. Только package control files могут быть в корне ZIP: `manifest.yaml`, `README_FOR_KILO.md`, `README_FOR_CODEX.md`, `checksums.sha256`. `POST_IMPORT_TEST_PROMPT.md` — допустимый опциональный control file, но не project target file.
 - Набор файлов в чате, не упакованный в ZIP, — не artifact package.
 
-## 5. MVP-ограничения
+## 6. MVP-ограничения
 
-На Phase 2 (текущая):
+На текущей стадии (Phase 5+):
 
 - `action` только `create` (новые файлы);
 - перезапись существующих файлов (`overwrite`) не поддерживается;

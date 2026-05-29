@@ -1,6 +1,6 @@
 # v3_codex_review_template.md — Шаблон Review Note для Codex
 
-Версия: 0.1 (Phase 3)
+Версия: 0.2 (Phase 5+ post-import testing correction)
 Назначение: шаблон для Codex при выполнении review после V3 import. Заполняется Codex и добавляется в journal entry.
 Используй совместно с: [`codex_v3_review_prompt.md`](../prompts/codex_v3_review_prompt.md) и [`v3_codex_review_contract.md`](../contracts/v3_codex_review_contract.md).
 
@@ -49,6 +49,17 @@ codex_review:
     acceptance_criteria_met: <true | false>
     # Все acceptance criteria из request выполнены.
 
+    post_import_testing_done: <true | false>
+    # Boolean-флаг. Для mode=required: true если report есть.
+
+  # === Post-import testing (детали) ===
+
+  post_import_testing:
+    mode: "<required | optional | waived>"
+    testing_status: "<done | waived | required_not_done | optional_executed | optional_bystander | not_applicable>"
+    machine_check_report_ref: "<ref или 'none'>"
+    testing_summary: "<заметка>"
+
   # === Заметки ===
 
   notes: >
@@ -86,7 +97,8 @@ codex_review:
   # === Рекомендация ===
 
   recommendation: >
-    <Что Codex рекомендует человеку: accept / revision / reject. Почему.>
+    <Что Codex рекомендует человеку: accept / revision / reject. Почему.
+    Если mode=required и testing не выполнен — укажи это явно.>
 ```
 
 ---

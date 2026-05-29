@@ -1,6 +1,6 @@
 # v3_manifest_template.yaml — Шаблон manifest.yaml для V3 Artifact Package
 #
-# Версия: 0.1 (Phase 3)
+# Версия: 0.2 (Phase 5+ post-import testing correction)
 # Назначение: валидный YAML-скелет manifest.yaml.
 #   Заполняется внешним чатом при создании artifact package.
 #   Поля с <placeholder> обязательны к замене.
@@ -39,6 +39,18 @@ write_policy:
   # Всегда true для V3
   allow_overwrite: false
   # Для MVP: false
+
+# === Post-import testing ===
+
+post_import_testing:
+  mode: "waived"
+  # Три режима:
+  #   "required" — testing обязателен для acceptance, prompt обязателен в package.
+  #   "optional" — prompt полезен, но не обязателен. Показывается, если есть.
+  #   "waived"   — testing явно не нужен (default для чистого docs_only).
+  # prompt_file: "POST_IMPORT_TEST_PROMPT.md"
+  # Имя control file с test prompt в корне ZIP.
+  # Обязательно при mode=required. Опционально при mode=optional.
 
 # === Пути ===
 
@@ -107,6 +119,12 @@ known_risks:
   - "Generated files may describe intended process but not yet be wired into existing automation."
   - "Documentation must not claim that V3 is fully operational unless it is."
   # - "<дополнительный риск>"
+
+# === Post-import testing risks (если mode != waived) ===
+# Если post_import_testing.mode = required или optional, добавь риски:
+# - "POST_IMPORT_TEST_PROMPT.md describes checks but does not run them."
+# - "Machine checks may fail if the repo environment differs from expected."
+# - "Human checks cannot be automated and require manual review."
 
 # === Необязательные поля (для повышения traceability) ===
 

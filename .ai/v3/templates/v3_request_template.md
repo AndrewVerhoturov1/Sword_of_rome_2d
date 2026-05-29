@@ -1,6 +1,6 @@
 # v3_request_template.md - Шаблон V3 Request
 
-Версия: 0.2
+Версия: 0.3
 Назначение: шаблон для Codex или человека перед отправкой V3-запроса внешнему чату.
 Используй совместно с: [`create_v3_request_prompt.md`](../prompts/create_v3_request_prompt.md).
 
@@ -34,6 +34,24 @@ create
 
 ## Current Stage
 [external_artifact_generation_only | pre_kilo_package_revision | import_stage]
+
+## Post-Import Testing
+- **Mode:** [required | optional | waived]
+- **Prompt file:** [POST_IMPORT_TEST_PROMPT.md, обязательно при mode=required, опционально при mode=optional]
+- **Обоснование:** [почему выбран этот режим для данного scope]
+
+Если mode = required:
+- внешний чат должен создать POST_IMPORT_TEST_PROMPT.md в корне ZIP;
+- prompt делится на Machine checks и Human checks;
+- prompt генерируется по фактически созданным файлам;
+- внешний чат не утверждает, что уже запускал тесты.
+
+Если mode = optional:
+- внешний чат может создать POST_IMPORT_TEST_PROMPT.md, если считает полезным;
+- prompt будет показан после импорта, но не блокирует acceptance.
+
+Если mode = waived:
+- POST_IMPORT_TEST_PROMPT.md не требуется.
 
 ## Контекст задачи
 [Краткое описание задачи + commit-pinned GitHub raw links]
@@ -77,6 +95,9 @@ zip
 - import возможен только позже, если он будет явно выбран.
 ```
 
-## Подсказка
+## Подсказки
 
-Если `Current Stage = external_artifact_generation_only`, request не должен делать вид, что Kilo import начинается немедленно.
+- Если `Current Stage = external_artifact_generation_only`, request не должен делать вид, что Kilo import начинается немедленно.
+- `post_import_testing.mode` по умолчанию `waived` для `docs_only`, `required` для `scripts`/`product_code`.
+- Если `mode = required`, не пиши заранее конкретный test prompt — внешний чат сгенерирует его по факту созданных файлов.
+- Если `mode = optional`, внешний чат сам решает, нужен ли prompt — не заставляй его создавать prompt принудительно.

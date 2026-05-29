@@ -1,8 +1,8 @@
 # create_v3_request_prompt.md - Промпт для подготовки V3 Request
 
-Версия: 0.2
+Версия: 0.3
 Назначение: промпт для Codex или человека, который готовит V3-запрос к внешнему чату.
-Статус: рабочий prompt. Уточнён после Phase 5 root-cause analysis.
+Статус: рабочий prompt. Уточнён после Phase 5 root-cause analysis. Добавлена поддержка post-import testing.
 
 ---
 
@@ -74,6 +74,28 @@ Request не должен обещать, что package немедленно у
 
 ### Current Stage
 [external_artifact_generation_only | pre_kilo_package_revision | import_stage]
+
+### Post-Import Testing
+[Укажи режим post-import testing:]
+- **Mode:** [required | optional | waived]
+- **Prompt file:** POST_IMPORT_TEST_PROMPT.md (обязателен при mode=required, опционален при mode=optional)
+
+Если mode = required:
+- Ты должен создать POST_IMPORT_TEST_PROMPT.md в корне ZIP.
+- Prompt должен быть разделён на Machine checks и Human checks.
+- Machine checks: команды, file/path checks, static checks, build/lint/typecheck.
+- Human checks: визуальный результат, UX, смысл текста, соответствие ожиданию.
+- НЕ утверждай, что ты уже запускал тесты.
+- Сгенерируй конкретный prompt по фактически созданным файлам.
+- Если команда недоступна, честно напиши это.
+
+Если mode = optional:
+- Ты можешь создать POST_IMPORT_TEST_PROMPT.md, если считаешь проверки полезными.
+- Prompt будет показан человеку после импорта, но не блокирует acceptance.
+- Требования к содержимому те же, что при mode=required.
+
+Если mode = waived:
+- POST_IMPORT_TEST_PROMPT.md не требуется.
 
 ### Контекст задачи
 [Краткий контекст задачи и commit-pinned GitHub links на README, repo_navigation, V3 contracts, prompts и другие нужные project docs.]
@@ -151,6 +173,10 @@ V3-YYYYMMDD-HHMMSS-<slug>/
 - [ ] `action = create`.
 - [ ] `scope` выбран корректно.
 - [ ] `Current Stage` указан явно.
+- [ ] `post_import_testing.mode` указан явно как `required`, `optional` или `waived`.
+- [ ] Если `mode = required`, request явно требует `POST_IMPORT_TEST_PROMPT.md`.
+- [ ] Если `mode = required`, request не пишет заранее весь test prompt сам.
+- [ ] Если `mode = optional`, request явно говорит, что prompt опционален.
 - [ ] В prompt есть commit-pinned GitHub raw links.
 - [ ] Request не обещает немедленный Kilo import без import gates.
 - [ ] `allowed_paths` согласованы со `scope`.
@@ -161,7 +187,9 @@ V3-YYYYMMDD-HHMMSS-<slug>/
 
 - не вручает внешнему чату локальные пути как основной context mode;
 - не обещает import-stage раньше времени;
-- не подменяет request transport/inbox/staging правилами, которых ещё нет в canon.
+- не подменяет request transport/inbox/staging правилами, которых ещё нет в canon;
+- не требует `POST_IMPORT_TEST_PROMPT.md` вообще всегда без разбора scope;
+- не пишет заранее конкретный test prompt сам — это задача внешнего чата по факту созданных файлов.
 
 ## Связанные документы
 
