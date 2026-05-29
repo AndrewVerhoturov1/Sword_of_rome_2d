@@ -10,7 +10,7 @@
 
 1. Скопируй шаблон ниже.
 2. Заполни все поля `[placeholder]`.
-3. Используй commit-pinned GitHub raw links как default context mode.
+3. Используй буквальные commit-pinned GitHub raw URLs как default context mode.
 4. Не требуй ручной передачи context files, если fallback не объявлен явно.
 5. Явно укажи `current_stage`, чтобы не смешать package generation и import-stage.
 
@@ -56,8 +56,11 @@ create
 Если mode = waived:
 - POST_IMPORT_TEST_PROMPT.md не требуется.
 
+## Repository Context Links
+[Перечисли ссылки отдельными строками. Каждая ссылка должна быть полным буквальным URL. Не используй `[raw](...)` и `[blob](...)`. Пиши видом `RAW: https://...` и `BLOB: https://...`.]
+
 ## Контекст задачи
-[Краткое описание задачи + commit-pinned GitHub raw links]
+[Краткое описание задачи. Ссылки вынесены в Repository Context Links.]
 
 ## Описание задачи
 [Что именно нужно создать]

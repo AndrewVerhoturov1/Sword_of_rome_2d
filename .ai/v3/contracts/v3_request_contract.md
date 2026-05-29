@@ -75,12 +75,13 @@ V3 request - это структурированная постановка за
 По умолчанию request должен передавать внешний контекст так:
 
 ```text
-commit-pinned GitHub raw links -> внешний чат читает их сам
+literal commit-pinned GitHub raw URLs -> внешний чат читает их сам
 ```
 
 Правила:
 
 - локальный путь сам по себе бесполезен для внешнего чата;
+- в copy-paste prompt должны стоять буквальные полные URL, а не markdown-ярлыки вида `[raw](...)` или `[blob](...)`;
 - ручная передача context files не является default mode;
 - fallback excerpts допустимы только если GitHub link невозможен или явно недостаточен.
 

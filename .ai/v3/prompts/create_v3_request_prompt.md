@@ -18,11 +18,11 @@
 
 По умолчанию V3 external request должен использовать:
 
-- commit-pinned GitHub raw links;
+- literal commit-pinned GitHub raw URLs;
 - при необходимости blob links как вспомогательные;
 - ручные excerpts только как fallback.
 
-Внешний чат должен сам читать контекст по ссылкам. Человек не обязан вручную прикладывать context files, если fallback не объявлен явно.
+Внешний чат должен сам читать контекст по ссылкам. Человек не обязан вручную прикладывать context files, если fallback не объявлен явно. В copy-paste prompt ссылки должны быть напечатаны буквальными полными URL, а не markdown-ярлыками `raw/blob`.
 
 ### 2.2. Не путать package generation и import-stage
 
@@ -59,7 +59,7 @@ Request не должен обещать, что package немедленно у
 
 НЕ утверждай, что ты уже изменил репозиторий. НЕ пиши, что файлы уже записаны.
 
-Используй commit-pinned GitHub raw links из этого prompt как основной источник project context. Не ожидай, что человек вручную приложит тебе context files, если явно не сказано обратное.
+Используй буквальные commit-pinned GitHub raw URLs из этого prompt как основной источник project context. Не ожидай, что человек вручную приложит тебе context files, если явно не сказано обратное.
 
 ---
 
@@ -99,8 +99,11 @@ Request не должен обещать, что package немедленно у
 Если mode = waived:
 - POST_IMPORT_TEST_PROMPT.md не требуется.
 
+### Repository Context Links
+[Перечисли ссылки отдельными строками. Каждая ссылка должна быть полным буквальным URL. Не используй markdown-ярлыки `[raw](...)` и `[blob](...)`. Допустимый формат строки: `RAW: https://...` и `BLOB: https://...`.]
+
 ### Контекст задачи
-[Краткий контекст задачи и commit-pinned GitHub links на README, repo_navigation, V3 contracts, prompts и другие нужные project docs.]
+[Краткий контекст задачи. Ссылки вынесены в секцию Repository Context Links выше.]
 
 ### Описание задачи
 [Что именно нужно создать. Какие файлы. Какой ожидаемый результат.]
@@ -180,7 +183,8 @@ V3-YYYYMMDD-HHMMSS-<slug>/
 - [ ] Если `mode = required`, request явно требует `POST_IMPORT_TEST_PROMPT.md`.
 - [ ] Если `mode = required`, request не пишет заранее весь test prompt сам.
 - [ ] Если `mode = optional`, request явно говорит, что prompt опционален.
-- [ ] В prompt есть commit-pinned GitHub raw links.
+- [ ] В prompt есть буквальные commit-pinned GitHub raw URLs.
+- [ ] В prompt нет markdown-замены ссылок вида `[raw](...)` и `[blob](...)`.
 - [ ] Request не обещает немедленный Kilo import без import gates.
 - [ ] `allowed_paths` согласованы со `scope`.
 - [ ] `expected_files` конкретны.

@@ -193,6 +193,14 @@ Prompt также обязан:
 - генерировать конкретный prompt по фактически созданным файлам, а не абстрактный;
 - использовать простой русский язык, понятный не-программисту.
 
+После import-stage source-of-truth для tester run уже не ZIP-корень, а repo-local копия prompt:
+
+```text
+.ai/v3/test_prompts/<V3-ID>_post_import_test_prompt.md
+```
+
+`Kilo Notebook V3` должен сохранить туда verbatim-копию `POST_IMPORT_TEST_PROMPT.md` и вернуть человеку явную ссылку/путь на этот файл.
+
 ### 4.5. Что НЕ является POST_IMPORT_TEST_PROMPT.md
 
 - Это не project target file.

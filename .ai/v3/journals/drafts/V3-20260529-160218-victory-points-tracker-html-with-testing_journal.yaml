@@ -1,0 +1,91 @@
+# V3 Journal Draft
+# Kilo Notebook V3 import-run: 2026-05-29T13:44 UTC
+
+v3_id: "V3-20260529-160218-victory-points-tracker-html-with-testing"
+task_title: "Standalone Russian Victory Points Tracker HTML with Required Post-Import Test Prompt"
+generated_by: "external_chatgpt_5_5_thinking"
+action: "create"
+scope: "product_code"
+package_source: "local-only zip path: C:/Users/andre/Downloads/V3-20260529-160218-victory-points-tracker-html-with-testing.zip"
+import_date: "2026-05-29"
+import_timestamp_utc: "2026-05-29T13:44:30.640Z"
+import_status: "imported"
+git_repo_root: "D:/Codex+Kilocode/projects/sword-of-rome-web"
+
+## Package validation summary
+
+package_structure:
+  control_files_checked:
+    - manifest.yaml: valid
+    - checksums.sha256: valid
+    - README_FOR_KILO.md: present
+    - README_FOR_CODEX.md: present
+    - POST_IMPORT_TEST_PROMPT.md: present
+  project_files_count: 1
+  manifest_valid: true
+  manifest_errors: []
+
+checksums_verification:
+  - file: "table-sandbox/v3-pilots/victory_points_tracker_russian.html"
+    expected: "42b122b299c27f4b9813a65e91db5f2bae9f06913d4a8749542db013770ed881"
+    actual: "42b122b299c27f4b9813a65e91db5f2bae9f06913d4a8749542db013770ed881"
+    match: true
+  - file: "manifest.yaml"
+    expected: "ba4f8441dbec6e1de471636d6e4a35ad09d05bf82ea635e9fb2d485706ba7e62"
+    actual: "ba4f8441dbec6e1de471636d6e4a35ad09d05bf82ea635e9fb2d485706ba7e62"
+    match: true
+
+## Path validation
+
+path_checks:
+  allowed_paths:
+    - "table-sandbox/v3-pilots/victory_points_tracker_russian.html": pass
+  forbidden_paths:
+    - ".git/": not triggered
+    - "node_modules/": not triggered
+    - "scripts/": not triggered
+    - "src/": not triggered
+    - "canon/": not triggered
+    - "references/": not triggered
+  path_errors: []
+
+## Write policy
+
+write_policy:
+  mode: "create_only"
+  allow_overwrite: false
+  target_exists: false  # File did not exist before import
+
+## Files manifest
+
+files:
+  - path: "table-sandbox/v3-pilots/victory_points_tracker_russian.html"
+    action: "create"
+    required: true
+    sha256_verified: true
+    result: "created"
+
+## Post-import testing
+
+post_import_testing:
+  mode: "required"
+  prompt_file: "POST_IMPORT_TEST_PROMPT.md"
+  note: "Kilo Notebook V3 auto-emit required. Prompt available in the package. Copy to ordinary Kilo code run for machine checks."
+
+## Known issues
+
+known_issues:
+  - "Write via write_to_file caused SHA256 mismatch due to line-ending conversion. Corrected via binary Copy-Item."
+  - "Post-import tests are not yet executed. Human must run via ordinary Kilo code run."
+
+## Actions performed by Kilo Notebook V3
+
+actions:
+  - extracted ZIP to temp directory
+  - verified control files
+  - validated manifest
+  - verified SHA256 checksums
+  - validated allowed and forbidden paths
+  - wrote 1 project file (binary copy)
+  - created journal draft
+  - updated V3_navigation.md lifecycle entry

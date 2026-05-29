@@ -76,6 +76,7 @@ Raw input != handoff.
 | Rejected packages | `.ai/v3/staging/rejected/` | local-only |
 | Revision packages | `.ai/v3/staging/revisions/` | local-only |
 | Temporary journal drafts | `.ai/v3/journals/drafts/` | local-only до accept |
+| Tester prompt copies | `.ai/v3/test_prompts/<V3-ID>_post_import_test_prompt.md` | local, создаётся `Kilo Notebook V3` после импорта, если в пакете есть `POST_IMPORT_TEST_PROMPT.md` и `mode != waived`. Ordinary Kilo code run и человек используют этот файл как основной prompt source. |
 | Machine-check reports | `.ai/v3/test_reports/<V3-ID>_machine_check_report.md` | local, создаётся ordinary Kilo code run после post-import machine checks. Не journal. Не lifecycle registry. Codex читает этот файл как главный источник machine-check результатов. |
 
 ### 2.5. Human-decision layer
