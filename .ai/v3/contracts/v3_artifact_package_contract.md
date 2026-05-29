@@ -199,7 +199,15 @@ Prompt также обязан:
 .ai/v3/test_prompts/<V3-ID>_post_import_test_prompt.md
 ```
 
-`Kilo Notebook V3` должен сохранить туда verbatim-копию `POST_IMPORT_TEST_PROMPT.md` и вернуть человеку явную ссылку/путь на этот файл.
+`Kilo Notebook V3` должен сохранить туда verbatim-копию `POST_IMPORT_TEST_PROMPT.md` и вернуть человеку кликабельную markdown-ссылку на этот файл.
+
+Staging-копия не считается заменой canonical tester prompt file. Допустим только такой source-of-truth для дальнейшего tester run:
+
+```text
+.ai/v3/test_prompts/<V3-ID>_post_import_test_prompt.md
+```
+
+Если prompt найден, но остался только в `.ai/v3/staging/` или человек получил только текстовый путь без кликабельной ссылки, это runtime bug, а не корректно завершённый tester prompt handoff.
 
 ### 4.5. Что НЕ является POST_IMPORT_TEST_PROMPT.md
 

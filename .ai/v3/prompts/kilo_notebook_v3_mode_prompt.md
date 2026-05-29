@@ -116,7 +116,7 @@
 10. Создать journal draft внутри этого же repo root.
 11. Обновить или дополнить запись в [`../V3_navigation.md`](../V3_navigation.md) внутри этого же repo root.
 12. Вернуть список created/skipped files и путь к journal draft.
-13. **Обязательный tester-prompt шаг:** проверить `manifest.post_import_testing.mode`. Действовать строго по таблице в секции 7A. Если `mode = required` и `POST_IMPORT_TEST_PROMPT.md` отсутствует — остановиться с `blocked`. Если prompt есть — сохранить его verbatim в canonical repo-local tester prompt file, затем вернуть человеку явную ссылку/путь на этот файл и короткую инструкцию для ordinary Kilo code run.
+13. **Обязательный tester-prompt шаг:** проверить `manifest.post_import_testing.mode`. Действовать строго по таблице в секции 7A. Если `mode = required` и `POST_IMPORT_TEST_PROMPT.md` отсутствует — остановиться с `blocked`. Если prompt есть — сохранить его verbatim в canonical repo-local tester prompt file, затем вернуть человеку кликабельную markdown-ссылку на этот файл и короткую инструкцию для ordinary Kilo code run.
 
 ## 7A. Post-import testing prompt auto-emit
 
@@ -126,19 +126,19 @@
 
 | mode | Prompt есть в пакете | Prompt отсутствует в пакете |
 |------|---------------------|---------------------------|
-| `required` | **Сохранить verbatim prompt** в `.ai/v3/test_prompts/<V3-ID>_post_import_test_prompt.md`. Потом вывести человеку явную ссылку/путь на этот файл и сообщить: testing обязателен для acceptance. | **`blocked`** — режим обязан остановиться с `blocked`. Причина: `manifest.post_import_testing.mode = required`, но `POST_IMPORT_TEST_PROMPT.md` отсутствует в пакете. Это проблема пакета. |
-| `optional` | **Сохранить verbatim prompt** в `.ai/v3/test_prompts/<V3-ID>_post_import_test_prompt.md`. Потом вывести человеку явную ссылку/путь на этот файл и сообщить: prompt полезен, но не блокирует acceptance. | Явно сообщить: `post_import_testing.mode = optional`, `POST_IMPORT_TEST_PROMPT.md` отсутствует — testing не требуется. |
+| `required` | **Сохранить verbatim prompt** в `.ai/v3/test_prompts/<V3-ID>_post_import_test_prompt.md`. Потом вывести человеку кликабельную markdown-ссылку на этот файл и сообщить: testing обязателен для acceptance. | **`blocked`** — режим обязан остановиться с `blocked`. Причина: `manifest.post_import_testing.mode = required`, но `POST_IMPORT_TEST_PROMPT.md` отсутствует в пакете. Это проблема пакета. |
+| `optional` | **Сохранить verbatim prompt** в `.ai/v3/test_prompts/<V3-ID>_post_import_test_prompt.md`. Потом вывести человеку кликабельную markdown-ссылку на этот файл и сообщить: prompt полезен, но не блокирует acceptance. | Явно сообщить: `post_import_testing.mode = optional`, `POST_IMPORT_TEST_PROMPT.md` отсутствует — testing не требуется. |
 | `waived` | **Не сохранять tester prompt.** Testing явно waived. | Ничего не сохранять и не показывать. |
 
 ### Ключевое отличие от старого поведения
 
 - **Раньше:** notebook мог не вывести prompt или вывести короткое упоминание.
-- **Теперь:** notebook **всегда** сохраняет verbatim-копию `POST_IMPORT_TEST_PROMPT.md` в `.ai/v3/test_prompts/<V3-ID>_post_import_test_prompt.md`, когда prompt присутствует и mode ≠ waived. Потом notebook возвращает человеку явную ссылку/путь на этот файл. Это не опция и не ответ на вопрос пользователя — это обязательная часть import run.
+- **Теперь:** notebook **всегда** сохраняет verbatim-копию `POST_IMPORT_TEST_PROMPT.md` в `.ai/v3/test_prompts/<V3-ID>_post_import_test_prompt.md`, когда prompt присутствует и mode ≠ waived. Потом notebook возвращает человеку кликабельную markdown-ссылку на этот файл. Это не опция и не ответ на вопрос пользователя — это обязательная часть import run.
 
 ### Что режим делает при обработке tester prompt
 
 - Сохраняет **verbatim-копию** `POST_IMPORT_TEST_PROMPT.md` в `.ai/v3/test_prompts/<V3-ID>_post_import_test_prompt.md`.
-- Возвращает человеку **явную ссылку/путь** на этот файл.
+- Возвращает человеку **кликабельную markdown-ссылку** на этот файл, а не только текстовый путь.
 - Не ограничивается фразой `prompt exists`.
 - Объясняет, что это prompt для обычного Kilo code run.
 - Объясняет, что `Kilo Notebook V3` не выполняет тесты сам.
@@ -146,6 +146,25 @@
 - Указывает, что prompt начинается с `Execution split proposal` — человек может согласиться или перераспределить проверки.
 - При `mode = required`: явно сообщает, что testing обязателен для acceptance.
 - При `mode = optional`: явно сообщает, что prompt полезен, но не блокирует acceptance.
+- Не использует `.ai/v3/staging/` как final storage для tester prompt copy. Staging допускается только как временный import-layer, не как canonical prompt source.
+
+### Обязательный финальный output block для tester prompt
+
+Когда tester prompt file создан, режим обязан вернуть блок вида:
+
+```text
+Tester prompt:
+[<V3-ID>_post_import_test_prompt.md](/absolute/path/to/.ai/v3/test_prompts/<V3-ID>_post_import_test_prompt.md)
+
+Next step:
+Передай содержимое этого файла в обычный Kilo code run.
+```
+
+Недостаточно:
+
+- просто написать `prompt saved`;
+- просто написать относительный путь;
+- оставить prompt только в `.ai/v3/staging/`.
 
 ### Что режим НЕ делает
 
@@ -171,7 +190,9 @@
 - остановиться с `blocked`;
 - причина: ordinary Kilo code run не получил стабильный repo-local prompt source;
 - не подменять ссылку кратким пересказом prompt;
-- не считать import acceptance-ready, пока `.ai/v3/test_prompts/<V3-ID>_post_import_test_prompt.md` не создан.
+- не считать import acceptance-ready, пока `.ai/v3/test_prompts/<V3-ID>_post_import_test_prompt.md` не создан;
+- не считать staging-копию достаточной заменой canonical tester prompt file;
+- не считать import acceptance-ready, пока человеку не возвращена кликабельная markdown-ссылка на canonical tester prompt file.
 
 ## 8. Что обновлять в V3_navigation
 

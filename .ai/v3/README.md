@@ -113,10 +113,10 @@ Kilo Notebook V3
   -> создаёт journal draft
   -> обновляет V3 lifecycle entry
   -> если есть POST_IMPORT_TEST_PROMPT.md и mode ≠ waived — notebook сохраняет tester prompt в `.ai/v3/test_prompts/<V3-ID>_post_import_test_prompt.md`
-  -> notebook возвращает человеку явную ссылку/путь на этот tester prompt file
+  -> notebook возвращает человеку кликабельную markdown-ссылку на этот tester prompt file
 
 Post-import testing
-   -> notebook сохраняет POST_IMPORT_TEST_PROMPT.md в repo-local tester prompt file и даёт ссылку/путь
+   -> notebook сохраняет POST_IMPORT_TEST_PROMPT.md в repo-local tester prompt file и даёт кликабельную markdown-ссылку
    -> человек копирует prompt в обычный Kilo code run
    -> Kilo code run сначала показывает Execution split proposal человеку
    -> человек согласует split (может перераспределить проверки)

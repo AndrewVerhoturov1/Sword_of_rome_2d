@@ -8,6 +8,52 @@ Do not record every tiny typo. Record issues that may help future debugging.
 
 ## Entries
 
+### BUG-20260530-007 - Kilo Notebook V3 leaves tester prompt in staging and does not return clickable prompt link
+
+Status: open
+
+Area:
+V3 post-import testing flow, `kilo-notebook-v3`, tester prompt handoff
+
+Symptoms:
+Import-run succeeds, journal and `V3_navigation.md` are created, but canonical tester prompt copy is missing from `.ai/v3/test_prompts/`. Instead, prompt may remain only in `.ai/v3/staging/`, and the user may receive only a plain text path or summary instead of a clickable markdown link.
+
+Observed recurrence:
+- `V3-20260529-234145-battle-status-dashboard-html-with-testing`: machine-check report exists and import succeeded, but canonical tester prompt file was absent from `.ai/v3/test_prompts/`; only staging copy existed at `.ai/v3/staging/V3-20260529-234145-battle-status-dashboard-html-with-testing_POST_IMPORT_TEST_PROMPT.md`.
+
+Cause:
+Runtime behavior of live `Kilo Notebook V3` does not fully follow Phase 7 canon. Prompt handling still treats staging as usable final location and does not enforce clickable link output as part of tester prompt handoff.
+
+Current mitigation:
+- recover tester prompt manually from staging into `.ai/v3/test_prompts/<V3-ID>_post_import_test_prompt.md`;
+- use that recovered file as source for ordinary Kilo code run;
+- tighten canon wording so notebook must return a clickable markdown link, not just a plain path.
+
+Required durable fix:
+- `Kilo Notebook V3` must always persist tester prompt copy to `.ai/v3/test_prompts/<V3-ID>_post_import_test_prompt.md`;
+- staging copy must not count as final success;
+- notebook final response must include clickable markdown link to the canonical tester prompt file;
+- if canonical file is missing or link is not returned, run should be treated as `blocked`.
+
+Verification:
+- `Test-Path '.ai\\v3\\test_prompts\\<V3-ID>_post_import_test_prompt.md'`
+- `Get-ChildItem '.ai\\v3\\staging'`
+- manual comparison of staging copy vs canonical test_prompts copy
+- review of notebook final response for clickable markdown link
+
+Human check:
+suggested
+
+Related files:
+- [kilo_notebook_v3_mode_prompt.md](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/v3/prompts/kilo_notebook_v3_mode_prompt.md)
+- [v3_storage_policy.md](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/v3/contracts/v3_storage_policy.md)
+- [v3_artifact_package_contract.md](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/v3/contracts/v3_artifact_package_contract.md)
+- [test_prompts/README.md](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/v3/test_prompts/README.md)
+- [V3-20260529-234145-battle-status-dashboard-html-with-testing_journal.yaml](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/v3/journals/drafts/V3-20260529-234145-battle-status-dashboard-html-with-testing_journal.yaml)
+
+Notes for future agents:
+If import looks successful but tester prompt is hard to find, first check `.ai/v3/test_prompts/`. If file is missing, inspect `.ai/v3/staging/` for a stray `*_POST_IMPORT_TEST_PROMPT.md` copy. Do not treat staging-only prompt as canon-complete success.
+
 ### BUG-20260528-006 - Kilo Notebook V3 resolves relative target paths against wrong root
 
 Status: still open

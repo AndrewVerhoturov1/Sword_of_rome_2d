@@ -76,7 +76,7 @@ Raw input != handoff.
 | Rejected packages | `.ai/v3/staging/rejected/` | local-only |
 | Revision packages | `.ai/v3/staging/revisions/` | local-only |
 | Temporary journal drafts | `.ai/v3/journals/drafts/` | local-only до accept |
-| Tester prompt copies | `.ai/v3/test_prompts/<V3-ID>_post_import_test_prompt.md` | local workflow artifact. Создаётся `Kilo Notebook V3` после импорта, если в пакете есть `POST_IMPORT_TEST_PROMPT.md` и `mode != waived`. Не journal. Не lifecycle registry. Не external artifact. Не replacement for human verdict. Source для обычного Kilo code run. |
+| Tester prompt copies | `.ai/v3/test_prompts/<V3-ID>_post_import_test_prompt.md` | local workflow artifact. Создаётся `Kilo Notebook V3` после импорта, если в пакете есть `POST_IMPORT_TEST_PROMPT.md` и `mode != waived`. Не journal. Не lifecycle registry. Не external artifact. Не replacement for human verdict. Единственный canonical source для обычного Kilo code run. Notebook обязан вернуть человеку кликабельную markdown-ссылку на этот файл. |
 | Machine-check reports | `.ai/v3/test_reports/<V3-ID>_machine_check_report.md` | local workflow artifact. Создаётся ordinary Kilo code run после post-import machine checks. Не journal. Не lifecycle registry. Не external artifact. Не replacement for human verdict. Source-of-truth для Codex machine-check review. |
 
 ### 2.5. Human-decision layer
@@ -155,6 +155,13 @@ git rev-parse --show-toplevel
 - staging cleanup идёт после accept/reject.
 
 Но это только selected input method, а не default human obligation для pre-Kilo phase.
+
+Важно:
+
+- `.ai/v3/staging/` не является canonical final storage для tester prompt copy;
+- если `POST_IMPORT_TEST_PROMPT.md` найден в пакете, финальная repo-local копия обязана лежать в `.ai/v3/test_prompts/<V3-ID>_post_import_test_prompt.md`;
+- ordinary Kilo code run должен брать prompt именно оттуда;
+- если notebook оставил prompt только в staging, это runtime bug.
 
 ## 5. Lifecycle archive rule
 

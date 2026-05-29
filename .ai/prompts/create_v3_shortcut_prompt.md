@@ -106,7 +106,7 @@ git rev-parse --show-toplevel
 ## Post-Import
 
 - Если manifest содержит `post_import_testing: required` или `optional` с `POST_IMPORT_TEST_PROMPT.md`, notebook обязан auto-emit tester prompt.
-- Верни путь к tester prompt file и путь к journal draft.
+- Верни кликабельную markdown-ссылку на tester prompt file и путь к journal draft.
 - Не делай commit и не делай push.
 
 ## Allowed Writes
@@ -116,6 +116,8 @@ git rev-parse --show-toplevel
 - `.ai/v3/journals/drafts/<V3-ID>_journal.yaml` (journal draft)
 - `.ai/v3/V3_navigation.md` (lifecycle entry update)
 - `.ai/v3/test_prompts/<V3-ID>_post_import_test_prompt.md` (canonical tester prompt copy)
+
+Notebook не должен считать staging-копию достаточной. Ordinary Kilo code run должен получать prompt из `.ai/v3/test_prompts/<V3-ID>_post_import_test_prompt.md`, а человек должен видеть кликабельную markdown-ссылку именно на этот файл.
 ```
 
 ### Правила заполнения подстановочных полей
