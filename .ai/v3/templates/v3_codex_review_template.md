@@ -1,6 +1,6 @@
 # v3_codex_review_template.md — Шаблон Review Note для Codex
 
-Версия: 0.2 (Phase 5+ post-import testing correction)
+Версия: 0.3 (Phase 5+ post-import testing flow hardening)
 Назначение: шаблон для Codex при выполнении review после V3 import. Заполняется Codex и добавляется в journal entry.
 Используй совместно с: [`codex_v3_review_prompt.md`](../prompts/codex_v3_review_prompt.md) и [`v3_codex_review_contract.md`](../contracts/v3_codex_review_contract.md).
 
@@ -52,12 +52,14 @@ codex_review:
     post_import_testing_done: <true | false>
     # Boolean-флаг. Для mode=required: true если report есть.
 
-  # === Post-import testing (детали) ===
+   # === Post-import testing (детали) ===
 
   post_import_testing:
     mode: "<required | optional | waived>"
     testing_status: "<done | waived | required_not_done | optional_executed | optional_bystander | not_applicable>"
-    machine_check_report_ref: "<ref или 'none'>"
+    machine_check_report_ref: "`.ai/v3/test_reports/<V3-ID>_machine_check_report.md` или 'none'"
+    # Если report существует — Codex читает его как главный источник machine-check результатов.
+    # Путь canonical: .ai/v3/test_reports/<V3-ID>_machine_check_report.md, где V3 ID — точный идентификатор цикла.
     testing_summary: "<заметка>"
 
   # === Заметки ===

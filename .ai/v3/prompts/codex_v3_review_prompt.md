@@ -1,8 +1,8 @@
 # codex_v3_review_prompt.md — Промпт для Codex Review после V3 Import
 
-Версия: 0.1 (Phase 3)
+Версия: 0.2 (Phase 5+ post-import testing flow hardening)
 Назначение: промпт для Codex, выполняющего review после того, как `Kilo Notebook V3` импортировал V3 artifact package и создал journal entry.
-Статус: рабочий prompt. Опирается на Phase 2 контракты, особенно [`v3_codex_review_contract.md`](../contracts/v3_codex_review_contract.md).
+Статус: рабочий prompt. Опирается на Phase 2 контракты, особенно [`v3_codex_review_contract.md`](../contracts/v3_codex_review_contract.md). Добавлен machine-check report как главный источник результатов.
 
 ---
 
@@ -79,7 +79,24 @@ Codex review — обязательный шаг между импортом и 
 - [ ] `action` соответствует? Для MVP — только `create`.
 - [ ] `acceptance_criteria` из request выполнены?
 
-### Шаг 4. Оценить риски
+### Шаг 4. Проверить post-import testing status
+
+Если `manifest.post_import_testing.mode = required`:
+
+1. Проверь, существует ли machine-check report по canonical пути: `.ai/v3/test_reports/<V3-ID>_machine_check_report.md`.
+2. **Сначала читай этот report-файл** — это главный источник machine-check результатов. Не требуй длинный pasted summary от человека.
+3. Если report существует — оцени результаты. Если report отсутствует — зафиксируй это.
+4. Если report отсутствует, Codex не может дать verdict `accept`. Возможны только `revision_needed` (запросить testing) или `accept_with_notes` (при явном testing waiver от человека).
+
+Если `manifest.post_import_testing.mode = optional`:
+
+- Machine-check report из `.ai/v3/test_reports/` может быть. Если есть — прочитай и учти. Если нет — не препятствие.
+
+Если `manifest.post_import_testing.mode = waived`:
+
+- Пропусти этот шаг.
+
+### Шаг 5. Оценить риски
 
 Оцени:
 
@@ -88,7 +105,7 @@ Codex review — обязательный шаг между импортом и 
 - Нужно ли явно указать человеку, что проверить вручную?
 - Есть ли неожиданные изменения (файлы не из expected_files)?
 
-### Шаг 5. Сформировать verdict
+### Шаг 6. Сформировать verdict
 
 Выбери один из verdict-ов:
 
@@ -111,7 +128,7 @@ Codex review — обязательный шаг между импортом и 
 - Scope грубо нарушен (например, product_code при scope: docs_only).
 - Два revision цикла уже провалились.
 
-### Шаг 6. Обновить journal
+### Шаг 7. Обновить journal
 
 Обнови journal entry — добавь секцию `codex_review`:
 
@@ -138,7 +155,7 @@ codex_review:
     - "<что проверить человеку>"
 ```
 
-### Шаг 7. Сообщить человеку
+### Шаг 8. Сообщить человеку
 
 Выдай короткое резюме:
 

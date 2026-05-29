@@ -1,6 +1,6 @@
 # kilo_notebook_v3_mode_prompt.md
 
-Версия: 0.6
+Версия: 0.7
 Назначение: operating reference для режима `Kilo Notebook V3`.
 Статус: raw-input mode reference. Добавлена поддержка post-import testing prompt display.
 
@@ -116,26 +116,31 @@
 10. Создать journal draft внутри этого же repo root.
 11. Обновить или дополнить запись в [`../V3_navigation.md`](../V3_navigation.md) внутри этого же repo root.
 12. Вернуть список created/skipped files и путь к journal draft.
-13. Проверить `manifest.post_import_testing.mode`. Если `mode = required` или `mode = optional` — проверить наличие `POST_IMPORT_TEST_PROMPT.md` и показать его после successful import summary согласно таблице в секции 7A.
+13. **Обязательный auto-emit шаг:** проверить `manifest.post_import_testing.mode`. Действовать строго по таблице в секции 7A. Если `mode = required` и `POST_IMPORT_TEST_PROMPT.md` отсутствует — остановиться с `blocked`. Если prompt есть — вывести его полное содержимое, не дожидаясь вопроса пользователя.
 
-## 7A. Post-import testing prompt display
+## 7A. Post-import testing prompt auto-emit
 
-После успешного импорта режим проверяет `manifest.post_import_testing.mode` и наличие `POST_IMPORT_TEST_PROMPT.md`.
+После успешного импорта режим **обязан всегда** проверить `manifest.post_import_testing.mode` и наличие `POST_IMPORT_TEST_PROMPT.md` в пакете. Режим не ждёт дополнительного вопроса пользователя — проверка и показ prompt выполняются автоматически в конце import run.
 
-### Правила показа prompt
+### Жёсткое правило auto-emit
 
-| mode | Prompt есть | Prompt отсутствует |
-|------|------------|-------------------|
-| `required` | Показать prompt. Сообщить: testing обязателен для acceptance | Сообщить: testing required, но prompt отсутствует — проблема пакета |
-| `optional` | Показать prompt. Сообщить: prompt полезен, но не блокирует acceptance | Ничего не показывать — testing опционален |
-| `waived` | Не показывать — testing waived | Ничего не показывать |
+| mode | Prompt есть в пакете | Prompt отсутствует в пакете |
+|------|---------------------|---------------------------|
+| `required` | **Показать полный prompt.** Это обязательный шаг, а не опция. Сообщить: testing обязателен для acceptance. | **`blocked`** — режим обязан остановиться с `blocked`. Причина: `manifest.post_import_testing.mode = required`, но `POST_IMPORT_TEST_PROMPT.md` отсутствует в пакете. Это проблема пакета. |
+| `optional` | **Показать полный prompt.** Сообщить: prompt полезен, но не блокирует acceptance. | Явно сообщить: `post_import_testing.mode = optional`, `POST_IMPORT_TEST_PROMPT.md` отсутствует — testing не требуется. |
+| `waived` | **Не показывать.** Testing явно waived. | Ничего не показывать. |
+
+### Ключевое отличие от старого поведения
+
+- **Раньше:** notebook мог не вывести prompt или вывести короткое упоминание.
+- **Теперь:** notebook **всегда** выводит полное содержимое `POST_IMPORT_TEST_PROMPT.md`, когда prompt присутствует и mode ≠ waived. Это не опция и не ответ на вопрос пользователя — это обязательная часть import run.
 
 ### Что режим делает при показе prompt
 
-- Выводит содержимое `POST_IMPORT_TEST_PROMPT.md` человеку.
+- Выводит **полное содержимое** `POST_IMPORT_TEST_PROMPT.md` человеку. Не короткое «prompt exists», а весь текст prompt.
 - Объясняет, что это prompt для обычного Kilo code run.
 - Объясняет, что `Kilo Notebook V3` не выполняет тесты сам.
-- Указывает, что Machine checks нужно скопировать в обычный Kilo code run, а Human checks выполнить вручную.
+- Указывает, что prompt начинается с `Execution split proposal` — человек может согласиться или перераспределить проверки.
 - При `mode = required`: явно сообщает, что testing обязателен для acceptance.
 - При `mode = optional`: явно сообщает, что prompt полезен, но не блокирует acceptance.
 
@@ -147,13 +152,15 @@
 - Не создаёт test journal или test report.
 - Не заменяет обычный Kilo code run.
 - Не теряет optional prompt — если `mode = optional` и prompt есть, он показывается.
+- Не ждёт, что пользователь сам спросит про testing — auto-emit обязателен.
 
 ### Если mode = required, но prompt отсутствует
 
-Это считается проблемой пакета. Режим должен:
-- отметить это в import result/report;
-- явно сказать человеку, что testing required, но prompt-файл отсутствует;
-- не блокировать импорт из-за отсутствия prompt (prompt — support artifact, импорт файлов уже выполнен).
+Это жёсткая ошибка пакета. Режим обязан:
+- остановиться с `blocked`;
+- причина: `manifest.post_import_testing.mode = required`, но `POST_IMPORT_TEST_PROMPT.md` отсутствует — пакет неполный;
+- импорт файлов может быть уже выполнен, но testing gate не может быть пройден без prompt;
+- человек должен запросить у внешнего чата исправленный пакет с prompt.
 
 ## 8. Что обновлять в V3_navigation
 
@@ -190,7 +197,8 @@
 - manifest невалиден;
 - checksums не совпадают;
 - path выходит за allowed scope;
-- target file уже существует, а overwrite запрещён.
+- target file уже существует, а overwrite запрещён;
+- `manifest.post_import_testing.mode = required`, но `POST_IMPORT_TEST_PROMPT.md` отсутствует в пакете.
 
 ## 10. Что ты не делаешь
 

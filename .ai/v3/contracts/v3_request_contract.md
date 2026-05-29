@@ -1,8 +1,8 @@
 # V3 Request Contract
 
-Версия: 0.3
+Версия: 0.4
 Назначение: формальный контракт V3-запроса к внешнему чату.
-Статус: contract layer. Уточнён после Phase 5 root-cause analysis. Добавлена поддержка post-import testing.
+Статус: contract layer. Уточнён после Phase 5 root-cause analysis. Добавлена поддержка post-import testing с Execution split proposal.
 
 ---
 
@@ -133,10 +133,15 @@ Request не должен:
 
 **При `mode = required`:**
 - Создать `POST_IMPORT_TEST_PROMPT.md` в корне ZIP.
-- Разделить prompt на `Machine checks` и `Human checks`.
+- Следовать стандартной четырёхсекционной структуре:
+  1. `Execution split proposal` — candidate checks с рекомендацией, кто выполняет (tester или человек), на простом русском языке.
+  2. `Machine checks` — только то, что удобно автоматизировать.
+  3. `Human checks` — только то, что человеку реально проверить глазами/руками.
+  4. `Machine-check report output` — canonical path `.ai/v3/test_reports/<V3-ID>_machine_check_report.md`, требование включать exact `V3 ID` в filename.
 - Не выдумывать результаты тестов.
 - Не утверждать, что внешний чат уже запускал тесты.
 - Сгенерировать конкретный prompt по фактически созданным файлам, а не абстрактный.
+- Писать простым русским языком, понятным не-программисту.
 
 **При `mode = optional`:**
 - Внешний чат **может** создать `POST_IMPORT_TEST_PROMPT.md`, если считает проверки полезными.

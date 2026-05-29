@@ -1,8 +1,8 @@
 # V3 Acceptance Policy
 
-Версия: 0.4
+Версия: 0.5
 Назначение: формальная политика того, как человек принимает, отклоняет или отправляет на доработку результат V3 import-stage.
-Статус: contract layer. Добавлен post-import testing gate и waiver path.
+Статус: contract layer. Добавлен post-import testing gate с canonical machine-check report и waiver path.
 
 ---
 
@@ -57,11 +57,11 @@ Acceptance gate зависит от `manifest.post_import_testing.mode`:
 
 **`mode = required`:**
 Acceptance не может быть выполнен без одного из двух:
-1. **Machine-check report** — результат обычного Kilo code run, который выполнил Machine checks из `POST_IMPORT_TEST_PROMPT.md`.
+1. **Machine-check report** — результат обычного Kilo code run, который выполнил Machine checks из `POST_IMPORT_TEST_PROMPT.md`. Report должен существовать по canonical пути: `.ai/v3/test_reports/<V3-ID>_machine_check_report.md`. Codex читает этот файл как главный источник machine-check результатов.
 2. **Testing waiver** — явное решение человека пропустить testing.
 
 **`mode = optional`:**
-Testing не блокирует acceptance. Machine-check report может быть учтён, но его отсутствие — не препятствие.
+Testing не блокирует acceptance. Machine-check report из `.ai/v3/test_reports/` может быть учтён, но его отсутствие — не препятствие.
 
 **`mode = waived`:**
 Testing gate не применяется.

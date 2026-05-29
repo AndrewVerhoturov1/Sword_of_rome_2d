@@ -1,8 +1,8 @@
 # V3 Codex Review Contract
 
-Версия: 0.2 (Phase 5+ post-import testing correction)
+Версия: 0.3 (Phase 5+ post-import testing flow hardening)
 Назначение: формальный контракт того, как Codex проверяет импортированные V3 артефакты — journal, реальные файлы, сверку с request/scope, риски.
-Статус: контракт Phase 2+. Добавлен post-import testing gate и machine-check report requirement.
+Статус: контракт Phase 2+. Добавлен post-import testing gate с canonical machine-check report file.
 
 ---
 
@@ -75,7 +75,8 @@ Codex проверяет `manifest.post_import_testing.mode`:
 Codex проверяет:
 - был ли `POST_IMPORT_TEST_PROMPT.md` в пакете;
 - был ли выполнен machine-check run через обычный Kilo code run;
-- есть ли machine-check report;
+- существует ли machine-check report по canonical пути: `.ai/v3/test_reports/<V3-ID>_machine_check_report.md`;
+- Codex читает этот report-файл как главный источник machine-check результатов, а не требует длинный pasted summary в чате;
 - если machine-check report отсутствует, Codex не может дать verdict `accept`.
 
 Если testing не был выполнен, Codex может:

@@ -1,8 +1,8 @@
 # create_v3_request_prompt.md - Промпт для подготовки V3 Request
 
-Версия: 0.3
+Версия: 0.4
 Назначение: промпт для Codex или человека, который готовит V3-запрос к внешнему чату.
-Статус: рабочий prompt. Уточнён после Phase 5 root-cause analysis. Добавлена поддержка post-import testing.
+Статус: рабочий prompt. Уточнён после Phase 5 root-cause analysis. Добавлена поддержка post-import testing с Execution split proposal.
 
 ---
 
@@ -81,13 +81,15 @@ Request не должен обещать, что package немедленно у
 - **Prompt file:** POST_IMPORT_TEST_PROMPT.md (обязателен при mode=required, опционален при mode=optional)
 
 Если mode = required:
-- Ты должен создать POST_IMPORT_TEST_PROMPT.md в корне ZIP.
-- Prompt должен быть разделён на Machine checks и Human checks.
-- Machine checks: команды, file/path checks, static checks, build/lint/typecheck.
-- Human checks: визуальный результат, UX, смысл текста, соответствие ожиданию.
+- Ты должен создать POST_IMPORT_TEST_PROMPT.md в корне ZIP по строгой четырёхсекционной структуре:
+  1. **Execution split proposal** — перечисли candidate checks. Для каждого пункта напиши простым русским языком: что проверяется, почему нужно, и рекомендацию — `Рекомендуется: tester` или `Рекомендуется: человек`. Это первый шаг: ordinary Kilo code run сначала покажет этот split человеку и согласует распределение.
+  2. **Machine checks** — только проверки, удобные для автоматизации (команды, file/path checks, static checks, build/lint/typecheck, безопасные runtime checks).
+  3. **Human checks** — только то, что человеку реально проверить глазами/руками (визуальный результат, UX, смысл текста, соответствие ожиданию).
+  4. **Machine-check report output** — укажи canonical путь: `.ai/v3/test_reports/<V3-ID>_machine_check_report.md`. Report filename обязан содержать exact V3 ID.
 - НЕ утверждай, что ты уже запускал тесты.
 - Сгенерируй конкретный prompt по фактически созданным файлам.
 - Если команда недоступна, честно напиши это.
+- Пиши простым русским языком, понятным не-программисту.
 
 Если mode = optional:
 - Ты можешь создать POST_IMPORT_TEST_PROMPT.md, если считаешь проверки полезными.

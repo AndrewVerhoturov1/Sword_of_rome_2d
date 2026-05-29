@@ -1,6 +1,6 @@
 # v3_request_template.md - Шаблон V3 Request
 
-Версия: 0.3
+Версия: 0.4
 Назначение: шаблон для Codex или человека перед отправкой V3-запроса внешнему чату.
 Используй совместно с: [`create_v3_request_prompt.md`](../prompts/create_v3_request_prompt.md).
 
@@ -42,8 +42,11 @@ create
 
 Если mode = required:
 - внешний чат должен создать POST_IMPORT_TEST_PROMPT.md в корне ZIP;
-- prompt делится на Machine checks и Human checks;
-- prompt генерируется по фактически созданным файлам;
+- prompt следует строгой четырёхсекционной структуре:
+  1. Execution split proposal (candidate checks с рекомендацией tester/человек, на простом русском);
+  2. Machine checks (только автоматизируемые проверки);
+  3. Human checks (только проверки глазами/руками);
+  4. Machine-check report output (canonical path: .ai/v3/test_reports/<V3-ID>_machine_check_report.md, V3 ID в имени файла обязательно);
 - внешний чат не утверждает, что уже запускал тесты.
 
 Если mode = optional:

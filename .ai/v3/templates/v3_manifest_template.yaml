@@ -1,6 +1,6 @@
 # v3_manifest_template.yaml — Шаблон manifest.yaml для V3 Artifact Package
 #
-# Версия: 0.2 (Phase 5+ post-import testing correction)
+# Версия: 0.3 (Phase 5+ post-import testing flow hardening)
 # Назначение: валидный YAML-скелет manifest.yaml.
 #   Заполняется внешним чатом при создании artifact package.
 #   Поля с <placeholder> обязательны к замене.
