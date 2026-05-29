@@ -22,10 +22,11 @@
 
 ## Что будет дальше
 
-Phase 6 завершает lifecycle hardening. Далее:
+Phase 6 завершил lifecycle hardening. Phase 7 foundation создан: `scripts/v3/` helper layer существует (validate, stage, journal draft). Далее:
 
-- Phase 7: scripted support (`scripts/v3/*`, validator/staging helpers, import tooling).
-- `/v3` shortcut активация.
+- Оставшаяся часть Phase 7: возможное расширение helper layer.
+- `/v3` shortcut активация (позже).
+- `apply_v3_package.py` остаётся не созданным.
 
 ## Связанные документы
 

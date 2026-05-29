@@ -123,7 +123,6 @@ def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(description="Stage V3 ZIP: validate + extract into .ai/v3/staging/<V3-ID>/.")
     p.add_argument("--package", required=True, help="Path to V3 artifact package ZIP.")
     p.add_argument("--root", default=None, help="Git repo root. Default: git rev-parse --show-toplevel.")
-    p.add_argument("--skip-validate", action="store_true", help="Skip validation (debug only).")
     return p
 
 
@@ -148,11 +147,8 @@ def main() -> int:
     if staging_dir.exists():
         _fail(f"Staging directory already exists: `{staging_dir}`.")
 
-    if not args.skip_validate:
-        _info("Running validation...")
-        _run_validate(zip_path)
-    else:
-        _info("Validation skipped (--skip-validate).")
+    _info("Running validation...")
+    _run_validate(zip_path)
 
     zip_sha = _sha256_file(zip_path)
     _info(f"ZIP SHA-256: {zip_sha}")

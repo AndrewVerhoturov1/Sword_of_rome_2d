@@ -145,11 +145,11 @@ git rev-parse --show-toplevel
 
 ## 7. Что изменится позже
 
-- **Phase 5A:** внешний package test без Kilo import.
-- **Phase 5B:** pre-Kilo package review.
-- **Phase 5C:** UI setup режима.
-- **Phase 5D:** import pilot.
-- **Phase 7:** появятся `scripts/v3/*`, и часть ручных шагов уйдёт в scripted support.
+- **Phase 5A:** внешний package test без Kilo import (завершён).
+- **Phase 5B:** pre-Kilo package review (завершён).
+- **Phase 5C:** UI setup режима (завершён).
+- **Phase 5D:** import pilot (завершён).
+- **Phase 7 foundation:** `scripts/v3/*` созданы (validate, stage, journal helpers). `/v3` shortcut не активирован. `apply_v3_package.py` не создан. Manual flow остаётся primary.
 
 ## Связанные документы
 

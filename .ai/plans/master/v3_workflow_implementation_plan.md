@@ -1,7 +1,7 @@
 # План внедрения V3 workflow и режима `Kilo Notebook V3`
 
-Версия: 0.11
-Статус: Phase 0 завершён, Phase 1 завершён (2026-05-27), Phase 2 завершён (2026-05-27), Phase 3 завершён (2026-05-27), Phase 4 завершён (2026-05-27), Phase 5 полностью завершён и практически доказан (2026-05-29). Post-import testing correction layer внедрён (2026-05-29). Post-import testing flow hardened (2026-05-29). Phase 6 (lifecycle cleanup/hardening) активен (2026-05-29).
+Версия: 0.12
+Статус: Phase 0 завершён, Phase 1 завершён (2026-05-27), Phase 2 завершён (2026-05-27), Phase 3 завершён (2026-05-27), Phase 4 завершён (2026-05-27), Phase 5 полностью завершён и практически доказан (2026-05-29). Post-import testing correction layer внедрён (2026-05-29). Post-import testing flow hardened (2026-05-29). Phase 6 завершён (lifecycle cleanup/hardening). Phase 7 foundation запущен (2026-05-29): scripted support foundation создан (`scripts/v3/` helper layer).
 Назначение: зафиксировать repo-grounded план внедрения V3 как отдельного workflow route и отдельного Kilo mode для artifact-producing задач.
 
 ---
@@ -402,12 +402,11 @@ Phase 6 не затрагивает:
 
 ### 11.4. Что остаётся на Phase 7
 
-Phase 7 остаётся отдельно и не смешивается с Phase 6:
+Phase 7 foundation создан (2026-05-29): `scripts/v3/` helper layer существует (validate, stage, journal draft). Оставшаяся часть Phase 7:
 
-- scripted support (`scripts/v3/*`);
-- validator/staging helpers;
-- import tooling;
-- `/v3` shortcut.
+- дальнейшее расширение helper layer (если нужно);
+- `/v3` shortcut активация (позже).
+- `apply_v3_package.py` не создан и не планируется в текущем scope.
 
 
 ---
@@ -447,7 +446,7 @@ MVP не требует:
 - auto-apply;
 - auto-commit/push;
 - `/v3` shortcut;
-- `scripts/v3/*` до Phase 7.
+- `scripts/v3/*` созданы в Phase 7 foundation.
 
 Практическая поправка после цикла `V3-20260529-040855-project-and-sword-of-rome-briefs`:
 
