@@ -4,7 +4,7 @@ Helper-слой для V3 artifact-producing workflow. Создан в Phase 7 (
 
 ## Статус
 
-Phase 7 foundation запущен. `/v3` shortcut не активирован. `apply_v3_package.py` не создан. Manual flow остаётся primary.
+Phase 7 завершён. `/v3` shortcut активирован как explicit V3 import-entry mode. Канонический шаблон [`.ai/prompts/create_v3_shortcut_prompt.md`](../../.ai/prompts/create_v3_shortcut_prompt.md) создан. `apply_v3_package.py` не создан. Manual flow остаётся primary.
 
 ## Скрипты
 

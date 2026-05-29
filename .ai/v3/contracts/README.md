@@ -22,10 +22,9 @@
 
 ## Что будет дальше
 
-Phase 6 завершил lifecycle hardening. Phase 7 foundation создан: `scripts/v3/` helper layer существует (validate, stage, journal draft). Далее:
+Phase 6 завершил lifecycle hardening. Phase 7 завершён: `scripts/v3/` helper layer существует, `/v3` shortcut активирован как explicit V3 import-entry mode, канонический шаблон [`.ai/prompts/create_v3_shortcut_prompt.md`](../../prompts/create_v3_shortcut_prompt.md) создан. Далее:
 
-- Оставшаяся часть Phase 7: возможное расширение helper layer.
-- `/v3` shortcut активация (позже).
+- Возможное расширение helper layer (будущие фазы).
 - `apply_v3_package.py` остаётся не созданным.
 
 ## Связанные документы

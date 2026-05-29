@@ -34,7 +34,7 @@ Kilo Code — исполнитель маленьких изолированны
 - `kilo-notebook` = `/v1-only` (prompt-only внешний анализ, staged local persistence).
 - `kilo-recorder` = `/r1-only` (response capture для External Web Chat).
 - `/v2` = не новый Kilo mode; работает через `kilo-handoff-runner` или `kilo-debugger`.
-- `kilo-notebook-v3` = отдельный V3 import/check/write/journal mode для artifact-producing workflow. Режим canonically разрешён (Phase 0). `.ai/v3/` subsystem создана (Phases 1-3), manual setup guide доступен (Phase 4). `/v3` shortcut не активирован, `scripts/v3/*` созданы (Phase 7 foundation), pilot проведён и доказан.
+- `kilo-notebook-v3` = отдельный V3 import/check/write/journal mode для artifact-producing workflow. Режим canonically разрешён (Phase 0). `.ai/v3/` subsystem создана (Phases 1-3), manual setup guide доступен (Phase 4). `/v3` shortcut активирован (Phase 7), `scripts/v3/*` созданы, pilot проведён и доказан.
 
 ### Режим kilo-notebook-v3
 
@@ -47,15 +47,15 @@ Kilo Code — исполнитель маленьких изолированны
 - Отдельный от `kilo-recorder` (который остаётся `/r1-only`).
 - Отдельный от V2.
 
-**Текущий статус (Phase 7 foundation):**
+**Текущий статус (Phase 7 завершён):**
+
 - Режим canonically разрешён в mode lists, validator и rules (Phase 0).
 - `.ai/v3/` foundation, контракты, промпты, шаблоны созданы (Phases 1-3).
 - Manual setup guide доступен: [`.ai/v3/docs/manual_kilo_notebook_v3_setup.md`](../v3/docs/manual_kilo_notebook_v3_setup.md) (Phase 4).
-- `/v3` shortcut не активирован.
-- `scripts/v3/*` созданы (Phase 7 foundation): validate, stage, journal helpers. `apply_v3_package.py` не создан.
+- `/v3` shortcut активирован как explicit V3 import-entry mode (Phase 7).
+- `scripts/v3/*` созданы: validate, stage, journal helpers. `apply_v3_package.py` не создан.
 - Pilot проведён и доказан (Phase 5).
 - Базовый import/check/write/journal flow работает.
-
 **Примечание по UI:**
 Фактическое добавление режима `Kilo Notebook V3` в интерфейс выполняется человеком вручную через интерфейс Kilo. Repo-level contract не заменяет ручную настройку режима в UI.
 
@@ -428,7 +428,7 @@ Agent-first execution mandate распространяется на все worke
 
 ## Short entry commands (CHUNK-016)
 
-Codex поддерживает четыре короткие repo-level entry-команды, которые работают только по явному shortcut-вызову пользователя. Команды являются `entry modes`, а не новыми execution tools и не новыми agent kinds. Отсутствие shortcut-команды не блокирует ordinary workflow path — все существующие downstream paths остаются валидными.
+Codex поддерживает пять коротких repo-level entry-команд, которые работают только по явному shortcut-вызову пользователя. Команды являются `entry modes`, а не новыми execution tools и не новыми agent kinds. Отсутствие shortcut-команды не блокирует ordinary workflow path — все существующие downstream paths остаются валидными.
 
 ### `/k1` и `/к1` — подготовка Kilo handoff
 
@@ -520,6 +520,25 @@ Codex поддерживает четыре короткие repo-level entry-к
   - отделить planned calls от contingency / repair runs — contingency runs не маскируются под заранее задуманные planned calls.
 - Режим не выполняет block work, не запускает executor-ы и не готовит executor packages до human approval design.
 - Уточняющие вопросы и approval происходят внутри `/b1` до передачи управления в execution layer.
+
+### `/v3` и `/V3` (`/в3` и `/В3`) — V3 import-entry route
+
+- `/v3`, `/V3`, `/в3`, `/В3` включаются только по явному shortcut-вызову пользователя.
+- Это explicit entry mode для V3 artifact package import, а не новый `Kilo mode` и не новый `Agent kind`.
+- `/v3` означает, что у человека уже есть V3 package source, и он хочет пройти V3 import route через `Kilo Notebook V3`:
+  - Codex не создаёт handoff;
+  - Codex не создаёт external launch package;
+  - Codex не делает import сам.
+- `/v3` не является новым `Kilo mode`, новым `Agent kind`, новым execution tool, auto-import кнопкой или shortcut для external request generation.
+- `/v3` — import-entry route для уже существующего V3 artifact package. Для prompt-only внешнего вопроса используется `/v1`. Для full external launch package используется `/r1`.
+- При отсутствии package source Codex запрашивает archive link или local archive path.
+- Codex готовит launch package для `Kilo Notebook V3` (не handoff), используя обязательный шаблон [`.ai/prompts/create_v3_shortcut_prompt.md`](../prompts/create_v3_shortcut_prompt.md).
+- Launch package, подготовленный без шаблона, не считается готовым `/v3` launch package.
+- `/v3` Preflight Checklist (из шаблона) обязателен перед выдачей launch package пользователю.
+
+#### `/v3` Runtime Binding
+
+При явном shortcut `/v3` Codex **обязан** использовать шаблон [`.ai/prompts/create_v3_shortcut_prompt.md`](../prompts/create_v3_shortcut_prompt.md). Launch package, написанный вручную без шаблона, не считается готовым `/v3` launch package и не должен выдаваться пользователю.
 
 ## `/v2` — External Senior Review (project-local manual protocol)
 

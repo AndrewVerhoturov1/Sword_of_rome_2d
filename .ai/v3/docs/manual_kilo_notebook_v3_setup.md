@@ -143,13 +143,13 @@ git rev-parse --show-toplevel
 - [ ] Operating reference прочитан.
 - [ ] Journal template понятен.
 
-## 7. Что изменится позже
+## 7. Что изменилось (Phase 5-7)
 
 - **Phase 5A:** внешний package test без Kilo import (завершён).
 - **Phase 5B:** pre-Kilo package review (завершён).
 - **Phase 5C:** UI setup режима (завершён).
 - **Phase 5D:** import pilot (завершён).
-- **Phase 7 foundation:** `scripts/v3/*` созданы (validate, stage, journal helpers). `/v3` shortcut не активирован. `apply_v3_package.py` не создан. Manual flow остаётся primary.
+- **Phase 7 завершён:** `scripts/v3/*` созданы (validate, stage, journal helpers). `/v3` shortcut активирован как explicit V3 import-entry mode. Канонический шаблон [`.ai/prompts/create_v3_shortcut_prompt.md`](../../prompts/create_v3_shortcut_prompt.md) создан. `apply_v3_package.py` не создан. Manual flow остаётся primary.
 
 ## Связанные документы
 

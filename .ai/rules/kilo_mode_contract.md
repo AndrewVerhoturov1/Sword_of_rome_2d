@@ -149,13 +149,13 @@
 - Отдельный от `kilo-recorder` (который остаётся `/r1-only`).
 - Отдельный от V2.
 
-### Текущий статус (Phase 7 foundation)
+### Текущий статус (Phase 7 завершён)
 
 - Режим canonically разрешён в mode lists, validator и rules (Phase 0).
 - `.ai/v3/` foundation, контракты, промпты, шаблоны созданы (Phases 1-3).
 - Manual setup guide доступен: [`.ai/v3/docs/manual_kilo_notebook_v3_setup.md`](../v3/docs/manual_kilo_notebook_v3_setup.md) (Phase 4).
-- `/v3` shortcut не активирован.
-- `scripts/v3/*` созданы (Phase 7 foundation): validate, stage, journal helpers. `apply_v3_package.py` не создан.
+- `/v3` shortcut активирован как explicit V3 import-entry mode (Phase 7).
+- `scripts/v3/*` созданы (Phase 7): validate, stage, journal helpers. `apply_v3_package.py` не создан.
 - Pilot проведён и доказан (Phase 5).
 - Базовый import/check/write/journal flow работает.
 
@@ -182,7 +182,7 @@
 - `kilo-notebook` = `/v1-only`.
 - `kilo-recorder` = `/r1-only`.
 - `/v2` = не новый Kilo mode.
-- `kilo-notebook-v3` = отдельный V3 import/check/write/journal mode. Режим canonically разрешён (Phase 0). `.ai/v3/` subsystem создана (Phases 1-3), manual setup guide доступен (Phase 4). `/v3` shortcut не активирован, `scripts/v3/*` созданы (Phase 7 foundation), pilot проведён и доказан.
+- `kilo-notebook-v3` = отдельный V3 import/check/write/journal mode. Режим canonically разрешён (Phase 0). `.ai/v3/` subsystem создана (Phases 1-3), manual setup guide доступен (Phase 4). `/v3` shortcut активирован (Phase 7), `scripts/v3/*` созданы, pilot проведён и доказан.
 
 ## V2 External Senior Review — не новый Kilo mode
 

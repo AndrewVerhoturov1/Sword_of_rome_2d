@@ -1,7 +1,7 @@
 # План внедрения V3 workflow и режима `Kilo Notebook V3`
 
-Версия: 0.12
-Статус: Phase 0 завершён, Phase 1 завершён (2026-05-27), Phase 2 завершён (2026-05-27), Phase 3 завершён (2026-05-27), Phase 4 завершён (2026-05-27), Phase 5 полностью завершён и практически доказан (2026-05-29). Post-import testing correction layer внедрён (2026-05-29). Post-import testing flow hardened (2026-05-29). Phase 6 завершён (lifecycle cleanup/hardening). Phase 7 foundation запущен (2026-05-29): scripted support foundation создан (`scripts/v3/` helper layer).
+Версия: 0.13
+Статус: Phase 0 завершён, Phase 1 завершён (2026-05-27), Phase 2 завершён (2026-05-27), Phase 3 завершён (2026-05-27), Phase 4 завершён (2026-05-27), Phase 5 полностью завершён и практически доказан (2026-05-29). Post-import testing correction layer внедрён (2026-05-29). Post-import testing flow hardened (2026-05-29). Phase 6 завершён (lifecycle cleanup/hardening). Phase 7 завершён (2026-05-29): scripted support foundation создан (`scripts/v3/` helper layer), `/v3` shortcut активирован как explicit V3 import-entry mode, канонический шаблон `.ai/prompts/create_v3_shortcut_prompt.md` создан.
 Назначение: зафиксировать repo-grounded план внедрения V3 как отдельного workflow route и отдельного Kilo mode для artifact-producing задач.
 
 ---
@@ -400,13 +400,16 @@ Phase 6 не затрагивает:
 - новый lifecycle status;
 - process gates между pre-Kilo и import-stage (они уже описаны в Phase 5).
 
-### 11.4. Что остаётся на Phase 7
+### 11.4. Phase 7 — Scripted Support Foundation и Shortcut Activation (завершён 2026-05-29)
 
-Phase 7 foundation создан (2026-05-29): `scripts/v3/` helper layer существует (validate, stage, journal draft). Оставшаяся часть Phase 7:
+Phase 7 завершён. Достигнуто:
 
-- дальнейшее расширение helper layer (если нужно);
-- `/v3` shortcut активация (позже).
-- `apply_v3_package.py` не создан и не планируется в текущем scope.
+- `scripts/v3/` helper layer создан: `validate_v3_package.py`, `stage_v3_package.py`, `write_v3_journal.py`.
+- `/v3` shortcut активирован как explicit V3 import-entry mode: `/v3`, `/V3`, `/в3`, `/В3`.
+- Канонический шаблон `.ai/prompts/create_v3_shortcut_prompt.md` создан.
+- Runtime binding: при явном `/v3` Codex обязан использовать шаблон.
+- `apply_v3_package.py` не создан. Auto-apply запрещён.
+- Все source-of-truth файлы синхронизированы.
 
 
 ---

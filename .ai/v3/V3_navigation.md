@@ -6,17 +6,18 @@
 
 ## Текущий статус
 
-**Phase 5C и 5D пройдены (2026-05-28):** режим подтверждён в UI, первый import pilot восстановлен в правильный repo root, human verdict ещё не дан.
+**Phase 5 завершён, Phase 6 завершён, Phase 7 завершён (2026-05-29):** `/v3` shortcut активирован как explicit V3 import-entry mode, канонический шаблон создан, `scripts/v3/*` helper layer существует. Auto-apply запрещён.
 
 ### Operational status
 
 - `Kilo Notebook V3` canonically разрешён.
 - Setup guide существует.
-- `/v3` shortcut не активирован.
-- `scripts/v3/*` не созданы.
+- `/v3` shortcut активирован (Phase 7).
+- `scripts/v3/*` созданы: validate, stage, journal helpers. `apply_v3_package.py` не создан.
 - Живой UI-режим `Kilo Notebook V3`: `verified by human on 2026-05-28`.
 - ZIP import capability в живом Kilo: `verified in one pilot on 2026-05-28`.
 - External artifact generation и pre-Kilo package review уже подтверждены на одном цикле.
+- Несколько успешных import-циклов подтвердили базовый flow.
 
 ### Current Phase 5 split
 
