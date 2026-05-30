@@ -19,6 +19,7 @@
 - `AGENTS.md` — repo-level contracts, language policy, human review policy, bug tracking policy, agent-first mandate
 - `.ai/rules/agent_protocol.md` — role split between Codex, Boss, Block Orchestrator, Kilo, human
 - `.ai/rules/codex_orchestrator.md` — orchestration boundaries and review duty
+- `.ai/rules/subagent_tools.md` — canonical names and selection rules for per-task subagent tools
 - `.ai/templates/block_plan_template.md` — expected block-plan shape
 - `.ai/templates/block_context_pack_template.md` — expected context-pack shape
 - `.ai/templates/block_orchestrator_package_template.md` — required fields for package gate artifact

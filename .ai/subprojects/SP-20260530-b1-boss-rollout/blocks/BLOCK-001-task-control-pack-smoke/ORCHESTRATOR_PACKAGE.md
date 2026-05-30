@@ -85,15 +85,43 @@ Block Orchestrator обязан:
 ### Subagent Call 1
 
 - Task 1: create minimal subproject entity
+  - Goal: produce one minimal subproject container for first `Boss -> Block` route
+  - Success Criteria: subproject entity fixes id, purpose, scope and nearest route without fake accepted-state
+  - Subagent Tool: `V3-Ревью`
+  - Reason: important workflow-doc artifact; strong draft first, then local verify/minor fix
 - Task 2: create seed docs
+  - Goal: create minimal seed doc set for first smoke route
+  - Success Criteria: five seed docs exist, are mutually consistent and contain no fake placeholders
+  - Subagent Tool: `V3-Ревью`
+  - Reason: important documentation package; user preference = V3 baseline for important docs
 - Task 3: create block start package
+  - Goal: finalize `BLOCK_PLAN.md` and `CONTEXT_PACK.md` as real execution boundary
+  - Success Criteria: both files are locally validated, aligned and consistent with block rules
+  - Subagent Tool: `Kilo`
+  - Reason: repo-grounded validation/finalization of existing local files
 
 ### Subagent Call 2
 
 - Task 4: prepare `ORCHESTRATOR_PACKAGE.md`
+  - Goal: assemble working orchestration package for block launch
+  - Success Criteria: package contains artifacts, boundaries, expected outputs, escalation path and `2 calls / 7 tasks`
+  - Subagent Tool: `V3-Ревью`
+  - Reason: important orchestration document; strong draft first, then local verify/minor fix
 - Task 5: apply real package gate
+  - Goal: return one honest gate verdict from actual files
+  - Success Criteria: exactly one explicit verdict grounded in local artifact state
+  - Subagent Tool: `Kilo`
+  - Reason: gate verdict requires local file verification
 - Task 6: run bounded docs-only smoke execution
+  - Goal: produce one real docs-only execution result inside allowed scope
+  - Success Criteria: observable file-based result, no product-code touch, evidence-based verification
+  - Subagent Tool: `Kilo`
+  - Reason: real repo-grounded execution and verification path
 - Task 7: prepare `BLOCK_REPORT.md`
+  - Goal: assemble Boss-reviewable final report
+  - Success Criteria: report covers required sections and is grounded in local evidence
+  - Subagent Tool: `Kilo`
+  - Reason: report must be built from actual changed files, checks and verdicts
 
 Правило:
 minor fixes, found bugs and small corrections stay inside the task where they appear.

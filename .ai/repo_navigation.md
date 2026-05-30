@@ -194,6 +194,8 @@
 Эти пути не надо считать публичным каноном проекта, пока человек отдельно не скажет обратное.
 ## Recent Additions
 
+- [`rules/subagent_tools.md`](rules/subagent_tools.md) — canonical per-task tool set for block workflow: `V1-Синтез`, `V3-Ревью`, `Kilo`, `Субагент-микро`, plus selection boundaries and `V3-Ревью` vs `/v3 import-entry route`.
+
 - [`plans/implementation/boss_orchestrator_bootstrap.md`](plans/implementation/boss_orchestrator_bootstrap.md) — bootstrap-ориентир для следующего Boss Orchestrator chat: роль, границы, default inputs, first practical mission.
 
 - [`plans/implementation/hierarchical_subproject_workflow_work_plan.md`](plans/implementation/hierarchical_subproject_workflow_work_plan.md) — короткий operational work plan по запуску subproject/Boss/B1 rollout без полной повторной декомпозиции master plan.

@@ -27,6 +27,8 @@
 
 Create minimal subproject entity.
 
+Required Subagent Tool: `V3-Ревью`
+
 ### Task 2
 
 Create seed docs:
@@ -37,6 +39,8 @@ Create seed docs:
 - `BOSS_BOOTSTRAP.md`
 - `BLOCKS_INDEX.md`
 
+Required Subagent Tool: `V3-Ревью`
+
 ### Task 3
 
 Create block start package:
@@ -44,11 +48,15 @@ Create block start package:
 - validate/finalize `BLOCK_PLAN.md`
 - validate/finalize `CONTEXT_PACK.md`
 
+Required Subagent Tool: `Kilo`
+
 ## Subagent Call 2
 
 ### Task 4
 
 Prepare `ORCHESTRATOR_PACKAGE.md`.
+
+Required Subagent Tool: `V3-Ревью`
 
 ### Task 5
 
@@ -59,17 +67,24 @@ Apply real package gate and return one explicit verdict:
 - `needs_clarification`
 - `waived_by_human`
 
+Required Subagent Tool: `Kilo`
+
 ### Task 6
 
 Run one bounded docs-only smoke execution.
+
+Required Subagent Tool: `Kilo`
 
 ### Task 7
 
 Prepare `BLOCK_REPORT.md`.
 
+Required Subagent Tool: `Kilo`
+
 Требования к твоему поведению:
 
 - Перед каждым вызовом субагента сам выбери точный tool path.
+- Опирайся на `Required Subagent Tool` по каждой задаче. Отклоняйся только если честно упёрся в blocker и тогда возвращай `Blocked / Clarification Request`.
 - Не выходи за allowed files из `BLOCK_PLAN.md`.
 - Не трогай product code.
 - Не читай весь repo "на всякий случай".

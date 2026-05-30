@@ -62,7 +62,15 @@
 Обязательная секция. Укажи заранее спроектированную последовательность substantive agent tasks (обычно 2-4 задачи на блок). Planned tasks должны быть явно отделены от contingency / repair runs.
 
 - Task 1: описание
+  - Goal: что должен дать этот task
+  - Success Criteria: как понять, что task завершён честно
+  - Subagent Tool: `V1-Синтез` / `V3-Ревью` / `Kilo` / `Субагент-микро`
+  - Reason: почему выбран именно этот инструмент
 - Task 2: описание
+  - Goal: что должен дать этот task
+  - Success Criteria: как понять, что task завершён честно
+  - Subagent Tool: `V1-Синтез` / `V3-Ревью` / `Kilo` / `Субагент-микро`
+  - Reason: почему выбран именно этот инструмент
 - Contingency / Repair: описание (если применимо)
 
 ## Planned Human Checkpoints

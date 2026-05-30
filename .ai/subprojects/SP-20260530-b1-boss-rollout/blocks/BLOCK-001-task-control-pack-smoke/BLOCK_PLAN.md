@@ -150,6 +150,18 @@ Block Orchestrator сам решает, что именно использова
 - зафиксировать текущий rollout-slice;
 - зафиксировать ближайший route `Boss -> BLOCK-001 -> report -> Boss review -> human gate`.
 
+Goal:
+получить минимальный subproject container, от которого можно честно запустить первый `Boss -> Block` route.
+
+Success Criteria:
+появилась одна согласованная subproject-сущность с `subproject_id`, целью, границами, текущим slice и ближайшим route без fake accepted-state.
+
+Subagent Tool:
+`V3-Ревью`
+
+Reason:
+это важный workflow-doc artifact. Нужен сильный первый draft для структуры subproject entity, после чего допустима только локальная проверка и небольшая доводка.
+
 #### Task 2. Create seed docs
 
 Подготовить и согласованно заполнить:
@@ -166,6 +178,18 @@ Seed docs не должны содержать:
 - fake runtime paths;
 - пустые history placeholders;
 - объявление `accepted` без evidence.
+
+Goal:
+создать минимальный набор seed docs, достаточный для первого управляемого smoke-route без разрастания бюрократии.
+
+Success Criteria:
+созданы все пять seed docs; они согласованы между собой; в них нет fake runtime/history placeholders и нет premature accepted-state.
+
+Subagent Tool:
+`V3-Ревью`
+
+Reason:
+это основной пакет важной документации внутри блока. По пользовательскому правилу baseline для важной документации = `V3`; subagent после этого должен только проверить и слегка довести результат.
 
 #### Task 3. Create block start package
 
@@ -184,6 +208,18 @@ Seed docs не должны содержать:
 - правило ID: `BLOCK-NNN_slug` — canonical, `B1` — только layer label;
 - текущий блок = smoke only, не proof всей системы.
 
+Goal:
+довести block-start artifacts до состояния, в котором их можно использовать как честный execution boundary для первого smoke-блока.
+
+Success Criteria:
+`BLOCK_PLAN.md` и `CONTEXT_PACK.md` согласованы между собой, явно фиксируют scope/boundary/outputs/stop conditions и не противоречат canonical ID rules.
+
+Subagent Tool:
+`Kilo`
+
+Reason:
+задача repo-grounded и проверочная. Здесь важнее локальная валидация уже существующих файлов и точное согласование артефактов, чем внешний draft.
+
 ### Subagent Call 2
 
 #### Task 4. Prepare `ORCHESTRATOR_PACKAGE.md`
@@ -196,6 +232,18 @@ Seed docs не должны содержать:
 - escalation path;
 - внутренняя карта `2 calls / 7 tasks`.
 
+Goal:
+собрать рабочий package artifact, по которому младший оркестратор сможет запускать блок без пересборки контекста с нуля.
+
+Success Criteria:
+`ORCHESTRATOR_PACKAGE.md` содержит ссылки на source artifacts, scope/boundary, expected outputs, escalation path и карту `2 calls / 7 tasks` без scope drift.
+
+Subagent Tool:
+`V3-Ревью`
+
+Reason:
+это важный orchestration-doc. Пользовательский baseline для важной документации = `V3`, а локальная работа после внешнего draft должна оставаться review-first.
+
 #### Task 5. Apply real package gate
 
 Вынести один явный verdict:
@@ -207,6 +255,18 @@ Seed docs не должны содержать:
 
 Если gate не пройден, это фиксируется как реальный outcome блока без fake partial success.
 
+Goal:
+вынести честный gate verdict на основе фактического состояния package artifacts, а не на основе деклараций.
+
+Success Criteria:
+есть ровно один явный verdict; он обоснован содержимым файлов; при неуспехе outcome зафиксирован без fake partial success.
+
+Subagent Tool:
+`Kilo`
+
+Reason:
+package gate требует локальной проверки фактических файлов и repo-grounded verdict. Внешний reasoning здесь не заменяет локальную верификацию.
+
 #### Task 6. Run bounded docs-only smoke execution
 
 Провести один реальный исполнительный цикл в пределах workflow-docs:
@@ -214,6 +274,18 @@ Seed docs не должны содержать:
 - есть фактический результат;
 - product code не затронут;
 - результат проверяем по файлам, а не по декларации.
+
+Goal:
+показать один реальный docs-only execution cycle внутри разрешённого scope, чтобы блок вернул не только планы, но и evidence.
+
+Success Criteria:
+есть наблюдаемый файловый результат, product code не затронут, проверка опирается на фактические файлы и действия, а не на декларацию.
+
+Subagent Tool:
+`Kilo`
+
+Reason:
+это реальный execution cycle внутри repo. Нужен локальный исполнительный и проверочный путь, а не внешний draft route.
 
 #### Task 7. Prepare `BLOCK_REPORT.md`
 
@@ -230,6 +302,18 @@ Seed docs не должны содержать:
 - `Deviations from Block Plan`
 - `Blocked Items`
 - `Required Lead Action`
+
+Goal:
+собрать итоговый block report, пригодный для `Boss review`, с evidence, verdict и открытыми вопросами.
+
+Success Criteria:
+`BLOCK_REPORT.md` заполнен по required sections, опирается на реальные результаты блока и не подменяет собой `Boss review`.
+
+Subagent Tool:
+`Kilo`
+
+Reason:
+report должен собираться из локального evidence: changed files, checks, verdict, blocked items. Для этого нужен repo-grounded путь.
 
 ## Planned Human Checkpoints
 
