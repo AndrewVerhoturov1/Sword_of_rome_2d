@@ -1,0 +1,1928 @@
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import mapData from "../fixtures/tiny-module/modules/tiny-module/map.json";
+import {
+  type ConnectionDraft,
+  type DraftSnapshot,
+  type EditorSettings,
+  HISTORY_LIMIT,
+  type MapDraft,
+  type MapValidation,
+  type SpaceDraft,
+  type UnderlayState,
+  uniqueId,
+  validateMapDraft,
+  worldToMapLocal,
+  takeSnapshot,
+  restoreSnapshot,
+  pushHistory,
+  DEFAULT_UNDERLAY,
+  DEFAULT_EDITOR_SETTINGS,
+} from "./MapDraft";
+import "./Editor.css";
+
+const CANVAS_W = mapData.coordinateSystem.width;
+const CANVAS_H = mapData.coordinateSystem.height;
+const STORAGE_KEY = "table-sandbox-editor-draft";
+const SPACE_RADIUS = 8;
+const HANDLE_SIZE = 10;
+const ROTATE_HANDLE_DISTANCE = 36;
+
+type Tool = "select" | "space" | "connection" | "pan";
+
+interface EditorSurfaceProps {
+  draft: MapDraft;
+  onDraftChange: (draft: MapDraft) => void;
+  onPreview: (draft: MapDraft) => void;
+}
+
+interface ViewState {
+  zoom: number;
+  panX: number;
+  panY: number;
+}
+
+interface WorldPoint {
+  x: number;
+  y: number;
+}
+
+type ContextMenuState =
+  | {
+      type: "canvas";
+      x: number;
+      y: number;
+      worldX: number;
+      worldY: number;
+    }
+  | {
+      type: "space" | "connection" | "underlay";
+      x: number;
+      y: number;
+      id: string;
+    };
+
+type DragState =
+  | {
+      type: "spaceMove";
+      id: string;
+      startWorldX: number;
+      startWorldY: number;
+      originX: number;
+      originY: number;
+    }
+  | {
+      type: "pan";
+      startClientX: number;
+      startClientY: number;
+      originPanX: number;
+      originPanY: number;
+    }
+  | {
+      type: "underlayMove";
+      startWorldX: number;
+      startWorldY: number;
+      originOffsetX: number;
+      originOffsetY: number;
+    }
+  | {
+      type: "underlayRotate";
+      startWorldX: number;
+      startWorldY: number;
+      originRotation: number;
+      centerWorldX: number;
+      centerWorldY: number;
+    }
+  | {
+      type: "underlayScale";
+      startWorldX: number;
+      startWorldY: number;
+      originScale: number;
+      originOffsetX: number;
+      originOffsetY: number;
+      originWidth: number;
+      originHeight: number;
+      corner: "nw" | "ne" | "sw" | "se";
+    };
+
+/** Вычислить угол от central point к (x,y) в градусах (borrowed from prototype) */
+function angleDeg(cx: number, cy: number, x: number, y: number): number {
+  return (Math.atan2(y - cy, x - cx) * 180) / Math.PI;
+}
+
+/** Snap value to grid (borrowed from prototype snap()) */
+function snapValue(v: number, gridSize: number, on: boolean): number {
+  if (!on) return Math.round(v);
+  return Math.round(v / gridSize) * gridSize;
+}
+
+/** Underlay CSS transform string */
+function underlayTransform(u: UnderlayState): string {
+  return `translate(${u.offsetX}px, ${u.offsetY}px) scale(${u.scale}) rotate(${u.rotation}deg)`;
+}
+
+export default function EditorSurface({
+  draft,
+  onDraftChange,
+  onPreview,
+}: EditorSurfaceProps) {
+  const [tool, setTool] = useState<Tool>("select");
+  const [selection, setSelection] = useState<{
+    type: "space" | "connection" | "underlay" | null;
+    id: string | null;
+  }>({ type: null, id: null });
+  const [validation, setValidation] = useState<MapValidation | null>(null);
+  const [linkStart, setLinkStart] = useState<string | null>(null);
+  const [message, setMessage] = useState("Готово");
+  const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
+  const [view, setView] = useState<ViewState>({ zoom: 1, panX: 0, panY: 0 });
+
+  // 0020: undo/redo history
+  const [history, setHistory] = useState<{
+    past: DraftSnapshot[];
+    future: DraftSnapshot[];
+  }>({ past: [], future: [] });
+
+  const dragRef = useRef<DragState | null>(null);
+  const canvasRef = useRef<HTMLDivElement>(null);
+
+  const underlay = draft.underlay;
+  const editorSettings = draft.editorSettings;
+
+  const spacesById = useMemo(
+    () => Object.fromEntries(draft.spaces.map((space) => [space.spaceId, space])),
+    [draft.spaces]
+  );
+
+  const selectedObject =
+    selection.type === "space"
+      ? draft.spaces.find((space) => space.spaceId === selection.id) ?? null
+      : selection.type === "connection"
+        ? draft.connections.find(
+            (connection) => connection.connectionId === selection.id
+          ) ?? null
+        : selection.type === "underlay"
+          ? underlay
+          : null;
+
+  const stageWidth = CANVAS_W * view.zoom;
+  const stageHeight = CANVAS_H * view.zoom;
+
+  const nextSpaceOrdinal = useCallback(
+    () => draft.spaces.length + 1,
+    [draft.spaces.length]
+  );
+
+  const nextConnectionOrdinal = useCallback(
+    () => draft.connections.length + 1,
+    [draft.connections.length]
+  );
+
+  const clampWorldPoint = useCallback((point: WorldPoint): WorldPoint => {
+    return {
+      x: Math.max(0, Math.min(CANVAS_W, point.x)),
+      y: Math.max(0, Math.min(CANVAS_H, point.y)),
+    };
+  }, []);
+
+  /** Screen → world (canvas workspace) coordinates */
+  const getWorldPoint = useCallback(
+    (clientX: number, clientY: number): WorldPoint => {
+      const rect = canvasRef.current?.getBoundingClientRect();
+      if (!rect) {
+        return { x: 0, y: 0 };
+      }
+      return {
+        x: (clientX - rect.left - view.panX) / view.zoom,
+        y: (clientY - rect.top - view.panY) / view.zoom,
+      };
+    },
+    [view.panX, view.panY, view.zoom]
+  );
+
+  // ---- Draft mutation helpers (0020: with undo history) ----
+
+  const commitDraft = useCallback(
+    (nextDraft: MapDraft) => {
+      setHistory((h) => ({
+        past: pushHistory(h.past, draft),
+        future: [],
+      }));
+      onDraftChange(nextDraft);
+    },
+    [draft, onDraftChange]
+  );
+
+  /** Undo: restore previous snapshot (borrowed from prototype undo()) */
+  const undo = useCallback(() => {
+    setHistory((h) => {
+      if (!h.past.length) return h;
+      const current = takeSnapshot(draft);
+      const prev = h.past[h.past.length - 1];
+      onDraftChange(restoreSnapshot(prev));
+      setMessage("Действие отменено");
+      return {
+        past: h.past.slice(0, -1),
+        future: [current, ...h.future].slice(0, HISTORY_LIMIT),
+      };
+    });
+  }, [draft, onDraftChange]);
+
+  /** Redo: restore next snapshot (borrowed from prototype redo()) */
+  const redo = useCallback(() => {
+    setHistory((h) => {
+      if (!h.future.length) return h;
+      const current = takeSnapshot(draft);
+      const next = h.future[0];
+      onDraftChange(restoreSnapshot(next));
+      setMessage("Действие повторено");
+      return {
+        past: [...h.past, current].slice(-HISTORY_LIMIT),
+        future: h.future.slice(1),
+      };
+    });
+  }, [draft, onDraftChange]);
+
+  // 0020: keyboard shortcuts Ctrl+Z / Ctrl+Y (borrowed from prototype)
+  useEffect(() => {
+    const key = (e: KeyboardEvent) => {
+      const mod = e.ctrlKey || e.metaKey;
+      if (mod && e.key.toLowerCase() === "z") {
+        e.preventDefault();
+        if (e.shiftKey) {
+          redo();
+        } else {
+          undo();
+        }
+      }
+      if (mod && e.key.toLowerCase() === "y") {
+        e.preventDefault();
+        redo();
+      }
+    };
+    window.addEventListener("keydown", key);
+    return () => window.removeEventListener("keydown", key);
+  }, [undo, redo]);
+
+  // ---- Underlay mutation (0020) ----
+
+  const updateUnderlay = useCallback(
+    (patch: Partial<UnderlayState>) => {
+      if (!underlay) return;
+      commitDraft({
+        ...draft,
+        underlay: { ...underlay, ...patch },
+      });
+    },
+    [draft, underlay, commitDraft]
+  );
+
+  const updateEditorSettings = useCallback(
+    (patch: Partial<EditorSettings>) => {
+      commitDraft({
+        ...draft,
+        editorSettings: { ...editorSettings, ...patch },
+      });
+    },
+    [draft, editorSettings, commitDraft]
+  );
+
+  const resetUnderlayRotation = useCallback(() => {
+    if (!underlay) return;
+    commitDraft({
+      ...draft,
+      underlay: { ...underlay, rotation: 0 },
+    });
+    setMessage("Поворот подложки сброшен");
+  }, [draft, underlay, commitDraft]);
+
+  const resetUnderlayTransform = useCallback(() => {
+    if (!underlay) return;
+    commitDraft({
+      ...draft,
+      underlay: {
+        ...underlay,
+        offsetX: DEFAULT_UNDERLAY.offsetX,
+        offsetY: DEFAULT_UNDERLAY.offsetY,
+        scale: DEFAULT_UNDERLAY.scale,
+        rotation: DEFAULT_UNDERLAY.rotation,
+      },
+    });
+    setMessage("Трансформация подложки сброшена");
+  }, [draft, underlay, commitDraft]);
+
+  // ---- Space/connection operations (0018 baseline, adapted 0020) ----
+
+  const setToolWithMessage = useCallback((nextTool: Tool) => {
+    setTool(nextTool);
+    setLinkStart(null);
+    setMessage(
+      nextTool === "connection" ? "Выберите первую точку." : "Готово"
+    );
+  }, []);
+
+  /** 0020: addSpace конвертирует world → map-local, применяет snap */
+  const addSpace = useCallback(
+    (worldX: number, worldY: number) => {
+      const local = worldToMapLocal(worldX, worldY, underlay);
+      const snappedX = snapValue(
+        local.x,
+        editorSettings.gridSize,
+        editorSettings.snapToGrid
+      );
+      const snappedY = snapValue(
+        local.y,
+        editorSettings.gridSize,
+        editorSettings.snapToGrid
+      );
+
+      const ordinal = nextSpaceOrdinal();
+      const spaceId = uniqueId(
+        `space-${ordinal}`,
+        draft.spaces.map((space) => space.spaceId)
+      );
+
+      const nextDraft: MapDraft = {
+        ...draft,
+        spaces: [
+          ...draft.spaces,
+          {
+            spaceId,
+            name: `Точка ${ordinal}`,
+            x: snappedX,
+            y: snappedY,
+            type: "region",
+          },
+        ],
+      };
+
+      setHistory((h) => ({
+        past: pushHistory(h.past, draft),
+        future: [],
+      }));
+      onDraftChange(nextDraft);
+      setSelection({ type: "space", id: spaceId });
+      setMessage("Точка добавлена.");
+    },
+    [draft, nextSpaceOrdinal, onDraftChange, underlay, editorSettings]
+  );
+
+  /** 0020: moveSpace работает в map-local координатах, применяет snap */
+  const moveSpace = useCallback(
+    (spaceId: string, mapLocalX: number, mapLocalY: number) => {
+      const snappedX = snapValue(
+        mapLocalX,
+        editorSettings.gridSize,
+        editorSettings.snapToGrid
+      );
+      const snappedY = snapValue(
+        mapLocalY,
+        editorSettings.gridSize,
+        editorSettings.snapToGrid
+      );
+
+      onDraftChange({
+        ...draft,
+        spaces: draft.spaces.map((space) =>
+          space.spaceId === spaceId
+            ? { ...space, x: snappedX, y: snappedY }
+            : space
+        ),
+      });
+    },
+    [draft, onDraftChange, editorSettings]
+  );
+
+  const renameSpace = useCallback(
+    (spaceId: string, name: string) => {
+      commitDraft({
+        ...draft,
+        spaces: draft.spaces.map((space) =>
+          space.spaceId === spaceId ? { ...space, name } : space
+        ),
+      });
+    },
+    [draft, commitDraft]
+  );
+
+  const deleteSpace = useCallback(
+    (spaceId: string) => {
+      commitDraft({
+        ...draft,
+        spaces: draft.spaces.filter((space) => space.spaceId !== spaceId),
+        connections: draft.connections.filter(
+          (connection) =>
+            connection.fromSpaceId !== spaceId &&
+            connection.toSpaceId !== spaceId
+        ),
+      });
+      setSelection({ type: null, id: null });
+      setMessage("Точка и связи удалены.");
+    },
+    [draft, commitDraft]
+  );
+
+  const createConnection = useCallback(
+    (fromSpaceId: string, toSpaceId: string) => {
+      const ordinal = nextConnectionOrdinal();
+      const connectionId = uniqueId(
+        `conn-${ordinal}`,
+        draft.connections.map((connection) => connection.connectionId)
+      );
+
+      commitDraft({
+        ...draft,
+        connections: [
+          ...draft.connections,
+          {
+            connectionId,
+            fromSpaceId,
+            toSpaceId,
+            type: "land",
+          },
+        ],
+      });
+      setSelection({ type: "connection", id: connectionId });
+      setMessage("Связь добавлена.");
+    },
+    [draft, nextConnectionOrdinal, commitDraft]
+  );
+
+  const deleteConnection = useCallback(
+    (connectionId: string) => {
+      commitDraft({
+        ...draft,
+        connections: draft.connections.filter(
+          (connection) => connection.connectionId !== connectionId
+        ),
+      });
+      setSelection({ type: null, id: null });
+      setMessage("Связь удалена.");
+    },
+    [draft, commitDraft]
+  );
+
+  const runValidation = useCallback(() => {
+    const result = validateMapDraft(draft);
+    setValidation(result);
+    setMessage(result.errors.length > 0 ? "Есть ошибки." : "Проверка пройдена.");
+  }, [draft]);
+
+  const saveDraft = useCallback(() => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(draft));
+    setMessage("Черновик сохранён.");
+  }, [draft]);
+
+  const loadDraft = useCallback(() => {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) {
+      setMessage("Нет сохранённого черновика.");
+      return;
+    }
+
+    try {
+      const parsed = JSON.parse(raw) as MapDraft;
+      // 0020: миграция старых черновиков без underlay/editorSettings
+      if (!parsed.underlay) parsed.underlay = { ...DEFAULT_UNDERLAY };
+      if (!parsed.editorSettings) parsed.editorSettings = { ...DEFAULT_EDITOR_SETTINGS };
+      onDraftChange(parsed);
+      setHistory({ past: [], future: [] });
+      setMessage("Черновик загружен.");
+    } catch {
+      setMessage("Не удалось загрузить черновик.");
+    }
+  }, [onDraftChange]);
+
+  // ---- Mouse/event handlers (0018 baseline + 0020 additions) ----
+
+  const handleWheel = useCallback(
+    (event: React.WheelEvent<HTMLDivElement>) => {
+      event.preventDefault();
+
+      const oldZoom = view.zoom;
+      const nextZoom = Math.max(
+        0.2,
+        Math.min(3, oldZoom * (event.deltaY > 0 ? 0.92 : 1.08))
+      );
+      const rect = canvasRef.current?.getBoundingClientRect();
+      if (!rect) {
+        return;
+      }
+
+      const anchorWorldX = (event.clientX - rect.left - view.panX) / oldZoom;
+      const anchorWorldY = (event.clientY - rect.top - view.panY) / oldZoom;
+
+      setView({
+        zoom: Math.round(nextZoom * 100) / 100,
+        panX: event.clientX - rect.left - anchorWorldX * nextZoom,
+        panY: event.clientY - rect.top - anchorWorldY * nextZoom,
+      });
+    },
+    [view]
+  );
+
+  const handleCanvasMouseDown = useCallback(
+    (event: React.MouseEvent<HTMLDivElement>) => {
+      const worldPoint = getWorldPoint(event.clientX, event.clientY);
+
+      if (tool === "space") {
+        addSpace(worldPoint.x, worldPoint.y);
+        return;
+      }
+
+      if (tool === "pan") {
+        event.preventDefault();
+        dragRef.current = {
+          type: "pan",
+          startClientX: event.clientX,
+          startClientY: event.clientY,
+          originPanX: view.panX,
+          originPanY: view.panY,
+        };
+        return;
+      }
+
+      if (tool === "select") {
+        setSelection({ type: null, id: null });
+        setContextMenu(null);
+        setLinkStart(null);
+      }
+    },
+    [addSpace, getWorldPoint, tool, view.panX, view.panY]
+  );
+
+  // 0020: underlay mouse down handlers
+  const handleUnderlayMouseDown = useCallback(
+    (event: React.MouseEvent<HTMLDivElement>) => {
+      event.stopPropagation();
+      if (!underlay || underlay.locked) return;
+      if (tool !== "select" && tool !== "pan") return;
+
+      setSelection({ type: "underlay", id: "underlay" });
+
+      const worldPoint = getWorldPoint(event.clientX, event.clientY);
+      dragRef.current = {
+        type: "underlayMove",
+        startWorldX: worldPoint.x,
+        startWorldY: worldPoint.y,
+        originOffsetX: underlay.offsetX,
+        originOffsetY: underlay.offsetY,
+      };
+    },
+    [getWorldPoint, underlay, tool]
+  );
+
+  const handleUnderlayContextMenu = useCallback(
+    (event: React.MouseEvent<HTMLDivElement>) => {
+      event.preventDefault();
+      event.stopPropagation();
+      setSelection({ type: "underlay", id: "underlay" });
+      setContextMenu({
+        type: "underlay",
+        id: "underlay",
+        x: event.clientX,
+        y: event.clientY,
+      });
+    },
+    []
+  );
+
+  const handleScaleHandleMouseDown = useCallback(
+    (event: React.MouseEvent<HTMLDivElement>, corner: "nw" | "ne" | "sw" | "se") => {
+      event.stopPropagation();
+      event.preventDefault();
+      if (!underlay || underlay.locked) return;
+
+      const worldPoint = getWorldPoint(event.clientX, event.clientY);
+      dragRef.current = {
+        type: "underlayScale",
+        startWorldX: worldPoint.x,
+        startWorldY: worldPoint.y,
+        originScale: underlay.scale,
+        originOffsetX: underlay.offsetX,
+        originOffsetY: underlay.offsetY,
+        originWidth: underlay.naturalWidth,
+        originHeight: underlay.naturalHeight,
+        corner,
+      };
+    },
+    [getWorldPoint, underlay]
+  );
+
+  const handleRotateHandleMouseDown = useCallback(
+    (event: React.MouseEvent<HTMLDivElement>) => {
+      event.stopPropagation();
+      event.preventDefault();
+      if (!underlay || underlay.locked) return;
+
+      const cx = underlay.offsetX + (underlay.naturalWidth * underlay.scale) / 2;
+      const cy = underlay.offsetY + (underlay.naturalHeight * underlay.scale) / 2;
+      const worldPoint = getWorldPoint(event.clientX, event.clientY);
+
+      dragRef.current = {
+        type: "underlayRotate",
+        startWorldX: worldPoint.x,
+        startWorldY: worldPoint.y,
+        originRotation: underlay.rotation,
+        centerWorldX: cx,
+        centerWorldY: cy,
+      };
+    },
+    [getWorldPoint, underlay]
+  );
+
+  const handleSpaceMouseDown = useCallback(
+    (event: React.MouseEvent<SVGGElement>, spaceId: string) => {
+      event.stopPropagation();
+
+      if (tool === "connection") {
+        if (!linkStart) {
+          setLinkStart(spaceId);
+          setSelection({ type: "space", id: spaceId });
+          setMessage("Выберите вторую точку.");
+          return;
+        }
+
+        if (linkStart === spaceId) {
+          setMessage("Нельзя связать точку саму с собой.");
+          return;
+        }
+
+        createConnection(linkStart, spaceId);
+        setLinkStart(null);
+        setTool("select");
+        return;
+      }
+
+      if (tool === "select") {
+        setSelection({ type: "space", id: spaceId });
+        setLinkStart(null);
+
+        const space = spacesById[spaceId];
+        if (!space) {
+          return;
+        }
+
+        // 0020: drag в map-local координатах
+        const worldPoint = getWorldPoint(event.clientX, event.clientY);
+        const local = worldToMapLocal(worldPoint.x, worldPoint.y, underlay);
+
+        dragRef.current = {
+          type: "spaceMove",
+          id: spaceId,
+          startWorldX: local.x,
+          startWorldY: local.y,
+          originX: space.x,
+          originY: space.y,
+        };
+        return;
+      }
+
+      if (tool === "space") {
+        setSelection({ type: "space", id: spaceId });
+        setLinkStart(null);
+      }
+    },
+    [createConnection, getWorldPoint, linkStart, spacesById, tool, underlay]
+  );
+
+  const handleSpaceContextMenu = useCallback(
+    (event: React.MouseEvent<SVGGElement>, spaceId: string) => {
+      event.preventDefault();
+      event.stopPropagation();
+      setSelection({ type: "space", id: spaceId });
+      setContextMenu({
+        type: "space",
+        id: spaceId,
+        x: event.clientX,
+        y: event.clientY,
+      });
+    },
+    []
+  );
+
+  const handleConnectionMouseDown = useCallback(
+    (event: React.MouseEvent<SVGLineElement>, connectionId: string) => {
+      event.stopPropagation();
+      if (tool === "select") {
+        setSelection({ type: "connection", id: connectionId });
+        setLinkStart(null);
+      }
+    },
+    [tool]
+  );
+
+  const handleConnectionContextMenu = useCallback(
+    (event: React.MouseEvent<SVGLineElement>, connectionId: string) => {
+      event.preventDefault();
+      event.stopPropagation();
+      setSelection({ type: "connection", id: connectionId });
+      setContextMenu({
+        type: "connection",
+        id: connectionId,
+        x: event.clientX,
+        y: event.clientY,
+      });
+    },
+    []
+  );
+
+  const handleMouseMove = useCallback(
+    (event: React.MouseEvent<HTMLDivElement>) => {
+      const drag = dragRef.current;
+      if (!drag) {
+        return;
+      }
+
+      if (drag.type === "spaceMove") {
+        const worldPoint = getWorldPoint(event.clientX, event.clientY);
+        const local = worldToMapLocal(worldPoint.x, worldPoint.y, underlay);
+        moveSpace(
+          drag.id,
+          drag.originX + (local.x - drag.startWorldX),
+          drag.originY + (local.y - drag.startWorldY)
+        );
+        return;
+      }
+
+      if (drag.type === "pan") {
+        setView((prev) => ({
+          ...prev,
+          panX: drag.originPanX + (event.clientX - drag.startClientX),
+          panY: drag.originPanY + (event.clientY - drag.startClientY),
+        }));
+        return;
+      }
+
+      // 0020: underlay drag handling
+      if (drag.type === "underlayMove") {
+        if (!underlay) return;
+        const worldPoint = getWorldPoint(event.clientX, event.clientY);
+        const dx = worldPoint.x - drag.startWorldX;
+        const dy = worldPoint.y - drag.startWorldY;
+        const snappedX = snapValue(
+          drag.originOffsetX + dx,
+          editorSettings.gridSize,
+          editorSettings.snapToGrid
+        );
+        const snappedY = snapValue(
+          drag.originOffsetY + dy,
+          editorSettings.gridSize,
+          editorSettings.snapToGrid
+        );
+        onDraftChange({
+          ...draft,
+          underlay: {
+            ...underlay,
+            offsetX: snappedX,
+            offsetY: snappedY,
+          },
+        });
+        return;
+      }
+
+      if (drag.type === "underlayScale") {
+        if (!underlay) return;
+        const worldPoint = getWorldPoint(event.clientX, event.clientY);
+        const dx = worldPoint.x - drag.startWorldX;
+        const dy = worldPoint.y - drag.startWorldY;
+
+        // Center of underlay
+        const centerX = drag.originOffsetX + (drag.originWidth * drag.originScale) / 2;
+        const centerY = drag.originOffsetY + (drag.originHeight * drag.originScale) / 2;
+
+        // Corner being dragged
+        const cornerX =
+          drag.corner.includes("e")
+            ? drag.originOffsetX + drag.originWidth * drag.originScale
+            : drag.originOffsetX;
+        const cornerY =
+          drag.corner.includes("s")
+            ? drag.originOffsetY + drag.originHeight * drag.originScale
+            : drag.originOffsetY;
+
+        const newCornerX = cornerX + dx;
+        const newCornerY = cornerY + dy;
+
+        const distX = Math.abs(newCornerX - centerX);
+        const distY = Math.abs(newCornerY - centerY);
+
+        // Preserve aspect ratio (borrowed from prototype keepLayerRatio)
+        const aspectRatio = drag.originWidth / Math.max(1, drag.originHeight);
+        let newScale: number;
+        if (distX / Math.max(1, distY) > aspectRatio) {
+          newScale = (distX * 2) / drag.originWidth;
+        } else {
+          newScale = (distY * 2) / drag.originHeight;
+        }
+
+        newScale = Math.max(0.1, Math.min(10, newScale));
+        newScale = Math.round(newScale * 100) / 100;
+
+        // Keep opposite corner fixed
+        const newOffsetX =
+          drag.corner.includes("e")
+            ? cornerX - drag.originWidth * newScale - dx
+            : drag.originOffsetX;
+        const newOffsetY =
+          drag.corner.includes("s")
+            ? cornerY - drag.originHeight * newScale - dy
+            : drag.originOffsetY;
+
+        onDraftChange({
+          ...draft,
+          underlay: {
+            ...underlay,
+            scale: newScale,
+            offsetX: newOffsetX,
+            offsetY: newOffsetY,
+          },
+        });
+        return;
+      }
+
+      if (drag.type === "underlayRotate") {
+        if (!underlay) return;
+        const worldPoint = getWorldPoint(event.clientX, event.clientY);
+        const startAngle = angleDeg(
+          drag.centerWorldX,
+          drag.centerWorldY,
+          drag.startWorldX,
+          drag.startWorldY
+        );
+        const currentAngle = angleDeg(
+          drag.centerWorldX,
+          drag.centerWorldY,
+          worldPoint.x,
+          worldPoint.y
+        );
+        let newRotation = drag.originRotation + (currentAngle - startAngle);
+        // Shift-snap to 15° increments (borrowed from prototype)
+        if (event.shiftKey) {
+          newRotation = Math.round(newRotation / 15) * 15;
+        }
+        newRotation = Math.round(newRotation * 100) / 100;
+        onDraftChange({
+          ...draft,
+          underlay: {
+            ...underlay,
+            rotation: newRotation,
+          },
+        });
+        return;
+      }
+    },
+    [
+      getWorldPoint,
+      moveSpace,
+      underlay,
+      editorSettings,
+      draft,
+      onDraftChange,
+    ]
+  );
+
+  const stopDragging = useCallback(() => {
+    if (dragRef.current) {
+      setHistory((h) => ({
+        past: pushHistory(h.past, draft),
+        future: [],
+      }));
+    }
+    dragRef.current = null;
+  }, [draft]);
+
+  const closeContextMenu = useCallback(() => {
+    setContextMenu(null);
+  }, []);
+
+  const getSpacePosition = useCallback(
+    (spaceId: string): WorldPoint | null => {
+      const space = spacesById[spaceId];
+      return space ? { x: space.x, y: space.y } : null;
+    },
+    [spacesById]
+  );
+
+  const isSelectedSpace = useCallback(
+    (spaceId: string) => selection.type === "space" && selection.id === spaceId,
+    [selection.id, selection.type]
+  );
+
+  const isSelectedConnection = useCallback(
+    (connectionId: string) =>
+      selection.type === "connection" && selection.id === connectionId,
+    [selection.id, selection.type]
+  );
+
+  const toolIcon = (currentTool: Tool): string =>
+    ({ select: "⬚", space: "➕", connection: "🔗", pan: "✋" })[currentTool];
+
+  const toolLabel = (currentTool: Tool): string =>
+    ({
+      select: "Выбрать",
+      space: "Точка",
+      connection: "Связь",
+      pan: "Двигать",
+    })[currentTool];
+
+  // ---- Render ----
+
+  return (
+    <div
+      className="editor-shell"
+      onMouseMove={handleMouseMove}
+      onMouseUp={stopDragging}
+      onMouseLeave={stopDragging}
+      onClick={closeContextMenu}
+    >
+      <header className="editor-header">
+        <h2 className="editor-title">Редактор карты — {draft.name}</h2>
+
+        <div className="editor-toolbar">
+          {(["select", "space", "connection", "pan"] as Tool[]).map(
+            (currentTool) => (
+              <button
+                key={currentTool}
+                className={`editor-tool-pill ${
+                  tool === currentTool ? "editor-tool-pill-active" : ""
+                }`}
+                onClick={() => setToolWithMessage(currentTool)}
+              >
+                {toolIcon(currentTool)} {toolLabel(currentTool)}
+              </button>
+            )
+          )}
+
+          <span className="editor-toolbar-sep">|</span>
+
+          {/* 0020: Grid toggle */}
+          <button
+            className={`editor-tool-pill ${
+              editorSettings.gridVisible ? "editor-tool-pill-active" : ""
+            }`}
+            onClick={() =>
+              updateEditorSettings({ gridVisible: !editorSettings.gridVisible })
+            }
+            title="Сетка"
+          >
+            ▦ Сетка
+          </button>
+
+          {/* 0020: Snap toggle */}
+          <button
+            className={`editor-tool-pill ${
+              editorSettings.snapToGrid ? "editor-tool-pill-active" : ""
+            }`}
+            onClick={() =>
+              updateEditorSettings({ snapToGrid: !editorSettings.snapToGrid })
+            }
+            title="Привязка к сетке"
+          >
+            ⊞ Snap
+          </button>
+
+          <span className="editor-toolbar-sep">|</span>
+
+          {/* 0020: Undo / Redo */}
+          <button
+            className="editor-btn"
+            onClick={undo}
+            disabled={history.past.length === 0}
+            title="Отменить (Ctrl+Z)"
+          >
+            ↩
+          </button>
+          <button
+            className="editor-btn"
+            onClick={redo}
+            disabled={history.future.length === 0}
+            title="Повторить (Ctrl+Y)"
+          >
+            ↪
+          </button>
+
+          <span className="editor-toolbar-sep">|</span>
+
+          {/* 0020: Underlay visibility/lock/reset */}
+          {underlay && (
+            <>
+              <button
+                className={`editor-tool-pill ${
+                  underlay.visible ? "editor-tool-pill-active" : ""
+                }`}
+                onClick={() =>
+                  commitDraft({
+                    ...draft,
+                    underlay: { ...underlay, visible: !underlay.visible },
+                  })
+                }
+                title="Показать/скрыть подложку"
+              >
+                👁
+              </button>
+              <button
+                className={`editor-tool-pill ${
+                  underlay.locked ? "editor-tool-pill-active" : ""
+                }`}
+                onClick={() =>
+                  commitDraft({
+                    ...draft,
+                    underlay: { ...underlay, locked: !underlay.locked },
+                  })
+                }
+                title="Закрепить/освободить подложку"
+              >
+                {underlay.locked ? "🔒" : "🔓"}
+              </button>
+              <button
+                className="editor-btn"
+                onClick={resetUnderlayRotation}
+                title="Сбросить поворот"
+              >
+                ↺
+              </button>
+              <button
+                className="editor-btn"
+                onClick={resetUnderlayTransform}
+                title="Сбросить трансформацию"
+              >
+                ⟲
+              </button>
+            </>
+          )}
+
+          <span className="editor-toolbar-sep">|</span>
+
+          <button
+            className="editor-btn editor-btn-validate"
+            onClick={runValidation}
+          >
+            ✅
+          </button>
+          <button
+            className="editor-btn editor-btn-preview"
+            onClick={() => onPreview(draft)}
+          >
+            ▶
+          </button>
+          <button className="editor-btn editor-btn-save" onClick={saveDraft}>
+            💾
+          </button>
+          <button className="editor-btn editor-btn-load" onClick={loadDraft}>
+            📂
+          </button>
+        </div>
+
+        <span className="editor-status">{message}</span>
+      </header>
+
+      <div className="editor-body">
+        <aside className="editor-left-panel">
+          <TreeSection
+            title="Точки"
+            count={draft.spaces.length}
+            defaultOpen={true}
+          >
+            {draft.spaces.map((space) => (
+              <TreeItem
+                key={space.spaceId}
+                name={space.name}
+                meta={space.spaceId}
+                active={isSelectedSpace(space.spaceId)}
+                onClick={() => {
+                  setSelection({ type: "space", id: space.spaceId });
+                  setLinkStart(null);
+                }}
+                onDelete={() => deleteSpace(space.spaceId)}
+              />
+            ))}
+          </TreeSection>
+
+          <TreeSection
+            title="Связи"
+            count={draft.connections.length}
+            defaultOpen={true}
+          >
+            {draft.connections.map((connection) => (
+              <TreeItem
+                key={connection.connectionId}
+                name={`${connection.fromSpaceId} → ${connection.toSpaceId}`}
+                meta={connection.connectionId}
+                active={isSelectedConnection(connection.connectionId)}
+                onClick={() => {
+                  setSelection({
+                    type: "connection",
+                    id: connection.connectionId,
+                  });
+                  setLinkStart(null);
+                }}
+                onDelete={() => deleteConnection(connection.connectionId)}
+              />
+            ))}
+          </TreeSection>
+
+          {/* 0020: Underlay in object tree */}
+          {underlay && (
+            <TreeSection title="Подложка" count={1} defaultOpen={true}>
+              <TreeItem
+                name="Карта-подложка"
+                meta={underlay.src ? "изображение" : "placeholder"}
+                active={selection.type === "underlay"}
+                onClick={() =>
+                  setSelection({ type: "underlay", id: "underlay" })
+                }
+                onDelete={() => {
+                  commitDraft({ ...draft, underlay: null });
+                  setSelection({ type: null, id: null });
+                }}
+              />
+            </TreeSection>
+          )}
+        </aside>
+
+        <div
+          className={`editor-canvas ${
+            tool === "pan"
+              ? "editor-canvas-pan"
+              : tool === "space"
+                ? "editor-canvas-space"
+                : ""
+          }`}
+          ref={canvasRef}
+          onMouseDown={handleCanvasMouseDown}
+          onContextMenu={(event) => {
+            event.preventDefault();
+            const worldPoint = getWorldPoint(event.clientX, event.clientY);
+            setContextMenu({
+              type: "canvas",
+              x: event.clientX,
+              y: event.clientY,
+              worldX: worldPoint.x,
+              worldY: worldPoint.y,
+            });
+          }}
+          onWheel={handleWheel}
+        >
+          <div
+            className="editor-stage"
+            style={{
+              width: stageWidth,
+              height: stageHeight,
+              left: view.panX,
+              top: view.panY,
+            }}
+          >
+            {/* 0020: Underlay — HTML div below SVG, with CSS transform */}
+            {underlay && underlay.visible && (
+              <div
+                className={`editor-underlay ${
+                  underlay.locked ? "editor-underlay-locked" : ""
+                } ${
+                  selection.type === "underlay" ? "editor-underlay-selected" : ""
+                }`}
+                style={{
+                  position: "absolute",
+                  left: 0,
+                  top: 0,
+                  width: underlay.naturalWidth,
+                  height: underlay.naturalHeight,
+                  transform: underlayTransform(underlay),
+                  transformOrigin: "0 0",
+                  opacity: underlay.opacity / 100,
+                  cursor: underlay.locked ? "default" : "move",
+                }}
+                onMouseDown={handleUnderlayMouseDown}
+                onContextMenu={handleUnderlayContextMenu}
+              >
+                {underlay.src ? (
+                  <img
+                    src={underlay.src}
+                    alt="Карта-подложка"
+                    className="editor-underlay-img"
+                    draggable={false}
+                    style={{ width: "100%", height: "100%", objectFit: "fill" }}
+                  />
+                ) : (
+                  <div className="editor-underlay-placeholder">
+                    <span>Карта-подложка</span>
+                    <span className="editor-underlay-placeholder-sub">
+                      подложка редактора
+                    </span>
+                  </div>
+                )}
+
+                {/* 0020: Transform handles — scale corners + rotate */}
+                {selection.type === "underlay" && !underlay.locked && (
+                  <>
+                    <div
+                      className="editor-underlay-handle editor-underlay-handle-nw"
+                      onMouseDown={(e) => handleScaleHandleMouseDown(e, "nw")}
+                    />
+                    <div
+                      className="editor-underlay-handle editor-underlay-handle-ne"
+                      onMouseDown={(e) => handleScaleHandleMouseDown(e, "ne")}
+                    />
+                    <div
+                      className="editor-underlay-handle editor-underlay-handle-sw"
+                      onMouseDown={(e) => handleScaleHandleMouseDown(e, "sw")}
+                    />
+                    <div
+                      className="editor-underlay-handle editor-underlay-handle-se"
+                      onMouseDown={(e) => handleScaleHandleMouseDown(e, "se")}
+                    />
+                    <div
+                      className="editor-underlay-handle editor-underlay-handle-rotate"
+                      style={{
+                        position: "absolute",
+                        left: "50%",
+                        top: -ROTATE_HANDLE_DISTANCE,
+                        transform: "translateX(-50%)",
+                      }}
+                      onMouseDown={handleRotateHandleMouseDown}
+                    />
+                    <div
+                      className="editor-underlay-rotate-line"
+                      style={{
+                        position: "absolute",
+                        left: "50%",
+                        top: -ROTATE_HANDLE_DISTANCE + HANDLE_SIZE,
+                        width: 1,
+                        height: ROTATE_HANDLE_DISTANCE - HANDLE_SIZE,
+                        transform: "translateX(-50%)",
+                      }}
+                    />
+                  </>
+                )}
+              </div>
+            )}
+
+            {/* 0020: SVG with map-plane transform group */}
+            <svg
+              className="editor-svg-root"
+              width={stageWidth}
+              height={stageHeight}
+              viewBox={`0 0 ${CANVAS_W} ${CANVAS_H}`}
+            >
+              <rect
+                x={0}
+                y={0}
+                width={CANVAS_W}
+                height={CANVAS_H}
+                className="editor-map-bounds"
+              />
+
+              {/* 0020: Map-plane transform group */}
+              <g
+                transform={
+                  underlay && underlay.visible
+                    ? `translate(${underlay.offsetX}, ${underlay.offsetY}) scale(${underlay.scale}) rotate(${underlay.rotation})`
+                    : undefined
+                }
+              >
+                {/* 0020: Grid inside map-plane (follows underlay transform) */}
+                {editorSettings.gridVisible && (
+                  <>
+                    <defs>
+                      <pattern
+                        id="editor-grid"
+                        width={editorSettings.gridSize}
+                        height={editorSettings.gridSize}
+                        patternUnits="userSpaceOnUse"
+                      >
+                        <rect
+                          width={editorSettings.gridSize}
+                          height={editorSettings.gridSize}
+                          fill="none"
+                        />
+                        <path
+                          d={`M ${editorSettings.gridSize} 0 L 0 0 0 ${editorSettings.gridSize}`}
+                          fill="none"
+                          stroke="rgba(255,255,255,0.06)"
+                          strokeWidth="0.5"
+                        />
+                      </pattern>
+                    </defs>
+                    <rect
+                      x={-(underlay?.offsetX ?? 0) / (underlay?.scale ?? 1)}
+                      y={-(underlay?.offsetY ?? 0) / (underlay?.scale ?? 1)}
+                      width={CANVAS_W * 4}
+                      height={CANVAS_H * 4}
+                      fill="url(#editor-grid)"
+                    />
+                  </>
+                )}
+
+                {draft.connections.map((connection) => {
+                  const from = getSpacePosition(connection.fromSpaceId);
+                  const to = getSpacePosition(connection.toSpaceId);
+                  if (!from || !to) {
+                    return null;
+                  }
+
+                  const selected = isSelectedConnection(connection.connectionId);
+
+                  return (
+                    <g key={connection.connectionId}>
+                      <line
+                        x1={from.x}
+                        y1={from.y}
+                        x2={to.x}
+                        y2={to.y}
+                        className="editor-connection-hit"
+                        onMouseDown={(event) =>
+                          handleConnectionMouseDown(event, connection.connectionId)
+                        }
+                        onContextMenu={(event) =>
+                          handleConnectionContextMenu(
+                            event,
+                            connection.connectionId
+                          )
+                        }
+                      />
+                      <line
+                        x1={from.x}
+                        y1={from.y}
+                        x2={to.x}
+                        y2={to.y}
+                        className={
+                          selected
+                            ? "editor-connection editor-connection-selected"
+                            : "editor-connection"
+                        }
+                      />
+                    </g>
+                  );
+                })}
+
+                {draft.spaces.map((space) => {
+                  const selected = isSelectedSpace(space.spaceId);
+                  const linkSource = linkStart === space.spaceId;
+
+                  return (
+                    <g
+                      key={space.spaceId}
+                      className="editor-space-group"
+                      onMouseDown={(event) =>
+                        handleSpaceMouseDown(event, space.spaceId)
+                      }
+                      onContextMenu={(event) =>
+                        handleSpaceContextMenu(event, space.spaceId)
+                      }
+                    >
+                      <circle
+                        cx={space.x}
+                        cy={space.y}
+                        r={SPACE_RADIUS + 8}
+                        className="editor-space-hit"
+                      />
+                      <circle
+                        cx={space.x}
+                        cy={space.y}
+                        r={SPACE_RADIUS}
+                        className={`editor-space-node ${
+                          selected ? "editor-space-node-selected" : ""
+                        } ${linkSource ? "editor-space-node-link-from" : ""}`}
+                      />
+                      <text
+                        x={space.x + 16}
+                        y={space.y + 3}
+                        className={`editor-space-text ${
+                          selected ? "editor-space-text-selected" : ""
+                        }`}
+                      >
+                        {space.name}
+                      </text>
+                    </g>
+                  );
+                })}
+              </g>
+            </svg>
+          </div>
+
+          {draft.spaces.length === 0 && (
+            <div className="editor-canvas-hint">
+              ➕ Точка — клик на холст. ✋ — двигать. Колёсико — зум.
+            </div>
+          )}
+        </div>
+
+        <aside className="editor-right-panel">
+          {selectedObject && selection.type === "space" ? (
+            <SpaceInspector
+              space={selectedObject as SpaceDraft}
+              onRename={renameSpace}
+              onDelete={deleteSpace}
+            />
+          ) : selectedObject && selection.type === "connection" ? (
+            <ConnectionInspector
+              connection={selectedObject as ConnectionDraft}
+              spacesById={spacesById}
+              onDelete={deleteConnection}
+            />
+          ) : selection.type === "underlay" && underlay ? (
+            <UnderlayInspector
+              underlay={underlay}
+              onUpdate={updateUnderlay}
+              onDelete={() => {
+                commitDraft({ ...draft, underlay: null });
+                setSelection({ type: null, id: null });
+              }}
+            />
+          ) : (
+            <div className="editor-inspector-empty">
+              <Section title="Инспектор">
+                <p className="editor-empty-text">
+                  Выберите точку, связь или подложку.
+                </p>
+              </Section>
+            </div>
+          )}
+        </aside>
+      </div>
+
+      {validation && (
+        <ValidationPanel
+          result={validation}
+          onClose={() => setValidation(null)}
+        />
+      )}
+
+      {contextMenu && (
+        <ContextMenu
+          contextMenu={contextMenu}
+          onClose={closeContextMenu}
+          onAdd={(x, y) => {
+            addSpace(x, y);
+            closeContextMenu();
+          }}
+          onDeleteSpace={() => {
+            if (contextMenu.type === "space") {
+              deleteSpace(contextMenu.id);
+            }
+            closeContextMenu();
+          }}
+          onDeleteConnection={() => {
+            if (contextMenu.type === "connection") {
+              deleteConnection(contextMenu.id);
+            }
+            closeContextMenu();
+          }}
+          onToggleUnderlayVisibility={() => {
+            if (underlay) {
+              updateUnderlay({ visible: !underlay.visible });
+            }
+            closeContextMenu();
+          }}
+          onToggleUnderlayLock={() => {
+            if (underlay) {
+              updateUnderlay({ locked: !underlay.locked });
+            }
+            closeContextMenu();
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+// ---- Sub-components (mostly unchanged from 0018, plus UnderlayInspector) ----
+
+function TreeSection({
+  title,
+  count,
+  defaultOpen,
+  children,
+}: {
+  title: string;
+  count: number;
+  defaultOpen: boolean;
+  children: React.ReactNode;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+
+  return (
+    <div className="editor-tree-section">
+      <div className="editor-tree-header" onClick={() => setOpen(!open)}>
+        <span className="editor-tree-caret">{open ? "▼" : "▶"}</span>
+        <span className="editor-tree-title">{title}</span>
+        <span className="editor-tree-count">{count}</span>
+      </div>
+      {open && <div className="editor-tree-body">{children}</div>}
+    </div>
+  );
+}
+
+function TreeItem({
+  name,
+  meta,
+  active,
+  onClick,
+  onDelete,
+}: {
+  name: string;
+  meta: string;
+  active: boolean;
+  onClick: () => void;
+  onDelete: () => void;
+}) {
+  return (
+    <div
+      className={`editor-tree-item ${
+        active ? "editor-tree-item-active" : ""
+      }`}
+      onClick={onClick}
+    >
+      <span className="editor-tree-item-name">{name}</span>
+      <span className="editor-tree-item-meta">{meta}</span>
+      <button
+        className="editor-tree-item-delete"
+        onClick={(event) => {
+          event.stopPropagation();
+          onDelete();
+        }}
+        title="Удалить"
+      >
+        ×
+      </button>
+    </div>
+  );
+}
+
+function Section({
+  title,
+  children,
+}: {
+  title: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="editor-section">
+      <h4 className="editor-section-title">{title}</h4>
+      <div className="editor-section-body">{children}</div>
+    </div>
+  );
+}
+
+function Field({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="editor-field">
+      <label className="editor-field-label">{label}</label>
+      <div className="editor-field-value">{children}</div>
+    </div>
+  );
+}
+
+function SpaceInspector({
+  space,
+  onRename,
+  onDelete,
+}: {
+  space: SpaceDraft;
+  onRename: (spaceId: string, name: string) => void;
+  onDelete: (spaceId: string) => void;
+}) {
+  return (
+    <div className="editor-inspector">
+      <Section title="Точка">
+        <Field label="ID">
+          <span className="editor-mono">{space.spaceId}</span>
+        </Field>
+        <Field label="Название">
+          <input
+            className="editor-input"
+            value={space.name}
+            onChange={(event) => onRename(space.spaceId, event.target.value)}
+          />
+        </Field>
+        <Field label="X">
+          <span className="editor-mono">{space.x}</span>
+        </Field>
+        <Field label="Y">
+          <span className="editor-mono">{space.y}</span>
+        </Field>
+        <Field label="Тип">
+          <span className="editor-mono">{space.type}</span>
+        </Field>
+      </Section>
+      <Section title="Действия">
+        <button
+          className="editor-btn editor-btn-delete"
+          onClick={() => onDelete(space.spaceId)}
+        >
+          🗑 Удалить точку
+        </button>
+      </Section>
+    </div>
+  );
+}
+
+function ConnectionInspector({
+  connection,
+  spacesById,
+  onDelete,
+}: {
+  connection: ConnectionDraft;
+  spacesById: Record<string, SpaceDraft>;
+  onDelete: (connectionId: string) => void;
+}) {
+  const fromName =
+    spacesById[connection.fromSpaceId]?.name ?? connection.fromSpaceId;
+  const toName = spacesById[connection.toSpaceId]?.name ?? connection.toSpaceId;
+
+  return (
+    <div className="editor-inspector">
+      <Section title="Связь">
+        <Field label="ID">
+          <span className="editor-mono">{connection.connectionId}</span>
+        </Field>
+        <Field label="От">
+          <span className="editor-mono">{fromName}</span>
+        </Field>
+        <Field label="До">
+          <span className="editor-mono">{toName}</span>
+        </Field>
+        <Field label="Тип">
+          <span className="editor-mono">{connection.type}</span>
+        </Field>
+      </Section>
+      <Section title="Действия">
+        <button
+          className="editor-btn editor-btn-delete"
+          onClick={() => onDelete(connection.connectionId)}
+        >
+          🗑 Удалить связь
+        </button>
+      </Section>
+    </div>
+  );
+}
+
+/** 0020: Underlay inspector (right panel) */
+function UnderlayInspector({
+  underlay,
+  onUpdate,
+  onDelete,
+}: {
+  underlay: UnderlayState;
+  onUpdate: (patch: Partial<UnderlayState>) => void;
+  onDelete: () => void;
+}) {
+  return (
+    <div className="editor-inspector">
+      <Section title="Подложка">
+        <Field label="Тип">
+          <span className="editor-mono">
+            {underlay.src ? "изображение" : "placeholder"}
+          </span>
+        </Field>
+        <Field label="X">
+          <span className="editor-mono">{Math.round(underlay.offsetX)}</span>
+        </Field>
+        <Field label="Y">
+          <span className="editor-mono">{Math.round(underlay.offsetY)}</span>
+        </Field>
+        <Field label="Масштаб">
+          <span className="editor-mono">{Math.round(underlay.scale * 100)}%</span>
+        </Field>
+        <Field label="Поворот">
+          <span className="editor-mono">{Math.round(underlay.rotation)}°</span>
+        </Field>
+        <Field label="Размер">
+          <span className="editor-mono">
+            {underlay.naturalWidth}×{underlay.naturalHeight}
+          </span>
+        </Field>
+      </Section>
+
+      <Section title="Прозрачность">
+        <Field label="Opacity">
+          <input
+            className="editor-input"
+            type="range"
+            min={0}
+            max={100}
+            value={underlay.opacity}
+            onChange={(e) => onUpdate({ opacity: Number(e.target.value) })}
+          />
+          <span className="editor-mono">{underlay.opacity}%</span>
+        </Field>
+      </Section>
+
+      <Section title="Состояние">
+        <Field label="Видима">
+          <button
+            className="editor-btn"
+            onClick={() => onUpdate({ visible: !underlay.visible })}
+          >
+            {underlay.visible ? "👁 Да" : "🚫 Нет"}
+          </button>
+        </Field>
+        <Field label="Закреплена">
+          <button
+            className="editor-btn"
+            onClick={() => onUpdate({ locked: !underlay.locked })}
+          >
+            {underlay.locked ? "🔒 Да" : "🔓 Нет"}
+          </button>
+        </Field>
+      </Section>
+
+      <Section title="Трансформация">
+        <Field label="Смещение X">
+          <input
+            className="editor-input"
+            type="number"
+            value={Math.round(underlay.offsetX)}
+            onChange={(e) =>
+              onUpdate({ offsetX: Number(e.target.value) })
+            }
+          />
+        </Field>
+        <Field label="Смещение Y">
+          <input
+            className="editor-input"
+            type="number"
+            value={Math.round(underlay.offsetY)}
+            onChange={(e) =>
+              onUpdate({ offsetY: Number(e.target.value) })
+            }
+          />
+        </Field>
+        <Field label="Масштаб %">
+          <input
+            className="editor-input"
+            type="number"
+            min={10}
+            max={1000}
+            value={Math.round(underlay.scale * 100)}
+            onChange={(e) =>
+              onUpdate({
+                scale: Math.max(0.1, Number(e.target.value) / 100),
+              })
+            }
+          />
+        </Field>
+        <Field label="Поворот °">
+          <input
+            className="editor-input"
+            type="number"
+            value={Math.round(underlay.rotation)}
+            onChange={(e) =>
+              onUpdate({ rotation: Number(e.target.value) })
+            }
+          />
+        </Field>
+        <Field label="Сброс">
+          <button
+            className="editor-btn"
+            onClick={() =>
+              onUpdate({
+                offsetX: DEFAULT_UNDERLAY.offsetX,
+                offsetY: DEFAULT_UNDERLAY.offsetY,
+                scale: DEFAULT_UNDERLAY.scale,
+                rotation: DEFAULT_UNDERLAY.rotation,
+              })
+            }
+          >
+            ⟲ Сбросить всё
+          </button>
+        </Field>
+      </Section>
+
+      <Section title="Действия">
+        <button className="editor-btn editor-btn-delete" onClick={onDelete}>
+          🗑 Удалить подложку
+        </button>
+      </Section>
+    </div>
+  );
+}
+
+function ValidationPanel({
+  result,
+  onClose,
+}: {
+  result: MapValidation;
+  onClose: () => void;
+}) {
+  return (
+    <div className="editor-validation-overlay" onClick={onClose}>
+      <div
+        className="editor-validation-panel"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div className="editor-validation-header">
+          <span className="editor-validation-title">
+            {result.errors.length > 0 ? "⚠ Ошибки" : "✅ OK"}
+          </span>
+          <button className="editor-validation-close" onClick={onClose}>
+            ×
+          </button>
+        </div>
+
+        {result.errors.length === 0 && result.warnings.length === 0 && (
+          <p className="editor-validation-ok">Ошибок нет.</p>
+        )}
+
+        {result.errors.length > 0 && (
+          <div className="editor-validation-errors">
+            <h4>Ошибки</h4>
+            <ul>
+              {result.errors.map((message, index) => (
+                <li key={index}>{message}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {result.warnings.length > 0 && (
+          <div className="editor-validation-warnings">
+            <h4>Предупреждения</h4>
+            <ul>
+              {result.warnings.map((message, index) => (
+                <li key={index}>{message}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function ContextMenu({
+  contextMenu,
+  onClose,
+  onAdd,
+  onDeleteSpace,
+  onDeleteConnection,
+  onToggleUnderlayVisibility,
+  onToggleUnderlayLock,
+}: {
+  contextMenu: ContextMenuState;
+  onClose: () => void;
+  onAdd: (x: number, y: number) => void;
+  onDeleteSpace: () => void;
+  onDeleteConnection: () => void;
+  onToggleUnderlayVisibility: () => void;
+  onToggleUnderlayLock: () => void;
+}) {
+  return (
+    <div className="editor-context-menu" onClick={onClose}>
+      <div
+        className="editor-context-menu-inner"
+        style={{ left: contextMenu.x, top: contextMenu.y }}
+        onClick={(event) => event.stopPropagation()}
+      >
+        {contextMenu.type === "canvas" && (
+          <div
+            className="editor-context-item"
+            onClick={() => onAdd(contextMenu.worldX, contextMenu.worldY)}
+          >
+            📍 Добавить точку
+          </div>
+        )}
+
+        {contextMenu.type === "space" && (
+          <div className="editor-context-item" onClick={onDeleteSpace}>
+            🗑 Удалить точку
+          </div>
+        )}
+
+        {contextMenu.type === "connection" && (
+          <div className="editor-context-item" onClick={onDeleteConnection}>
+            🗑 Удалить связь
+          </div>
+        )}
+
+        {contextMenu.type === "underlay" && (
+          <>
+            <div
+              className="editor-context-item"
+              onClick={onToggleUnderlayVisibility}
+            >
+              👁 Показать/скрыть
+            </div>
+            <div
+              className="editor-context-item"
+              onClick={onToggleUnderlayLock}
+            >
+              🔒 Закрепить/освободить
+            </div>
+          </>
+        )}
+
+        <div className="editor-context-separator" />
+        <div className="editor-context-item" onClick={onClose}>
+          ✕ Закрыть
+        </div>
+      </div>
+    </div>
+  );
+}
