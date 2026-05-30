@@ -1,0 +1,52 @@
+package_id: V3-20260530-130503-hierarchical-subproject-working-plan
+v3_id: V3-20260530-130503-hierarchical-subproject-working-plan
+task_title: Operational working plan for hierarchical subproject / Boss / B1 rollout
+generated_by: external_artifact_generation
+action: create
+scope: workflow_docs
+current_stage: external_artifact_generation_only
+language: ru-RU
+project_document_language: Russian
+post_import_testing:
+  mode: waived
+repo_write_access: false
+local_workspace_access: false
+kilo_import_included: false
+journal_creation_included: false
+v3_navigation_update_included: false
+test_execution_included: false
+review_owner: Codex
+final_acceptance_owner: Human
+project_files:
+- package_path: files/.ai/plans/implementation/hierarchical_subproject_workflow_work_plan.md
+  repo_path: .ai/plans/implementation/hierarchical_subproject_workflow_work_plan.md
+  action: create
+  scope: workflow_docs
+  language: ru-RU
+control_files:
+- manifest.yaml
+- README_FOR_KILO.md
+- README_FOR_CODEX.md
+- checksums.sha256
+source_context:
+- label: Master rollout plan
+  raw_url: https://raw.githubusercontent.com/AndrewVerhoturov1/Sword_of_rome_2d/35e263ab4235d90aec60b78934e927d54bb0b203/.ai/plans/master/hierarchical_subproject_workflow_rollout_plan.md
+  used_for: High-level rollout context; not copied verbatim.
+- label: Source idea document
+  raw_url: https://raw.githubusercontent.com/AndrewVerhoturov1/Sword_of_rome_2d/35e263ab4235d90aec60b78934e927d54bb0b203/ideas/hierarchical_ai_development_system_with_subproject.md
+  used_for: Subproject/Boss/B1 concept basis; not copied verbatim.
+- label: Repo workflow contract
+  raw_url: https://raw.githubusercontent.com/AndrewVerhoturov1/Sword_of_rome_2d/35e263ab4235d90aec60b78934e927d54bb0b203/AGENTS.md
+  used_for: Repository workflow boundaries.
+- label: Agent protocol
+  raw_url: https://raw.githubusercontent.com/AndrewVerhoturov1/Sword_of_rome_2d/35e263ab4235d90aec60b78934e927d54bb0b203/.ai/rules/agent_protocol.md
+  used_for: Agent workflow boundaries.
+- label: Codex orchestrator rules
+  raw_url: https://raw.githubusercontent.com/AndrewVerhoturov1/Sword_of_rome_2d/35e263ab4235d90aec60b78934e927d54bb0b203/.ai/rules/codex_orchestrator.md
+  used_for: Codex review/orchestration boundaries.
+acceptance_notes:
+- Package contains exactly one project file under files/.
+- Project document is Russian-language and human-readable.
+- First major working step is creation of the subproject entity.
+- Detailed block decomposition is intentionally deferred.
+- Repository is not modified by this artifact package.

@@ -171,6 +171,14 @@
 
 ## Public vs Local-only
 
+## Subproject Rollout Slice
+
+- [`subprojects/SP-20260530-b1-boss-rollout/`](subprojects/SP-20260530-b1-boss-rollout/) — первый subproject-container для rollout маршрута `Subproject -> Boss -> B1`.
+- [`subprojects/SP-20260530-b1-boss-rollout/blocks/BLOCK-001-task-control-pack-smoke/BLOCK_PLAN.md`](subprojects/SP-20260530-b1-boss-rollout/blocks/BLOCK-001-task-control-pack-smoke/BLOCK_PLAN.md) — план первого docs-only smoke-блока.
+- [`subprojects/SP-20260530-b1-boss-rollout/blocks/BLOCK-001-task-control-pack-smoke/CONTEXT_PACK.md`](subprojects/SP-20260530-b1-boss-rollout/blocks/BLOCK-001-task-control-pack-smoke/CONTEXT_PACK.md) — context pack для `BLOCK-001`.
+- [`subprojects/SP-20260530-b1-boss-rollout/blocks/BLOCK-001-task-control-pack-smoke/ORCHESTRATOR_PACKAGE.md`](subprojects/SP-20260530-b1-boss-rollout/blocks/BLOCK-001-task-control-pack-smoke/ORCHESTRATOR_PACKAGE.md) — package artifact для найма Block Orchestrator Chat на первый smoke-блок.
+- [`subprojects/SP-20260530-b1-boss-rollout/blocks/BLOCK-001-task-control-pack-smoke/BLOCK_ORCHESTRATOR_PROMPT.md`](subprojects/SP-20260530-b1-boss-rollout/blocks/BLOCK-001-task-control-pack-smoke/BLOCK_ORCHESTRATOR_PROMPT.md) — готовый prompt для запуска Block Orchestrator Chat по `BLOCK-001`.
+
 ### Public (canon, references, docs, scripts, ideas, .ai core)
 
 Всё, что перечислено выше. Эти файлы попадают в GitHub после публикации.
@@ -185,6 +193,10 @@
 
 Эти пути не надо считать публичным каноном проекта, пока человек отдельно не скажет обратное.
 ## Recent Additions
+
+- [`plans/implementation/boss_orchestrator_bootstrap.md`](plans/implementation/boss_orchestrator_bootstrap.md) — bootstrap-ориентир для следующего Boss Orchestrator chat: роль, границы, default inputs, first practical mission.
+
+- [`plans/implementation/hierarchical_subproject_workflow_work_plan.md`](plans/implementation/hierarchical_subproject_workflow_work_plan.md) — короткий operational work plan по запуску subproject/Boss/B1 rollout без полной повторной декомпозиции master plan.
 
 - [`plans/implementation/first_product_code_block.md`](plans/implementation/first_product_code_block.md) — the concrete implementation brief that freezes the first coding block before technical bootstrap begins.
 
