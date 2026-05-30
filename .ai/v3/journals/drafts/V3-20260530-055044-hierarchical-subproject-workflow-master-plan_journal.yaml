@@ -1,0 +1,42 @@
+# V3 Journal Draft — Kilo Notebook V3 import
+# V3 ID: V3-20260530-055044-hierarchical-subproject-workflow-master-plan
+# Generated: 2026-05-30T01:05:00Z
+# Status: draft (pre-acceptance)
+
+# === Идентификация ===
+v3_id: "V3-20260530-055044-hierarchical-subproject-workflow-master-plan"
+timestamp: "2026-05-30T06:04:00+05:00"
+
+# === Статус импорта ===
+import_status: "imported"
+
+# === Исходный пакет ===
+source_package:
+  package_id: "V3-20260530-055044-hierarchical-subproject-workflow-master-plan"
+  source_type: "local_archive_path"
+  source_value: "C:/Users/andre/Downloads/V3-20260530-055044-hierarchical-subproject-workflow-master-plan.zip"
+  manifest_path: "C:/Users/andre/Downloads/V3-20260530-055044-temp/V3-20260530-055044-hierarchical-subproject-workflow-master-plan/manifest.yaml"
+  zip_archive: "C:/Users/andre/Downloads/V3-20260530-055044-hierarchical-subproject-workflow-master-plan.zip"
+  checksums_verified: true
+
+# === Импортированные файлы ===
+imported_files:
+  - path: ".ai/plans/master/hierarchical_subproject_workflow_rollout_plan.md"
+    action: "create"
+    sha256_match: true
+    notes: "Master rollout plan for hierarchical subproject / Boss / B1 workflow system. scope: workflow_docs. write_policy: create. post_import_testing: waived."
+
+# === Пропущенные файлы ===
+skipped_files: []
+
+# === Заметки о верификации ===
+verification_notes:
+  manifest_valid: true
+  all_files_in_manifest: true
+  no_extra_files: true
+  checksums_all_match: true
+  allowed_paths_valid: true
+  forbidden_paths_respected: true
+
+# === Статус ручной проверки ===
+human_review_status: "pending"
