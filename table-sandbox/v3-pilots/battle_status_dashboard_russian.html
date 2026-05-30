@@ -1,0 +1,585 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Боевой статус партии — V3 Pilot</title>
+  <style>
+    :root {
+      --bg: #211b15;
+      --panel: #f2e5c8;
+      --panel-deep: #e1cfa7;
+      --ink: #2b2118;
+      --muted: #6e5b44;
+      --accent: #7f2f22;
+      --accent-dark: #5f2017;
+      --line: rgba(43, 33, 24, 0.22);
+      --soft: rgba(255, 248, 227, 0.7);
+      --shadow: 0 18px 45px rgba(0, 0, 0, 0.28);
+      --radius: 18px;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--ink);
+      font-family: Georgia, "Times New Roman", serif;
+      background:
+        radial-gradient(circle at top left, rgba(127, 47, 34, 0.28), transparent 32rem),
+        radial-gradient(circle at bottom right, rgba(181, 139, 79, 0.18), transparent 26rem),
+        linear-gradient(135deg, #17120e 0%, var(--bg) 48%, #2c2218 100%);
+    }
+
+    button {
+      font: inherit;
+    }
+
+    .page {
+      width: min(1180px, calc(100% - 28px));
+      margin: 0 auto;
+      padding: 28px 0 36px;
+    }
+
+    .hero {
+      display: grid;
+      grid-template-columns: 1.4fr 0.9fr;
+      gap: 18px;
+      align-items: stretch;
+      margin-bottom: 18px;
+    }
+
+    .title-card,
+    .state-card,
+    .side-card,
+    .event-card {
+      border: 1px solid rgba(255, 248, 227, 0.18);
+      background:
+        linear-gradient(180deg, rgba(255, 248, 227, 0.94), rgba(230, 210, 169, 0.95)),
+        repeating-linear-gradient(45deg, rgba(43, 33, 24, 0.02) 0 3px, transparent 3px 8px);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+    }
+
+    .title-card {
+      padding: 26px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .title-card::after {
+      content: "";
+      position: absolute;
+      right: 22px;
+      bottom: 16px;
+      width: 130px;
+      height: 76px;
+      border: 2px solid rgba(127, 47, 34, 0.18);
+      border-left: none;
+      border-bottom: none;
+      transform: skewX(-18deg);
+      opacity: 0.75;
+    }
+
+    .eyebrow {
+      margin: 0 0 8px;
+      color: var(--accent);
+      font-size: 0.78rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(2rem, 6vw, 4.3rem);
+      line-height: 0.95;
+    }
+
+    .subtitle {
+      max-width: 720px;
+      margin: 14px 0 0;
+      color: var(--muted);
+      font-size: 1.05rem;
+      line-height: 1.45;
+    }
+
+    .state-card {
+      padding: 18px;
+      display: grid;
+      gap: 12px;
+    }
+
+    .state-grid {
+      display: grid;
+      gap: 12px;
+    }
+
+    .status-box {
+      padding: 16px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: rgba(255, 248, 227, 0.58);
+    }
+
+    .label {
+      margin: 0 0 7px;
+      color: var(--muted);
+      font-size: 0.88rem;
+    }
+
+    .big-value {
+      display: block;
+      font-size: clamp(1.7rem, 4vw, 2.55rem);
+      font-weight: 700;
+      line-height: 1.05;
+    }
+
+    .phase-value {
+      color: var(--accent-dark);
+    }
+
+    .leader-line {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      width: 100%;
+      padding: 12px 14px;
+      border: 1px solid rgba(127, 47, 34, 0.22);
+      border-radius: 14px;
+      background: rgba(127, 47, 34, 0.08);
+      font-weight: 700;
+    }
+
+    .leader-line span:last-child {
+      margin-left: auto;
+      text-align: right;
+    }
+
+    .controls {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 10px;
+      margin: 18px 0;
+    }
+
+    .control-button,
+    .counter-button {
+      min-height: 44px;
+      border: 1px solid rgba(43, 33, 24, 0.22);
+      border-radius: 999px;
+      color: #fff8e3;
+      background: linear-gradient(180deg, var(--accent), var(--accent-dark));
+      cursor: pointer;
+      box-shadow: 0 8px 18px rgba(43, 33, 24, 0.2);
+      transition: transform 0.12s ease, filter 0.12s ease, box-shadow 0.12s ease;
+    }
+
+    .control-button:hover,
+    .counter-button:hover {
+      filter: brightness(1.06);
+      transform: translateY(-1px);
+      box-shadow: 0 10px 22px rgba(43, 33, 24, 0.28);
+    }
+
+    .control-button:active,
+    .counter-button:active {
+      transform: translateY(0);
+      box-shadow: 0 5px 12px rgba(43, 33, 24, 0.2);
+    }
+
+    .control-button.secondary {
+      color: var(--ink);
+      background: linear-gradient(180deg, #f6ead0, #d9c493);
+    }
+
+    .control-button.reset {
+      background: linear-gradient(180deg, #594336, #33261e);
+    }
+
+    .sides {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 18px;
+      margin-bottom: 18px;
+    }
+
+    .side-card {
+      overflow: hidden;
+    }
+
+    .side-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 18px 20px;
+      color: #fff8e3;
+      background: linear-gradient(90deg, #4d3528, #7f2f22);
+    }
+
+    .side-card.side-b .side-head {
+      background: linear-gradient(90deg, #27384b, #4c6480);
+    }
+
+    .side-title {
+      margin: 0;
+      font-size: 1.45rem;
+    }
+
+    .initiative-badge {
+      display: none;
+      padding: 6px 10px;
+      border: 1px solid rgba(255, 248, 227, 0.46);
+      border-radius: 999px;
+      font-size: 0.84rem;
+      background: rgba(255, 248, 227, 0.12);
+    }
+
+    .side-card.is-active .initiative-badge {
+      display: inline-flex;
+    }
+
+    .score-area {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+      padding: 18px;
+    }
+
+    .score-box {
+      padding: 16px;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: rgba(255, 248, 227, 0.62);
+    }
+
+    .score-value {
+      display: block;
+      margin: 6px 0 12px;
+      font-size: clamp(2.4rem, 7vw, 4rem);
+      font-weight: 700;
+      line-height: 0.9;
+      color: var(--accent-dark);
+    }
+
+    .side-b .score-value {
+      color: #27384b;
+    }
+
+    .counter-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .counter-button {
+      min-height: 40px;
+      padding: 0 14px;
+    }
+
+    .counter-button.minus {
+      color: var(--ink);
+      background: linear-gradient(180deg, #fff3d3, #d7c090);
+    }
+
+    .event-card {
+      padding: 18px 20px;
+      display: grid;
+      gap: 8px;
+    }
+
+    .event-text {
+      margin: 0;
+      padding: 13px 15px;
+      border: 1px dashed rgba(43, 33, 24, 0.28);
+      border-radius: 14px;
+      background: rgba(255, 248, 227, 0.62);
+      line-height: 1.45;
+    }
+
+    .note {
+      margin: 14px 2px 0;
+      color: rgba(255, 248, 227, 0.72);
+      font-size: 0.9rem;
+      text-align: center;
+    }
+
+    @media (max-width: 860px) {
+      .hero,
+      .sides {
+        grid-template-columns: 1fr;
+      }
+
+      .controls {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .control-button.reset {
+        grid-column: 1 / -1;
+      }
+    }
+
+    @media (max-width: 540px) {
+      .page {
+        width: min(100% - 18px, 1180px);
+        padding-top: 12px;
+      }
+
+      .title-card,
+      .state-card,
+      .event-card {
+        border-radius: 14px;
+      }
+
+      .controls,
+      .score-area {
+        grid-template-columns: 1fr;
+      }
+
+      .side-head {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <section class="hero" aria-label="Панель общего состояния хода">
+      <div class="title-card">
+        <p class="eyebrow">V3 Pilot · Standalone HTML</p>
+        <h1>Боевой статус партии</h1>
+        <p class="subtitle">
+          Мини-панель для ведения состояния двухстороннего варгейма: раунд, фаза,
+          инициатива, победные очки, очки командования и последнее событие.
+        </p>
+      </div>
+
+      <aside class="state-card">
+        <div class="state-grid">
+          <div class="status-box">
+            <p class="label">Раунд</p>
+            <span class="big-value" id="roundValue">1</span>
+          </div>
+          <div class="status-box">
+            <p class="label">Фаза</p>
+            <span class="big-value phase-value" id="phaseValue">Инициатива</span>
+          </div>
+          <div class="status-box">
+            <p class="label">Инициатива</p>
+            <span class="big-value" id="initiativeValue">Сторона А</span>
+          </div>
+        </div>
+        <div class="leader-line" aria-live="polite">
+          <span>Ведёт по очкам:</span>
+          <span id="leaderValue">Ничья</span>
+        </div>
+      </aside>
+    </section>
+
+    <section class="controls" aria-label="Основные действия">
+      <button class="control-button" type="button" id="nextPhaseButton">Следующая фаза</button>
+      <button class="control-button secondary" type="button" id="previousPhaseButton">Предыдущая фаза</button>
+      <button class="control-button" type="button" id="nextRoundButton">Следующий раунд</button>
+      <button class="control-button secondary" type="button" id="toggleInitiativeButton">Сменить инициативу</button>
+      <button class="control-button reset" type="button" id="resetButton">Сброс</button>
+    </section>
+
+    <section class="sides" aria-label="Состояние сторон">
+      <article class="side-card side-a" id="sideACard">
+        <header class="side-head">
+          <h2 class="side-title">Сторона А</h2>
+          <span class="initiative-badge">Инициатива</span>
+        </header>
+        <div class="score-area">
+          <div class="score-box">
+            <p class="label">Очки победы</p>
+            <span class="score-value" id="victoryAValue">0</span>
+            <div class="counter-row">
+              <button class="counter-button" type="button" data-counter="victoryA" data-delta="1">+1</button>
+              <button class="counter-button minus" type="button" data-counter="victoryA" data-delta="-1">−1</button>
+            </div>
+          </div>
+          <div class="score-box">
+            <p class="label">Очки командования</p>
+            <span class="score-value" id="commandAValue">0</span>
+            <div class="counter-row">
+              <button class="counter-button" type="button" data-counter="commandA" data-delta="1">+1</button>
+              <button class="counter-button minus" type="button" data-counter="commandA" data-delta="-1">−1</button>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <article class="side-card side-b" id="sideBCard">
+        <header class="side-head">
+          <h2 class="side-title">Сторона Б</h2>
+          <span class="initiative-badge">Инициатива</span>
+        </header>
+        <div class="score-area">
+          <div class="score-box">
+            <p class="label">Очки победы</p>
+            <span class="score-value" id="victoryBValue">0</span>
+            <div class="counter-row">
+              <button class="counter-button" type="button" data-counter="victoryB" data-delta="1">+1</button>
+              <button class="counter-button minus" type="button" data-counter="victoryB" data-delta="-1">−1</button>
+            </div>
+          </div>
+          <div class="score-box">
+            <p class="label">Очки командования</p>
+            <span class="score-value" id="commandBValue">0</span>
+            <div class="counter-row">
+              <button class="counter-button" type="button" data-counter="commandB" data-delta="1">+1</button>
+              <button class="counter-button minus" type="button" data-counter="commandB" data-delta="-1">−1</button>
+            </div>
+          </div>
+        </div>
+      </article>
+    </section>
+
+    <section class="event-card" aria-label="Последнее событие">
+      <p class="label">Последнее событие</p>
+      <p class="event-text" id="lastEventValue" aria-live="polite">
+        Стартовое состояние: Раунд 1, фаза «Инициатива», инициатива у стороны А, все счётчики равны 0.
+      </p>
+    </section>
+
+    <p class="note">
+      Локальный standalone-инструмент: без CDN, внешних библиотек и сетевых зависимостей.
+    </p>
+  </main>
+
+  <script>
+    const phases = ["Инициатива", "Движение", "Бой", "Снабжение"];
+
+    const state = {
+      round: 1,
+      phaseIndex: 0,
+      initiative: "Сторона А",
+      victoryA: 0,
+      victoryB: 0,
+      commandA: 0,
+      commandB: 0,
+      lastEvent: "Стартовое состояние: Раунд 1, фаза «Инициатива», инициатива у стороны А, все счётчики равны 0."
+    };
+
+    const elements = {
+      round: document.getElementById("roundValue"),
+      phase: document.getElementById("phaseValue"),
+      initiative: document.getElementById("initiativeValue"),
+      victoryA: document.getElementById("victoryAValue"),
+      victoryB: document.getElementById("victoryBValue"),
+      commandA: document.getElementById("commandAValue"),
+      commandB: document.getElementById("commandBValue"),
+      leader: document.getElementById("leaderValue"),
+      lastEvent: document.getElementById("lastEventValue"),
+      sideA: document.getElementById("sideACard"),
+      sideB: document.getElementById("sideBCard")
+    };
+
+    function currentPhase() {
+      return phases[state.phaseIndex];
+    }
+
+    function leadingSide() {
+      if (state.victoryA > state.victoryB) return "Сторона А";
+      if (state.victoryB > state.victoryA) return "Сторона Б";
+      return "Ничья";
+    }
+
+    function sideNameFromCounter(counterName) {
+      return counterName.endsWith("A") ? "Сторона А" : "Сторона Б";
+    }
+
+    function counterLabel(counterName) {
+      if (counterName.startsWith("victory")) return "очки победы";
+      return "очки командования";
+    }
+
+    function setLastEvent(text) {
+      state.lastEvent = text;
+      render();
+    }
+
+    function render() {
+      elements.round.textContent = state.round;
+      elements.phase.textContent = currentPhase();
+      elements.initiative.textContent = state.initiative;
+      elements.victoryA.textContent = state.victoryA;
+      elements.victoryB.textContent = state.victoryB;
+      elements.commandA.textContent = state.commandA;
+      elements.commandB.textContent = state.commandB;
+      elements.leader.textContent = leadingSide();
+      elements.lastEvent.textContent = state.lastEvent;
+      elements.sideA.classList.toggle("is-active", state.initiative === "Сторона А");
+      elements.sideB.classList.toggle("is-active", state.initiative === "Сторона Б");
+    }
+
+    function nextPhase() {
+      state.phaseIndex = (state.phaseIndex + 1) % phases.length;
+      setLastEvent(`Следующая фаза: ${currentPhase()}.`);
+    }
+
+    function previousPhase() {
+      state.phaseIndex = (state.phaseIndex - 1 + phases.length) % phases.length;
+      setLastEvent(`Предыдущая фаза: ${currentPhase()}.`);
+    }
+
+    function nextRound() {
+      state.round += 1;
+      state.phaseIndex = 0;
+      setLastEvent(`Начался раунд ${state.round}. Фаза возвращена к «Инициатива».`);
+    }
+
+    function toggleInitiative() {
+      state.initiative = state.initiative === "Сторона А" ? "Сторона Б" : "Сторона А";
+      setLastEvent(`Инициатива перешла к: ${state.initiative}.`);
+    }
+
+    function adjustCounter(counterName, delta) {
+      const oldValue = state[counterName];
+      const nextValue = Math.max(0, oldValue + delta);
+      state[counterName] = nextValue;
+
+      const side = sideNameFromCounter(counterName);
+      const label = counterLabel(counterName);
+      const sign = delta > 0 ? "+1" : "−1";
+
+      if (oldValue === 0 && delta < 0) {
+        setLastEvent(`${side}: ${label} уже равны 0, ниже нуля счётчик не уходит.`);
+      } else {
+        setLastEvent(`${side}: ${label} ${sign}. Новое значение: ${nextValue}.`);
+      }
+    }
+
+    function resetState() {
+      state.round = 1;
+      state.phaseIndex = 0;
+      state.initiative = "Сторона А";
+      state.victoryA = 0;
+      state.victoryB = 0;
+      state.commandA = 0;
+      state.commandB = 0;
+      setLastEvent("Сброс: Раунд 1, фаза «Инициатива», инициатива у стороны А, все счётчики равны 0.");
+    }
+
+    document.getElementById("nextPhaseButton").addEventListener("click", nextPhase);
+    document.getElementById("previousPhaseButton").addEventListener("click", previousPhase);
+    document.getElementById("nextRoundButton").addEventListener("click", nextRound);
+    document.getElementById("toggleInitiativeButton").addEventListener("click", toggleInitiative);
+    document.getElementById("resetButton").addEventListener("click", resetState);
+
+    document.querySelectorAll("[data-counter]").forEach((button) => {
+      button.addEventListener("click", () => {
+        adjustCounter(button.dataset.counter, Number(button.dataset.delta));
+      });
+    });
+
+    render();
+  </script>
+</body>
+</html>

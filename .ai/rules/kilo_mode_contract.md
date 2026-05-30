@@ -13,6 +13,7 @@
 - `kilo-verifier`
 - `kilo-recorder`
 - `kilo-notebook`
+- `kilo-notebook-v3`
 
 ### Launch package: `Kilo mode:`
 
@@ -23,6 +24,7 @@
 - `Kilo Verifier`
 - `Kilo Recorder`
 - `Kilo Notebook`
+- `Kilo Notebook V3`
 
 ### Handoff: `Task role`
 
@@ -134,6 +136,54 @@
 
 Фактическое добавление режима `Kilo Notebook` в интерфейс выполняется человеком вручную через интерфейс Kilo. Этот шаг меняет только repo-level contract и launch/handoff rules.
 
+## Контракт для kilo-notebook-v3
+
+Режим `kilo-notebook-v3` имеет отдельный контракт для будущего V3 artifact-producing workflow.
+
+### Назначение
+
+- Режим предназначен для V3 artifact-producing workflow.
+- Используется для безопасного импорта артефактов из внешнего V3 artifact package.
+- Рекомендуемая связка: `Kilo mode = kilo-notebook-v3`, `Task role = Notebook Agent`.
+- Отдельный от `kilo-notebook` (который остаётся `/v1-only`).
+- Отдельный от `kilo-recorder` (который остаётся `/r1-only`).
+- Отдельный от V2.
+
+### Текущий статус (Phase 7 завершён)
+
+- Режим canonically разрешён в mode lists, validator и rules (Phase 0).
+- `.ai/v3/` foundation, контракты, промпты, шаблоны созданы (Phases 1-3).
+- Manual setup guide доступен: [`.ai/v3/docs/manual_kilo_notebook_v3_setup.md`](../v3/docs/manual_kilo_notebook_v3_setup.md) (Phase 4).
+- `/v3` shortcut активирован как explicit V3 import-entry mode (Phase 7).
+- `scripts/v3/*` созданы (Phase 7): validate, stage, journal helpers. `apply_v3_package.py` не создан.
+- Pilot проведён и доказан (Phase 5).
+- Базовый import/check/write/journal flow работает.
+
+### Разрешённые операции (после активации)
+
+- Принять ZIP artifact package от внешнего чата.
+- Распаковать package в staging-зону.
+- Проверить manifest, пути, хэши.
+- Записать только явно разрешённые файлы.
+- Создать journal entry.
+
+### Запрещённые операции
+
+- Писать файлы вне `allowed_writes`.
+- Перезаписывать существующие файлы без явного разрешения.
+- Выполнять auto-apply без Codex review.
+
+### UI-примечание
+
+Фактическое добавление режима `Kilo Notebook V3` в интерфейс выполняется человеком вручную через интерфейс Kilo.
+
+## Границы режимов
+
+- `kilo-notebook` = `/v1-only`.
+- `kilo-recorder` = `/r1-only`.
+- `/v2` = не новый Kilo mode.
+- `kilo-notebook-v3` = отдельный V3 import/check/write/journal mode. Режим canonically разрешён (Phase 0). `.ai/v3/` subsystem создана (Phases 1-3), manual setup guide доступен (Phase 4). `/v3` shortcut активирован (Phase 7), `scripts/v3/*` созданы, pilot проведён и доказан.
+
 ## V2 External Senior Review — не новый Kilo mode
 
 `/v2` — это project-local manual protocol, описанный в [`.ai/external_reviews/README.md`](../external_reviews/README.md). V2 не является новым Kilo mode. V2 работает через существующие допустимые modes: `kilo-handoff-runner` для docs/protocol и `kilo-debugger` для stuck/debug cases. V2 ingest полностью ручной: raw external answer передаётся в ordinary Kilo run вручную, без использования `kilo-recorder`. Для V2 ingest допустимы только `kilo-handoff-runner` и `kilo-debugger`. `kilo-notebook` остаётся `/v1-only` и не используется в V2. V2 не добавляет новые значения в списки допустимых `Kilo mode` или `Task role`.
@@ -144,7 +194,9 @@
 
 - Kilo обязан поставить обычную debug/build попытку на паузу, кратко зафиксировать WIP state, перейти в `/v2 preview`.
 - Explicit user `/v2` — это не `blocked-v2-recommended`. При explicit `/v2` не требуется blocked report и не требуется три неудачные попытки. Достаточно краткого WIP summary.
-- После V2-цикла Kilo возвращается к исходной задаче или завершает её по новому решению.
+- **Возврат к исходной задаче после `/v2` interrupt разрешён только после `local_workspace_verified`.** Если verification pending или failed, возврат блокируется, и Kilo обязан завершить run blocked-отчётом.
+- **`review/v2/...` не может быть единственной оставшейся копией WIP.** Если содержательный patch остался только в `review/v2/...`, а в исходной рабочей ветке его нет, V2 cycle считается незавершённым.
+- **Pending или failed local verification блокирует дальнейший V2 lifecycle:** нельзя выдавать prompt, возвращаться к исходной задаче или завершать V2 cycle (cleanup).
 
 ### YOLO и V2 escalation
 

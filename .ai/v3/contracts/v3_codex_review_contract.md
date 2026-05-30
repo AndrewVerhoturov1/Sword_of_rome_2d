@@ -1,0 +1,217 @@
+# V3 Codex Review Contract
+
+Версия: 0.4 (Phase 6 lifecycle hardening)
+Назначение: формальный контракт того, как Codex проверяет импортированные V3 артефакты — journal, реальные файлы, сверку с request/scope, риски.
+Статус: контракт Phase 2+. Добавлен post-import testing gate с canonical machine-check report file. Усилены правила machine-check report lookup, human check separation и accepted journal awareness (Phase 6).
+
+---
+
+## 1. Суть Codex review
+
+После того как `kilo-notebook-v3` импортировал V3 artifact package, создал journal entry и обновил lifecycle entry в `V3_navigation.md`, Codex выполняет review.
+
+Codex review — это обязательный шаг между импортом и human verdict. Без Codex review результат не может быть принят человеком.
+
+Codex не доверяет package на слово. Он проверяет:
+
+1. journal entry (что было импортировано);
+2. реальные файлы (что физически появилось в репозитории);
+3. lifecycle entry в `V3_navigation.md` (краткий индекс цикла);
+4. сверку результата с V3 request и scope;
+5. post-import testing status (если `manifest.post_import_testing.mode == "required"`);
+6. риски и соответствие acceptance criteria.
+
+## 2. Порядок review
+
+### Шаг 1. Проверить journal
+
+Codex открывает journal entry и проверяет:
+
+- `v3_id` совпадает с V3 request;
+- `import_status` не `failed` и не `blocked`;
+- `imported_files` содержат ожидаемые файлы;
+- `skipped_files` обоснованы;
+- `verification_notes` не содержат ошибок.
+
+### Шаг 2. Проверить реальные файлы
+
+Codex открывает каждый файл из `imported_files` и проверяет:
+
+- файл реально существует по указанному пути;
+- содержимое соответствует ожиданиям (не пустой, не повреждённый);
+- файл не содержит неожиданного содержимого (секреты, вредоносный код);
+- файл действительно решает задачу из V3 request.
+
+Codex не проверяет только journal. Он всегда смотрит реальные файлы.
+
+### Шаг 3. Проверить lifecycle entry
+
+Codex сверяет `V3_navigation.md` с journal:
+
+- статус соответствует фактической стадии;
+- `Journal Location` указывает на правильный journal;
+- `Created Files` совпадают с imported files по сути;
+- `Summary` краткая и не дублирует весь journal.
+
+`V3_navigation.md` не должен копировать verification notes, skipped reasons и другие подробные поля journal.
+
+### Шаг 4. Сверить с request и scope
+
+Codex сверяет результат с V3 request:
+
+- все ли ожидаемые файлы созданы;
+- scope соблюдён (нет файлов вне `scope`);
+- allowed paths соблюдены;
+- forbidden paths не нарушены;
+- action соответствует (`create` для MVP);
+- acceptance criteria из request выполнены.
+
+### Шаг 5. Проверить post-import testing status
+
+Codex проверяет `manifest.post_import_testing.mode`:
+
+**Если `mode = required`:**
+
+Codex **обязан сначала** проверить наличие machine-check report по canonical пути: `.ai/v3/test_reports/<V3-ID>_machine_check_report.md`. Это первое действие для данного шага, а не опциональная проверка в конце.
+
+- Codex читает этот report-файл как главный источник machine-check результатов. Не требует длинный pasted summary от человека.
+- Если machine-check report отсутствует — это жёсткий blocker. Codex **не может** дать verdict `accept`. Возможны только `revision_needed` (запросить выполнение testing) или `accept_with_notes` (при явном testing waiver от человека).
+- Если report существует — Codex оценивает результаты machine checks. Негативные результаты могут привести к `revision_needed` или `reject`.
+
+**Если `mode = optional`:**
+
+Machine-check report из `.ai/v3/test_reports/` может быть. Если есть — Codex читает и учитывает. Если нет — **это не скрытый blocker** и не препятствие для `accept`. `optional` не должен превращаться в неявное требование.
+
+**Если `mode = waived`:**
+
+Testing не требуется. Codex пропускает этот шаг полностью.
+
+Testing waiver — лёгкий механизм:
+- человек явно говорит Codex «testing не нужен, принимаем без тестов»;
+- Codex фиксирует waiver как explicit note/decision в review chain;
+- waiver не требует нового журнала или нового статуса.
+
+### Шаг 5A. Проверить accepted journal status
+
+Codex должен понимать различие между draft и accepted journal:
+
+- journal draft в `.ai/v3/journals/drafts/` — это local-only artifact, созданный `Kilo Notebook V3`;
+- journal draft не является tracked accepted result;
+- accepted journal появляется только после human verdict `accept`;
+- Codex review происходит до human verdict, поэтому journal на момент review всегда draft;
+- Codex не должен требовать accepted journal до human accept.
+
+Это важно: Codex проверяет draft journal и machine-check report, но финальное решение о переводе journal в accepted остаётся за human verdict.
+
+### Шаг 6. Оценить риски
+
+Codex оценивает:
+
+- есть ли риски, не указанные в `known_risks`;
+- нужно ли запросить V2 review для сложных изменений;
+- нужно ли явно указать человеку, что проверить вручную;
+- учтены ли результаты Machine checks и Human checks в оценке рисков.
+
+### Шаг 7. Сформировать verdict
+
+Codex формирует один из verdict-ов:
+
+- `accept` — результат годен, можно показывать человеку. Если `mode = required`, machine-check report выполнен и негативных результатов нет.
+- `accept_with_notes` — результат годен, но с замечаниями. Может включать testing waiver.
+- `revision_needed` — нужна доработка (см. [`v3_revision_contract.md`](v3_revision_contract.md)).
+- `reject` — результат не годен, импорт откатывается или блокируется.
+
+### Шаг 8. Обновить journal
+
+Codex обновляет journal entry:
+
+- добавляет `codex_review_notes`;
+- фиксирует свой verdict;
+- указывает, что именно человек должен проверить вручную;
+- если `mode = required`, фиксирует статус testing (выполнен / waived / не выполнен).
+
+## 3. Когда Codex должен вернуть revision
+
+Codex возвращает `revision_needed`, если:
+
+- часть файлов не была импортирована (skipped по неожиданной причине);
+- содержимое файлов не соответствует задаче;
+- scope или allowed paths нарушены;
+- acceptance criteria не выполнены, но проблема исправима через доработку внешнего чата.
+
+## 4. Когда Codex должен вернуть reject
+
+Codex возвращает `reject`, если:
+
+- manifest невалиден;
+- checksums не совпадают массово (не единичный сбой);
+- пакет содержит нелегальные файлы вне manifest;
+- содержимое файлов вредоносное, содержит секреты или явно не относится к задаче;
+- scope грубо нарушен (например, `product_code` при `scope: docs_only`);
+- revision-цикл не дал результата после двух попыток.
+
+## 5. Когда Codex запрашивает human review
+
+Codex обязан явно попросить человека проверить вручную, если:
+
+- это первый V3 import (pilot);
+- scope содержит `scripts` или `product_code`;
+- импортированы файлы, меняющие workflow rules;
+- Codex не может проверить содержимое автоматически (бинарные файлы, сложная логика);
+- Codex сам не уверен в verdict и хочет human gate.
+
+## 6. Чего Codex НЕ делает
+
+Codex не должен:
+
+- доверять package на слово без проверки journal;
+- считать, что файл существует только потому, что он написан в manifest;
+- пропускать проверку реальных файлов;
+- принимать решение за человека;
+- выполнять импорт или запись файлов (это задача `kilo-notebook-v3`);
+- изменять импортированные файлы без явного revision request.
+
+## 7. Нормализация verdict enum
+
+Codex verdict и human verdict — разные enum. Они не должны смешиваться.
+
+### Codex verdict
+
+```yaml
+codex_verdict:
+  - accept            # результат годен
+  - accept_with_notes # результат годен, но с замечаниями
+  - revision_needed   # нужна доработка
+  - reject            # результат не годен
+```
+
+### Human verdict
+
+```yaml
+human_verdict:
+  - accept    # принято
+  - revision  # отправить на доработку
+  - reject    # отклонено
+```
+
+См. [`v3_acceptance_policy.md`](v3_acceptance_policy.md) для полного описания human verdict.
+
+## 8. Инварианты review
+
+| Инвариант | Правило |
+|-----------|---------|
+| Review выполнен | Ни один V3 import не может быть принят без Codex review |
+| Journal проверен | Codex читает journal до проверки файлов |
+| Реальные файлы проверены | Codex открывает каждый импортированный файл |
+| Verdict зафиксирован | Verdict записывается в journal entry |
+| Human review запрошен при необходимости | Codex явно указывает, что проверить вручную |
+
+---
+
+## Связанные контракты
+
+- [`v3_journal_contract.md`](v3_journal_contract.md) — journal entry, который Codex проверяет.
+- [`v3_revision_contract.md`](v3_revision_contract.md) — как запрашивается доработка.
+- [`v3_acceptance_policy.md`](v3_acceptance_policy.md) — как человек принимает/отклоняет результат.
+- [`v3_request_contract.md`](v3_request_contract.md) — V3 request, с которым Codex сверяет результат.
+- [`v3_scope_policy.md`](v3_scope_policy.md) — уровни scope для проверки.

@@ -126,6 +126,8 @@
 - [`plans/master/first_vertical_slice_spec.md`](plans/master/first_vertical_slice_spec.md) — spec одного end-to-end proof slice: движение фишки через полный canonical pipeline.
 - [`plans/master/first_milestone_runtime_skeleton.md`](plans/master/first_milestone_runtime_skeleton.md) — next-step working skeleton для Table Sandbox 0.1.
 - [`plans/master/module_authoring_workflow.md`](plans/master/module_authoring_workflow.md) — authoring workflow: workspace shell + editor surfaces + play sandbox preview.
+- [`plans/master/v3_artifact_producing_workflow_contract.md`](plans/master/v3_artifact_producing_workflow_contract.md) — draft V3 artifact-producing workflow contract: внешний чат создаёт artifact package, Kilo Notebook V3 импортирует его безопасно, Codex проверяет, человек принимает.
+- [`plans/master/v3_workflow_implementation_plan.md`](plans/master/v3_workflow_implementation_plan.md) — repo-grounded rollout plan для V3: от contract alignment и нового mode `kilo-notebook-v3` до `.ai/v3/`, pilot, V1 critique, V2 hardening и расширения scope.
 
 ### Навигация
 
@@ -146,6 +148,26 @@
 - [`external_reviews/README.md`](external_reviews/README.md) — протокол V2 External Senior Review.
 - [`external_reviews/V2_navigation.md`](external_reviews/V2_navigation.md) — индекс V2 requests.
 - [`external_reviews/templates/`](external_reviews/templates/) — шаблоны V2 (request, prompt, response, ingest summary, safety checklist).
+
+## V3 Artifact Workflow
+
+**Текущий статус (Phase 7 завершён):** режим `kilo-notebook-v3` / `Kilo Notebook V3` canonically разрешён в Phase 0. В Phase 1 создан discoverable foundation layer `.ai/v3/`. В Phase 2 создан полный Contract Pack (9 контрактов) в `.ai/v3/contracts/`. В Phase 3 создан Prompt and Template Layer: 4 промпта в `.ai/v3/prompts/`, 5 шаблонов в `.ai/v3/templates/`. В Phase 4 выполнена manual runtime integration: создан [setup guide](v3/docs/manual_kilo_notebook_v3_setup.md), синхронизированы bootstrap docs и global rules. Phase 5 Safe Pilot практически доказан двумя успешными import-циклами. Phase 6 завершил lifecycle hardening. Phase 7 завершён: `/v3` shortcut активирован как explicit V3 import-entry mode, канонический шаблон [`.ai/prompts/create_v3_shortcut_prompt.md`](prompts/create_v3_shortcut_prompt.md) создан, `scripts/v3/*` helper layer существует. `apply_v3_package.py` не создан. Auto-apply запрещён.
+
+### V3 Foundation Layer
+
+- [`v3/README.md`](v3/README.md) — главный вход в V3: что это, текущий статус, целевая схема процесса.
+- [`v3/V3_navigation.md`](v3/V3_navigation.md) — навигация по V3-слою: структура, связанные документы.
+- [`v3/contracts/README.md`](v3/contracts/README.md) — 9 формальных контрактов V3 (Phase 2: request, artifact package, manifest, journal, Codex review, revision, storage, scope, acceptance).
+- [`v3/prompts/README.md`](v3/prompts/README.md) — 4 промпта V3 (Phase 3): create V3 request, kilo-notebook-v3 mode, Codex review, revision request.
+- [`v3/templates/README.md`](v3/templates/README.md) — 5 шаблонов V3 (Phase 3): V3 request, manifest.yaml, journal, Codex review, revision request.
+- [`v3/docs/README.md`](v3/docs/README.md) — документация V3: setup guide создан (Phase 4).
+- [`v3/docs/manual_kilo_notebook_v3_setup.md`](v3/docs/manual_kilo_notebook_v3_setup.md) — ручная настройка режима `Kilo Notebook V3` в интерфейсе Kilo (Phase 4).
+- [`prompts/create_v3_shortcut_prompt.md`](prompts/create_v3_shortcut_prompt.md) — канонический шаблон для `/v3` shortcut (Phase 7).
+
+### V3 Master Plans
+
+- [`plans/master/v3_artifact_producing_workflow_contract.md`](plans/master/v3_artifact_producing_workflow_contract.md) — проектный контракт V3 (draft 0.1).
+- [`plans/master/v3_workflow_implementation_plan.md`](plans/master/v3_workflow_implementation_plan.md) — поэтапный план внедрения V3.
 
 ## Public vs Local-only
 

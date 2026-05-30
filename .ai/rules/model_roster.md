@@ -6,13 +6,14 @@
 
 | Класс | Default | Fallback / Candidates | Когда использовать |
 | --- | --- | --- | --- |
-| `fast_model` | `DeepSeek V4 Flash` | `MiniMax M2.5` | `kilo-recorder`, простые docs/workflow-задачи, low-risk изменения |
+| `fast_model` | `DeepSeek V4 Flash` | `MiniMax M2.5` | простые docs/workflow-задачи, low-risk изменения |
 | `strong_model` | `DeepSeek V4 Pro` | `Kimi K2.6` | high-risk, security/auth/payments/migrations, architecture, workflow-rules-change, эскалации |
 | `fast_coding_model` | — | `Qwen3 Coder 480B`, `Qwen3 Coder Next` | обычные code/file-write задачи |
 
 ## Routing rules for `/kilo`
 
-1. `kilo-recorder` и простые docs/workflow-задачи идут через `fast_model`.
+1. `kilo-recorder` идёт через `strong_model` для надёжности execution узкого recorder-flow.
+2. Простые docs/workflow-задачи идут через `fast_model`.
 2. Обычные code/file-write задачи идут через `fast_coding_model`.
 3. Если `fast_model` или `fast_coding_model` не справились, эскалация идёт в `strong_model`.
 4. High-risk/security/auth/payments/migrations/architecture/workflow-rules-change сразу идут через `strong_model` + Codex/Human gate.
@@ -22,7 +23,7 @@
 
 | Тип задачи `/kilo` | Рекомендуемый класс | Default model | Fallback / Candidates |
 | --- | --- | --- | --- |
-| `kilo-recorder` | `fast_model` | `DeepSeek V4 Flash` | `MiniMax M2.5` |
+| `kilo-recorder` | `strong_model` | `DeepSeek V4 Pro` | `Kimi K2.6` |
 | Простые docs / workflow-тексты | `fast_model` | `DeepSeek V4 Flash` | `MiniMax M2.5` |
 | Обычная code/file-write задача | `fast_coding_model` | выбрать candidate по handoff | `Qwen3 Coder 480B`, `Qwen3 Coder Next` |
 | Debug / verifier важной задачи | `strong_model` | `DeepSeek V4 Pro` | `Kimi K2.6` |

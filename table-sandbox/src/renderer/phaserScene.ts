@@ -1,5 +1,7 @@
 import Phaser from "phaser";
 import type { GameState } from "../runtime/GameState";
+import type { MapRenderModel, MapRenderUnderlay } from "../map/MapRenderModel";
+import { mapLocalToWorld } from "../map/MapRenderModel";
 
 /**
  * TableSandboxScene — Phaser-сцена для Action/Event Spine + Smart Drag Move (0016).
@@ -87,6 +89,13 @@ export class TableSandboxScene extends Phaser.Scene {
   private dragGhost: Phaser.GameObjects.Container | null = null;
   private dragTailLine: Phaser.GameObjects.Graphics | null = null;
   private snapHighlightRing: Phaser.GameObjects.Arc | null = null;
+
+  // ---- Map visual debug objects (Handoff 0029) ----
+  private mapVisualDebugObjects: Phaser.GameObjects.GameObject[] = [];
+
+  // ---- Map plane alignment (Map Plane Alignment 0.1) ----
+  /** Текущий underlay для transform map-local → world coordinates */
+  private currentUnderlay: MapRenderUnderlay | null = null;
 
   constructor() {
     super({ key: "TableSandboxScene" });
@@ -244,13 +253,16 @@ export class TableSandboxScene extends Phaser.Scene {
   }
 
   /**
-   * Обновить отрисовку из GameState.
-   * Вызывается из React при каждом изменении GameState или selection.
+   * Обновить отрисовку из GameState + mapVisual.
+   * Вызывается из React при каждом изменении GameState, selection или mapVisual.
+   *
+   * Handoff 0029: добавлен mapVisual — отдельный display-only contract.
    */
   updateFromState(
     state: GameState,
     selectedPieceId: string | null,
-    selectedSpaceId: string | null
+    selectedSpaceId: string | null,
+    mapVisual: MapRenderModel | null = null
   ): void {
     // Сохраняем selectedPieceId для drag-target resolution
     this.currentSelectedPieceId = selectedPieceId;
@@ -272,6 +284,14 @@ export class TableSandboxScene extends Phaser.Scene {
     // Штатный путь: сброс и полная перерисовка
     this.clearDrag();
     this.clearAllDynamic();
+
+    // Map Plane Alignment 0.1: сохраняем underlay для transform
+    this.currentUnderlay = mapVisual?.underlay ?? null;
+
+    // Handoff 0029: map visual debug layer — до connections/spaces/pieces
+    if (mapVisual) {
+      this.drawMapVisualDebug(mapVisual);
+    }
 
     this.drawConnections(state);
     this.drawSpaces(state, selectedSpaceId, state.controlState);
@@ -457,6 +477,99 @@ export class TableSandboxScene extends Phaser.Scene {
     this.dragPending = false;
   }
 
+  // ---- Map visual debug render (Handoff 0029) ----
+
+  /**
+   * Минимальный debug/bounds render authored map visual.
+   *
+   * Рисует:
+   * - map bounds rectangle из coordinateSystem.width/height;
+   * - label с mapId и размерами;
+   * - если underlay есть и visible — underlay bounds rectangle.
+   *
+   * Не рисует actual image texture. Только bounds proof.
+   */
+  private drawMapVisualDebug(mv: MapRenderModel): void {
+    // Handoff 0029 V2 review: explicit negative depth для debug-слоя,
+    // чтобы гарантированно быть под connections (depth default 0).
+    const DEBUG_DEPTH = -20;
+    const DEBUG_LABEL_DEPTH = -19;
+
+    const g = this.add.graphics();
+    g.setDepth(DEBUG_DEPTH);
+    this.mapVisualDebugObjects.push(g);
+
+    const { width, height } = mv.coordinateSystem;
+    const u = mv.underlay;
+
+    // Map Plane Alignment 0.1: transform all 4 corners → AABB
+    const mapCorners = [
+      mapLocalToWorld(0, 0, u),
+      mapLocalToWorld(width, 0, u),
+      mapLocalToWorld(width, height, u),
+      mapLocalToWorld(0, height, u),
+    ];
+    const mxs = mapCorners.map((c) => c.x);
+    const mys = mapCorners.map((c) => c.y);
+    const mapMinX = Math.min(...mxs);
+    const mapMinY = Math.min(...mys);
+    const mapMaxX = Math.max(...mxs);
+    const mapMaxY = Math.max(...mys);
+
+    // 1. Map bounds rectangle — светло-серый пунктир (AABB по 4 углам)
+    g.lineStyle(2, 0x888888, 0.5);
+    g.strokeRect(mapMinX, mapMinY, mapMaxX - mapMinX, mapMaxY - mapMinY);
+
+    // 2. Map label — в левом верхнем углу bounds
+    const label = this.add
+      .text(mapMinX + 4, mapMinY + 4, `Map visual: ${mv.mapId} ${width}×${height}`, {
+        fontSize: "10px",
+        color: "#aaaaaa",
+        fontFamily: "monospace",
+      })
+      .setDepth(DEBUG_LABEL_DEPTH);
+    this.mapVisualDebugObjects.push(label);
+
+    // 3. Underlay bounds (если есть и visible)
+    if (u && u.visible) {
+      const nw = u.naturalWidth;
+      const nh = u.naturalHeight;
+      const s = u.scale || 1;
+
+      // Reuse mapLocalToWorld для единого coordinate basis
+      const corners = [
+        mapLocalToWorld(0, 0, u),
+        mapLocalToWorld(nw, 0, u),
+        mapLocalToWorld(nw, nh, u),
+        mapLocalToWorld(0, nh, u),
+      ];
+
+      const xs = corners.map((c) => c.x);
+      const ys = corners.map((c) => c.y);
+      const minX = Math.min(...xs);
+      const minY = Math.min(...ys);
+      const maxX = Math.max(...xs);
+      const maxY = Math.max(...ys);
+
+      // Underlay bounds AABB — оранжевый пунктир
+      const ubG = this.add.graphics();
+      ubG.setDepth(DEBUG_DEPTH);
+      ubG.lineStyle(1.5, 0xf0a040, 0.6);
+      ubG.strokeRect(minX, minY, maxX - minX, maxY - minY);
+      this.mapVisualDebugObjects.push(ubG);
+
+      // Underlay label
+      const ulabel = this.add
+        .text(minX + 2, minY + 2, `Underlay: ${nw}×${nh} s=${s.toFixed(2)} r=${u.rotationDeg}°`, {
+          fontSize: "9px",
+          color: "#c09040",
+          fontFamily: "monospace",
+        })
+        .setDepth(DEBUG_LABEL_DEPTH);
+      this.mapVisualDebugObjects.push(ulabel);
+    }
+  }
+
   // ---- Очистка ----
 
   private clearAllDynamic(): void {
@@ -467,6 +580,9 @@ export class TableSandboxScene extends Phaser.Scene {
       this.selectionHighlight.destroy();
       this.selectionHighlight = null;
     }
+    // Handoff 0029: очистка map visual debug objects
+    for (const obj of this.mapVisualDebugObjects) obj.destroy();
+    this.mapVisualDebugObjects = [];
     this.spaceCircles.clear();
     this.spaceLabels.clear();
     this.pieceMarkers.clear();
@@ -488,7 +604,10 @@ export class TableSandboxScene extends Phaser.Scene {
       const from = state.spaces.find((s) => s.spaceId === conn.fromSpaceId);
       const to = state.spaces.find((s) => s.spaceId === conn.toSpaceId);
       if (from && to) {
-        g.lineBetween(from.x, from.y, to.x, to.y);
+        // Map Plane Alignment 0.1: transform map-local → world coordinates
+        const fromWorld = mapLocalToWorld(from.x, from.y, this.currentUnderlay);
+        const toWorld = mapLocalToWorld(to.x, to.y, this.currentUnderlay);
+        g.lineBetween(fromWorld.x, fromWorld.y, toWorld.x, toWorld.y);
       }
     }
   }
@@ -501,10 +620,12 @@ export class TableSandboxScene extends Phaser.Scene {
     controlState: Record<string, string | null>
   ): void {
     for (const space of state.spaces) {
+      // Map Plane Alignment 0.1: transform map-local → world coordinates
+      const world = mapLocalToWorld(space.x, space.y, this.currentUnderlay);
       this.cachedSpaces.push({
         spaceId: space.spaceId,
-        x: space.x,
-        y: space.y,
+        x: world.x,
+        y: world.y,
       });
 
       const isSelected = space.spaceId === selectedSpaceId;
@@ -529,13 +650,13 @@ export class TableSandboxScene extends Phaser.Scene {
       }
 
       // Круг space
-      const circle = this.add.circle(space.x, space.y, SPACE_RADIUS, fillColor, 0.8);
+      const circle = this.add.circle(world.x, world.y, SPACE_RADIUS, fillColor, 0.8);
       circle.setStrokeStyle(strokeWidth, strokeColor, 0.9);
       this.spaceCircles.set(space.spaceId, circle);
 
       // Подпись
       const label = this.add
-        .text(space.x, space.y - SPACE_RADIUS - 8, space.name, {
+        .text(world.x, world.y - SPACE_RADIUS - 8, space.name, {
           fontSize: "11px",
           color: "#c4a46c",
           fontFamily: "monospace",
@@ -561,9 +682,11 @@ export class TableSandboxScene extends Phaser.Scene {
 
       const isSelected = piece.pieceId === selectedPieceId;
 
+      // Map Plane Alignment 0.1: transform space map-local → world
+      const world = mapLocalToWorld(space.x, space.y, this.currentUnderlay);
       // Смещение относительно центра space — чтобы piece был виден рядом
-      const px = space.x + PIECE_OFFSET_X;
-      const py = space.y;
+      const px = world.x + PIECE_OFFSET_X;
+      const py = world.y;
 
       // Кэшируем bounding box для drag hit-теста
       this.cachedPieceBoxes.push({

@@ -15,7 +15,8 @@
 
 ## Kilo / Workflow Contract
 
-- [ ] Kilo UI показывает пять режимов: `Kilo Handoff Runner`, `Kilo Debugger`, `Kilo Verifier`, `Kilo Recorder`, `Kilo Notebook`.
+- [ ] Kilo UI показывает шесть режимов: `Kilo Handoff Runner`, `Kilo Debugger`, `Kilo Verifier`, `Kilo Recorder`, `Kilo Notebook`, `Kilo Notebook V3`.
+- [ ] `Kilo Notebook V3` настроен вручную по setup guide из `.ai/v3/docs/manual_kilo_notebook_v3_setup.md` (если V3-слой перенесён).
 - [ ] Внутренний contract различает `Kilo mode` и `Task role`.
 - [ ] Для нового проекта не перенесены старые session/master artifacts как активный state.
 

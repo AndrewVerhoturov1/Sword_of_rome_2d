@@ -51,10 +51,25 @@ Base branch: `main` или другая
 
 Review branch: `review/v2/YYYYMMDD-HHMMSS-short-topic`
 
+Для instantiated request после реального push здесь должен стоять уже фактический snapshot hash. Перед выдачей prompt внешнему чату поля `Snapshot commit`, `Compare link` и snapshot raw URLs не должны оставаться `TBD`.
+
 ### Compare link
 
 ```
 https://github.com/AndrewVerhoturov1/Sword_of_rome_2d/compare/<base>...<snapshot>
+```
+
+## Snapshot publication method
+
+- Snapshot method: `separate-worktree` / `same-worktree-with-restore` / `other`
+- Local workspace preservation: `required`
+- Local workspace state: `preserved` / `restored` / `restore_failed` / `discarded_by_human_decision` / `pending`
+- Local restore/verification status: `yes` / `no` / `pending`
+
+### Примечания к local workspace
+
+```
+<если restore_failed или discarded_by_human_decision — объяснить причину>
 ```
 
 ## Ключевые ссылки для review
@@ -127,3 +142,5 @@ https://github.com/AndrewVerhoturov1/Sword_of_rome_2d/compare/<base>...<snapshot
 | Дата | Статус | Комментарий |
 |------|--------|------------|
 | YYYY-MM-DD | `draft` | V2 request создан |
+| YYYY-MM-DD | `snapshot_pushed` | Snapshot запушен, metadata request финализирована |
+| YYYY-MM-DD | `local_workspace_verified` | Локальный workspace проверен: WIP-файлы сохранены/восстановлены |

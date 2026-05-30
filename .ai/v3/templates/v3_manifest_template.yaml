@@ -1,0 +1,141 @@
+# v3_manifest_template.yaml — Шаблон manifest.yaml для V3 Artifact Package
+#
+# Версия: 0.3 (Phase 5+ post-import testing flow hardening)
+# Назначение: валидный YAML-скелет manifest.yaml.
+#   Заполняется внешним чатом при создании artifact package.
+#   Поля с <placeholder> обязательны к замене.
+#   Поля с # комментарием — подсказки по заполнению.
+#
+# Используй совместно с: v3_manifest_contract.md
+
+# === Идентификация пакета ===
+
+v3_id: "<V3-YYYYMMDD-HHMMSS-<slug>>"
+# Должен совпадать с v3_id из V3 request.
+# Пример: V3-20260527-153000-v3-contracts
+
+task_title: "<Короткое название задачи>"
+# Пример: "V3 Phase 2 Contract Pack"
+
+generated_by: "<external_chatgpt_5_5 | external_deepseek | external_kimi | external_claude>"
+# Конкретный идентификатор внешнего чата. Не "external_unknown".
+
+# === Действие и scope ===
+
+action: "create"
+# Для MVP допустимо только create.
+
+scope: "<docs_only | workflow_docs | schemas | scripts | product_code>"
+# Должен совпадать с scope из V3 request.
+
+# === Политика записи ===
+
+write_policy:
+  mode: "create_only"
+  # Для MVP: create_only
+  require_codex_review: true
+  # Всегда true для V3
+  require_human_review: true
+  # Всегда true для V3
+  allow_overwrite: false
+  # Для MVP: false
+
+# === Post-import testing ===
+
+post_import_testing:
+  mode: "waived"
+  # Три режима:
+  #   "required" — testing обязателен для acceptance, prompt обязателен в package.
+  #   "optional" — prompt полезен, но не обязателен. Показывается, если есть.
+  #   "waived"   — testing явно не нужен (default для чистого docs_only).
+  # prompt_file: "POST_IMPORT_TEST_PROMPT.md"
+  # Имя control file с test prompt в корне ZIP.
+  # Обязательно при mode=required. Опционально при mode=optional.
+
+# === Пути ===
+
+allowed_paths:
+  # Список project-relative путей, куда разрешена запись.
+  # Должен покрывать все files[].path.
+  - "<.ai/v3/>"
+  - "<docs/v3/>"
+
+forbidden_paths:
+  # Минимальный стандартный набор. Добавляй project-specific запреты.
+  - ".git/"
+  - "node_modules/"
+  - "dist/"
+  - "build/"
+  - "coverage/"
+  - "package-lock.json"
+  - "yarn.lock"
+  - "pnpm-lock.yaml"
+  # - "<дополнительный forbidden path>"
+
+# === Файлы пакета ===
+
+files:
+  # Каждый файл — отдельный элемент списка.
+  # Все файлы из files/ директории ZIP должны быть здесь перечислены.
+  # Файл в files/ без записи здесь — нелегален.
+
+  - path: "<project-relative-target-path>"
+    # Куда файл попадёт в репозитории. Пример: .ai/v3/contracts/v3_request_contract.md
+    source_in_zip: "files/<project-relative-target-path>"
+    # Путь к файлу внутри ZIP. Пример: files/.ai/v3/contracts/v3_request_contract.md
+    action: "create"
+    # Для MVP: create
+    required: true
+    # true — отсутствие файла = ошибка импорта. false — опциональный файл.
+    sha256: "<REPLACE_WITH_SHA256>"
+    # SHA-256 хэш содержимого файла. Вычисли после создания файла.
+    purpose: "<Краткое описание: зачем этот файл>"
+    # Пример: "V3 request contract — обязательные поля, scope, allowed/forbidden paths."
+
+  # - path: "<project-relative-target-path-2>"
+  #   source_in_zip: "files/<project-relative-target-path-2>"
+  #   action: "create"
+  #   required: true
+  #   sha256: "<REPLACE_WITH_SHA256>"
+  #   purpose: "<описание>"
+
+# === Критерии приёмки ===
+
+acceptance_criteria:
+  # Минимальный стандартный набор. Дополни проект-специфичными критериями.
+  - "All files listed in manifest exist in the ZIP under files/."
+  - "No extra files are present under files/ unless explicitly listed in manifest."
+  - "All target paths are project-relative and inside allowed_paths."
+  - "No target path matches forbidden_paths."
+  - "All sha256 checksums match."
+  - "KiloCode journal entry is created after import."
+  - "Codex review is required before final acceptance."
+  # - "<дополнительный критерий>"
+
+# === Известные риски ===
+
+known_risks:
+  # Минимум один риск. Добавь task-specific риски.
+  - "Generated files may describe intended process but not yet be wired into existing automation."
+  - "Documentation must not claim that V3 is fully operational unless it is."
+  # - "<дополнительный риск>"
+
+# === Post-import testing risks (если mode != waived) ===
+# Если post_import_testing.mode = required или optional, добавь риски:
+# - "POST_IMPORT_TEST_PROMPT.md describes checks but does not run them."
+# - "Machine checks may fail if the repo environment differs from expected."
+# - "Human checks cannot be automated and require manual review."
+
+# === Необязательные поля (для повышения traceability) ===
+
+# package_version: "0.1"
+# Версия формата пакета.
+
+# source_request:
+#   request_id: "<v3_id из V3 request>"
+#   prepared_by: "<codex | human | codex+human>"
+#   human_requested: true
+
+# human_review_required:
+#   # Конкретные пункты для ручной проверки человеком.
+#   - "<что проверить>"

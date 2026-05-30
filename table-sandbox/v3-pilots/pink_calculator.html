@@ -1,0 +1,497 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Розовый калькулятор — V3 Pilot</title>
+  <style>
+    :root {
+      --page-bg-a: #fff1f8;
+      --page-bg-b: #ffe0ef;
+      --card-bg: rgba(255, 255, 255, 0.82);
+      --pink-900: #831843;
+      --pink-800: #9d174d;
+      --pink-700: #be185d;
+      --pink-600: #db2777;
+      --pink-500: #ec4899;
+      --pink-300: #f9a8d4;
+      --pink-200: #fbcfe8;
+      --pink-100: #fce7f3;
+      --ink: #3f1730;
+      --muted: #7a3f5d;
+      --white: #ffffff;
+      --shadow: 0 24px 70px rgba(190, 24, 93, 0.22);
+      --inner-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      min-height: 100vh;
+      margin: 0;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at top left, rgba(255, 255, 255, 0.95), transparent 34rem),
+        radial-gradient(circle at bottom right, rgba(236, 72, 153, 0.22), transparent 28rem),
+        linear-gradient(135deg, var(--page-bg-a), var(--page-bg-b));
+      display: grid;
+      place-items: center;
+      padding: 32px 16px;
+    }
+
+    main {
+      width: min(100%, 430px);
+    }
+
+    .hero {
+      text-align: center;
+      margin-bottom: 22px;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 12px;
+      border-radius: 999px;
+      color: var(--pink-800);
+      background: rgba(255, 255, 255, 0.68);
+      border: 1px solid rgba(236, 72, 153, 0.18);
+      box-shadow: 0 10px 28px rgba(190, 24, 93, 0.09);
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+    }
+
+    h1 {
+      margin: 18px 0 10px;
+      font-size: clamp(32px, 8vw, 50px);
+      line-height: 0.96;
+      color: var(--pink-900);
+      letter-spacing: -0.055em;
+    }
+
+    .description {
+      margin: 0 auto;
+      max-width: 35rem;
+      color: var(--muted);
+      font-size: 16px;
+      line-height: 1.55;
+    }
+
+    .calculator {
+      position: relative;
+      overflow: hidden;
+      border-radius: 34px;
+      padding: 22px;
+      background: linear-gradient(160deg, rgba(255,255,255,0.92), rgba(252,231,243,0.92));
+      border: 1px solid rgba(255, 255, 255, 0.88);
+      box-shadow: var(--shadow), var(--inner-shadow);
+    }
+
+    .calculator::before,
+    .calculator::after {
+      content: "";
+      position: absolute;
+      border-radius: 999px;
+      pointer-events: none;
+      filter: blur(2px);
+    }
+
+    .calculator::before {
+      width: 180px;
+      height: 180px;
+      top: -92px;
+      right: -52px;
+      background: rgba(249, 168, 212, 0.45);
+    }
+
+    .calculator::after {
+      width: 120px;
+      height: 120px;
+      left: -46px;
+      bottom: -46px;
+      background: rgba(236, 72, 153, 0.14);
+    }
+
+    .display {
+      position: relative;
+      z-index: 1;
+      min-height: 96px;
+      border-radius: 24px;
+      padding: 18px 18px 14px;
+      background: linear-gradient(180deg, #fffafd, #fff0f8);
+      border: 1px solid rgba(236, 72, 153, 0.16);
+      box-shadow: inset 0 2px 14px rgba(190, 24, 93, 0.06);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      text-align: right;
+      overflow: hidden;
+    }
+
+    .display-label {
+      color: #9f5677;
+      font-size: 12px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.16em;
+    }
+
+    .display-value {
+      margin-top: 12px;
+      min-height: 40px;
+      color: var(--pink-900);
+      font-size: clamp(28px, 8vw, 42px);
+      line-height: 1.1;
+      font-weight: 800;
+      word-break: break-all;
+    }
+
+    .keypad {
+      position: relative;
+      z-index: 1;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      margin-top: 18px;
+    }
+
+    button {
+      min-height: 60px;
+      border: 0;
+      border-radius: 20px;
+      color: var(--ink);
+      background: rgba(255, 255, 255, 0.78);
+      box-shadow:
+        0 12px 24px rgba(190, 24, 93, 0.12),
+        inset 0 1px 0 rgba(255, 255, 255, 0.88);
+      font: inherit;
+      font-size: 21px;
+      font-weight: 800;
+      cursor: pointer;
+      transition: transform 140ms ease, box-shadow 140ms ease, background 140ms ease;
+      touch-action: manipulation;
+    }
+
+    button:hover {
+      transform: translateY(-2px);
+      background: var(--white);
+      box-shadow:
+        0 16px 30px rgba(190, 24, 93, 0.18),
+        inset 0 1px 0 rgba(255, 255, 255, 0.9);
+    }
+
+    button:active {
+      transform: translateY(1px) scale(0.99);
+    }
+
+    button:focus-visible {
+      outline: 3px solid rgba(219, 39, 119, 0.34);
+      outline-offset: 3px;
+    }
+
+    .operator {
+      color: var(--white);
+      background: linear-gradient(180deg, var(--pink-500), var(--pink-700));
+    }
+
+    .operator:hover {
+      background: linear-gradient(180deg, #f472b6, var(--pink-600));
+    }
+
+    .clear {
+      color: var(--pink-900);
+      background: linear-gradient(180deg, #fff7fb, var(--pink-200));
+    }
+
+    .equals {
+      color: var(--white);
+      background: linear-gradient(135deg, var(--pink-700), var(--pink-500));
+    }
+
+    .zero {
+      grid-column: span 4;
+    }
+
+    .note {
+      margin: 18px 8px 0;
+      color: #8b4a68;
+      font-size: 13px;
+      line-height: 1.45;
+      text-align: center;
+    }
+
+    @media (max-width: 380px) {
+      .calculator {
+        padding: 16px;
+        border-radius: 28px;
+      }
+
+      .keypad {
+        gap: 9px;
+      }
+
+      button {
+        min-height: 54px;
+        border-radius: 17px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main aria-labelledby="page-title">
+    <section class="hero">
+      <div class="eyebrow" aria-label="V3 standalone pilot">🌸 Standalone HTML pilot</div>
+      <h1 id="page-title">Розовый калькулятор</h1>
+      <p class="description">
+        Небольшая самостоятельная HTML-страница с приятным розовым оформлением, базовыми арифметическими операциями и аккуратной обработкой ошибок.
+      </p>
+    </section>
+
+    <section class="calculator" aria-label="Калькулятор">
+      <div class="display" role="status" aria-live="polite">
+        <div class="display-label">Текущее значение</div>
+        <div class="display-value" id="display">0</div>
+      </div>
+
+      <div class="keypad" aria-label="Кнопки калькулятора">
+        <button class="clear" type="button" data-action="clear">C</button>
+        <button class="operator" type="button" data-value="/">/</button>
+        <button class="operator" type="button" data-value="*">*</button>
+        <button class="operator" type="button" data-value="-">-</button>
+
+        <button type="button" data-value="7">7</button>
+        <button type="button" data-value="8">8</button>
+        <button type="button" data-value="9">9</button>
+        <button class="operator" type="button" data-value="+">+</button>
+
+        <button type="button" data-value="4">4</button>
+        <button type="button" data-value="5">5</button>
+        <button type="button" data-value="6">6</button>
+        <button type="button" data-value=".">.</button>
+
+        <button type="button" data-value="1">1</button>
+        <button type="button" data-value="2">2</button>
+        <button type="button" data-value="3">3</button>
+        <button class="equals" type="button" data-action="equals">=</button>
+
+        <button class="zero" type="button" data-value="0">0</button>
+      </div>
+
+      <p class="note">Можно нажимать кнопки мышью или использовать клавиатуру: цифры, +, -, *, /, точка, Enter и Escape.</p>
+    </section>
+  </main>
+
+  <script>
+    (function () {
+      'use strict';
+
+      const display = document.getElementById('display');
+      let expression = '';
+      let errorState = false;
+
+      const isOperator = (value) => ['+', '-', '*', '/'].includes(value);
+      const lastChar = () => expression.slice(-1);
+
+      function updateDisplay(value) {
+        display.textContent = value || '0';
+      }
+
+      function resetIfError() {
+        if (errorState) {
+          expression = '';
+          errorState = false;
+        }
+      }
+
+      function getCurrentNumber() {
+        const parts = expression.split(/[+\-*/]/);
+        return parts[parts.length - 1] || '';
+      }
+
+      function appendDigit(value) {
+        resetIfError();
+        if (expression === '0') {
+          expression = value;
+        } else {
+          expression += value;
+        }
+        updateDisplay(expression);
+      }
+
+      function appendDecimalPoint() {
+        resetIfError();
+        const currentNumber = getCurrentNumber();
+        if (currentNumber.includes('.')) {
+          return;
+        }
+        if (expression === '' || isOperator(lastChar())) {
+          expression += '0.';
+        } else {
+          expression += '.';
+        }
+        updateDisplay(expression);
+      }
+
+      function appendOperator(operator) {
+        resetIfError();
+        if (expression === '' && operator !== '-') {
+          return;
+        }
+        if (expression === '' && operator === '-') {
+          expression = '-';
+          updateDisplay(expression);
+          return;
+        }
+        if (isOperator(lastChar())) {
+          expression = expression.slice(0, -1) + operator;
+        } else if (lastChar() === '.') {
+          expression = expression.slice(0, -1) + operator;
+        } else {
+          expression += operator;
+        }
+        updateDisplay(expression);
+      }
+
+      function tokenize(source) {
+        const tokens = [];
+        let number = '';
+        for (let i = 0; i < source.length; i += 1) {
+          const char = source[i];
+          const previous = source[i - 1];
+          const unaryMinus = char === '-' && (i === 0 || isOperator(previous));
+
+          if (/\d/.test(char) || char === '.' || unaryMinus) {
+            number += char;
+            continue;
+          }
+
+          if (isOperator(char)) {
+            if (number === '' || number === '-') {
+              throw new Error('Некорректное выражение');
+            }
+            tokens.push(Number(number), char);
+            number = '';
+          }
+        }
+
+        if (number === '' || number === '-') {
+          throw new Error('Некорректное выражение');
+        }
+
+        tokens.push(Number(number));
+        if (tokens.some((token) => Number.isNaN(token))) {
+          throw new Error('Некорректное число');
+        }
+        return tokens;
+      }
+
+      function applyPrecedence(tokens, operators) {
+        const output = [];
+        for (let i = 0; i < tokens.length; i += 1) {
+          const token = tokens[i];
+          if (!operators.includes(token)) {
+            output.push(token);
+            continue;
+          }
+
+          const left = output.pop();
+          const right = tokens[i + 1];
+          if (typeof left !== 'number' || typeof right !== 'number') {
+            throw new Error('Некорректное выражение');
+          }
+          if (token === '/' && right === 0) {
+            throw new Error('Деление на ноль невозможно');
+          }
+
+          const result = token === '*'
+            ? left * right
+            : token === '/'
+              ? left / right
+              : token === '+'
+                ? left + right
+                : left - right;
+          output.push(result);
+          i += 1;
+        }
+        return output;
+      }
+
+      function calculate() {
+        if (expression === '' || isOperator(lastChar()) || lastChar() === '.') {
+          return;
+        }
+
+        try {
+          const tokens = tokenize(expression);
+          const afterMultiplication = applyPrecedence(tokens, ['*', '/']);
+          const resultTokens = applyPrecedence(afterMultiplication, ['+', '-']);
+          const result = resultTokens[0];
+
+          if (!Number.isFinite(result)) {
+            throw new Error('Результат слишком большой');
+          }
+
+          expression = String(Number(result.toFixed(10)));
+          updateDisplay(expression);
+        } catch (error) {
+          expression = '';
+          errorState = true;
+          updateDisplay(error.message || 'Ошибка');
+        }
+      }
+
+      function clearAll() {
+        expression = '';
+        errorState = false;
+        updateDisplay('0');
+      }
+
+      function handleInput(value) {
+        if (/\d/.test(value)) {
+          appendDigit(value);
+        } else if (value === '.') {
+          appendDecimalPoint();
+        } else if (isOperator(value)) {
+          appendOperator(value);
+        }
+      }
+
+      document.querySelector('.keypad').addEventListener('click', (event) => {
+        const button = event.target.closest('button');
+        if (!button) {
+          return;
+        }
+
+        const value = button.dataset.value;
+        const action = button.dataset.action;
+
+        if (action === 'clear') {
+          clearAll();
+        } else if (action === 'equals') {
+          calculate();
+        } else if (value) {
+          handleInput(value);
+        }
+      });
+
+      window.addEventListener('keydown', (event) => {
+        if (/\d/.test(event.key) || ['+', '-', '*', '/', '.'].includes(event.key)) {
+          event.preventDefault();
+          handleInput(event.key);
+        } else if (event.key === 'Enter' || event.key === '=') {
+          event.preventDefault();
+          calculate();
+        } else if (event.key === 'Escape' || event.key.toLowerCase() === 'c') {
+          event.preventDefault();
+          clearAll();
+        }
+      });
+    }());
+  </script>
+</body>
+</html>

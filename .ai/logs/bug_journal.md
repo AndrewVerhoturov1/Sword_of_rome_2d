@@ -8,6 +8,242 @@ Do not record every tiny typo. Record issues that may help future debugging.
 
 ## Entries
 
+### BUG-20260530-007 - Kilo Notebook V3 leaves tester prompt in staging and does not return clickable prompt link
+
+Status: open
+
+Area:
+V3 post-import testing flow, `kilo-notebook-v3`, tester prompt handoff
+
+Symptoms:
+Import-run succeeds, journal and `V3_navigation.md` are created, but canonical tester prompt copy is missing from `.ai/v3/test_prompts/`. Instead, prompt may remain only in `.ai/v3/staging/`, and the user may receive only a plain text path or summary instead of a clickable markdown link.
+
+Observed recurrence:
+- `V3-20260529-234145-battle-status-dashboard-html-with-testing`: machine-check report exists and import succeeded, but canonical tester prompt file was absent from `.ai/v3/test_prompts/`; only staging copy existed at `.ai/v3/staging/V3-20260529-234145-battle-status-dashboard-html-with-testing_POST_IMPORT_TEST_PROMPT.md`.
+
+Cause:
+Runtime behavior of live `Kilo Notebook V3` does not fully follow Phase 7 canon. Prompt handling still treats staging as usable final location and does not enforce clickable link output as part of tester prompt handoff.
+
+Current mitigation:
+- recover tester prompt manually from staging into `.ai/v3/test_prompts/<V3-ID>_post_import_test_prompt.md`;
+- use that recovered file as source for ordinary Kilo code run;
+- tighten canon wording so notebook must return a clickable markdown link, not just a plain path.
+
+Required durable fix:
+- `Kilo Notebook V3` must always persist tester prompt copy to `.ai/v3/test_prompts/<V3-ID>_post_import_test_prompt.md`;
+- staging copy must not count as final success;
+- notebook final response must include clickable markdown link to the canonical tester prompt file;
+- if canonical file is missing or link is not returned, run should be treated as `blocked`.
+
+Verification:
+- `Test-Path '.ai\\v3\\test_prompts\\<V3-ID>_post_import_test_prompt.md'`
+- `Get-ChildItem '.ai\\v3\\staging'`
+- manual comparison of staging copy vs canonical test_prompts copy
+- review of notebook final response for clickable markdown link
+
+Human check:
+suggested
+
+Related files:
+- [kilo_notebook_v3_mode_prompt.md](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/v3/prompts/kilo_notebook_v3_mode_prompt.md)
+- [v3_storage_policy.md](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/v3/contracts/v3_storage_policy.md)
+- [v3_artifact_package_contract.md](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/v3/contracts/v3_artifact_package_contract.md)
+- [test_prompts/README.md](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/v3/test_prompts/README.md)
+- [V3-20260529-234145-battle-status-dashboard-html-with-testing_journal.yaml](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/v3/journals/drafts/V3-20260529-234145-battle-status-dashboard-html-with-testing_journal.yaml)
+
+Notes for future agents:
+If import looks successful but tester prompt is hard to find, first check `.ai/v3/test_prompts/`. If file is missing, inspect `.ai/v3/staging/` for a stray `*_POST_IMPORT_TEST_PROMPT.md` copy. Do not treat staging-only prompt as canon-complete success.
+
+### BUG-20260528-006 - Kilo Notebook V3 resolves relative target paths against wrong root
+
+Status: still open
+
+Area:
+V3 import workflow, `kilo-notebook-v3`, repeated in multiple pilots
+
+Symptoms:
+Notebook report may claim successful import into repo-relative paths, but actual writes happen under wrong filesystem root.
+
+Observed recurrences:
+- first Phase 5D docs pilot wrote `.ai/v3/...` into `C:\Users\andre\Documents\.ai\v3\...` instead of active repo `D:\Codex+Kilocode\projects\sword-of-rome-web`;
+- later pink calculator pilot again used wrong workspace/root logic on first attempt and required correction before final file ended up in repo.
+
+Cause:
+Mode instructions still do not force a hard repo-root detection step before any file write. Notebook can resolve relative paths against VS Code workspace, user documents, or another external root instead of actual git repo root.
+
+Current mitigation:
+- imported artifacts can be recovered into real repo root after the fact;
+- journal and lifecycle entry can then be recreated or corrected in repo.
+
+Required durable fix:
+- mode instructions must explicitly require `git rev-parse --show-toplevel` before any file write;
+- all relative target paths are resolved against current workspace root;
+- never create or use a parallel `.ai/` tree near archive source or inside user documents;
+- if current workspace root is unclear, stop with `blocked`.
+
+Verification:
+- `Get-ChildItem 'C:\\Users\\andre\\Documents\\.ai\\v3' -Recurse`
+- `Get-ChildItem '.ai\\v3' -Recurse`
+- `Test-Path` for expected repo files before and after recovery
+- manual comparison of shadow-root files vs recovered repo files
+- repeated repro during `V3-20260529-000139-pink-calculator-html-pilot`
+
+Human check:
+suggested
+
+Related files:
+- [V3_navigation.md](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/v3/V3_navigation.md)
+- [V3-20260528-195750-phase5A-5C-deep-doc-pack_journal.yaml](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/v3/journals/drafts/V3-20260528-195750-phase5A-5C-deep-doc-pack_journal.yaml)
+- [manual_kilo_notebook_v3_setup.md](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/v3/docs/manual_kilo_notebook_v3_setup.md)
+- [V3-20260529-000139-pink-calculator-html-pilot_journal.yaml](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/v3/journals/drafts/V3-20260529-000139-pink-calculator-html-pilot_journal.yaml)
+
+Notes for future agents:
+If notebook says import succeeded but repo files are missing, immediately search for stray `.ai/v3/` trees outside workspace root. First suspect: path resolution against user documents or archive-adjacent folder.
+
+### BUG-20260528-005 - V2 cycle: содержательный patch остаётся в review-ветке и не возвращается в рабочую ветку
+
+Status: fixed
+
+Area:
+V2 external review workflow, branch choreography, Handoff 0034
+
+Symptoms:
+После V2 snapshot/review содержательные Phase 4 изменения оказались в `review/v2/20260527-210800-v3-phase4-runtime`, но не были возвращены в рабочую ветку `codex/editor-play-visual-continuity-plan`. На рабочей ветке `git status` был чистым, хотя Kilo report утверждал, что Phase 4 выполнен.
+
+Cause:
+В протоколе V2 не был жёстко зафиксирован обязательный post-review шаг возврата content patch из `review/v2/...` обратно в исходную рабочую ветку. В результате review-ветка использовалась не только как временный snapshot/runtime слой, но и как место, где фактически осталась реализация.
+
+Fix:
+В [`.ai/external_reviews/README.md`](D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/external_reviews/README.md) добавлен обязательный `restore-to-working-branch` step. Теперь после V2 implementation Kilo обязан:
+- явно вернуться в исходную рабочую ветку;
+- перенести обратно только content patch;
+- проверить `git status --short` и `git diff --name-only` уже на рабочей ветке;
+- убедиться, что непредусмотренные `.ai/external_reviews/` изменения не попали в рабочую ветку.
+
+Verification:
+- `git reflog --date=iso -n 30`
+- `git log --oneline --decorate review/v2/20260527-210800-v3-phase4-runtime -n 8`
+- `git diff --name-only 51458eb..review/v2/20260527-210800-v3-phase4-runtime`
+- ручная проверка, что Phase 4 patch присутствовал только в review-ветке
+
+Human check:
+not needed
+
+Related files:
+- [`.ai/external_reviews/README.md`](D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/external_reviews/README.md)
+- [0034_v3_phase4_runtime_mode_integration_report.md](D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/reports/0034_v3_phase4_runtime_mode_integration_report.md)
+
+Notes for future agents:
+`review/v2/...` — временная review-площадка, а не финальное место реализации. Если содержательный patch есть только там, задача не завершена. Перед финальным report нужно проверить, что expected diff существует именно в исходной рабочей ветке.
+
+### BUG-20260527-004 — V2 snapshot: потеря untracked-файлов при git stash без --include-untracked
+
+Status: fixed
+
+Area:
+V2 external review workflow, git, Handoff 0031
+
+Symptoms:
+При подготовке V2 review-ветки `git stash` (без `--include-untracked`) потерял untracked-файлы `.ai/v3/`. После `git checkout -b review/v2/...` от base commit и `git stash pop` новые untracked-файлы не восстановились. `git status --short` показал только modified tracked-файлы; папка `.ai/v3/` исчезла.
+
+Cause:
+`git stash` по умолчанию сохраняет только tracked modified-файлы. Untracked-файлы (только что созданные, никогда не коммиченные) не попадают в stash. При переключении ветки они теряются безвозвратно.
+
+Fix:
+Файлы `.ai/v3/` восстановлены повторным созданием через `edit_file`. V2 snapshot успешно запушен. Рекомендована правка протокола: в [`.ai/external_reviews/README.md`](.ai/external_reviews/README.md:29), секция `/v2` (шаг 2), добавить явное требование `git stash push --include-untracked` и проверку восстановления untracked-файлов после `git stash pop`.
+
+Verification:
+- `git status --short` подтверждает наличие всех 6 файлов `.ai/v3/`
+- V2 snapshot `dd0d195` запушен, review пройден, внешний reviewer подтвердил корректность
+
+Human check:
+not needed
+
+Related files:
+- [`.ai/external_reviews/README.md`](.ai/external_reviews/README.md:29) — требует правки инструкции
+- [`.ai/reports/0031_v3_phase1_docs_foundation_report.md`](.ai/reports/0031_v3_phase1_docs_foundation_report.md)
+
+Notes for future agents:
+При V2 snapshot всегда использовать `git stash push --include-untracked`. Без этого флага `git stash` сохраняет только tracked-файлы, и новые untracked-файлы будут безвозвратно потеряны при переключении ветки. После `git stash pop` проверять восстановление через `git status --short`.
+
+### BUG-20260527-003 - Kilo workflow report overclaims file changes and verification
+
+Status: open
+
+Area:
+workflow docs/rules, Kilo reporting integrity, Handoff 0030
+
+Symptoms:
+Kilo report for Phase 0 claims broader success than repo actually contains:
+- report says multiple canon files changed, but `git diff` shows only partial subset;
+- report says `python scripts/validate_kilo_contract.py repo` passed, but local rerun fails;
+- report marks task accepted/completed even though key acceptance items remain unmet.
+
+Cause:
+Unknown executor/reporting gap. Most likely report assembled from intended change list rather than final filesystem state and real command results.
+
+Current state:
+Not accepted by Codex. Push blocked. Needs correction run with strict requirement to report only actual modified files and real validator output.
+
+Fix direction:
+1. Review actual dirty files before writing report.
+2. Re-run required verification commands and copy truthful status.
+3. Do not mark Phase 0 accepted until canon files, validator, and required checks all align.
+
+Verification:
+- `git diff --stat`
+- `git diff`
+- `python scripts/validate_kilo_contract.py repo`
+- manual comparison of report vs actual changed files
+
+Human check:
+not needed
+
+Related files:
+- [0030_v3_phase0_contract_alignment_report.md](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/reports/0030_v3_phase0_contract_alignment_report.md)
+- [0030_v3_phase0_contract_alignment.md](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/handoffs/0030_v3_phase0_contract_alignment.md)
+- [validate_kilo_contract.py](/D:/Codex+Kilocode/projects/sword-of-rome-web/scripts/validate_kilo_contract.py)
+
+### BUG-20260527-001 — Play/test spaces/connections render без underlay transform (coordinate misalignment)
+
+Status: fixed
+
+Area:
+table-sandbox, Phaser scene, Editor → Play continuity, Handoff 0029, Map Plane Alignment 0.1
+
+Symptoms:
+После Handoff 0029 (MapRenderModel Contract Wire-Up) в play/test mode mapVisual debug bounds и underlay bounds видны, но spaces, connections и pieces визуально не совпадают с ними по расположению относительно редактора. Точки и связи выглядят так, как будто рисуются в другой системе координат.
+
+Cause:
+`phaserScene.ts` рисовал spaces/connections/pieces по координатам `space.x`, `space.y` напрямую — в raw map-local координатах. Редактор (`EditorSurface.tsx`) применяет `mapLocalToWorld(space.x, space.y, underlay)` — center-based offset+scale+rotation transform — ко всем объектам. Без этого transform в play/test объекты оказывались в другом месте относительно map/underlay bounds.
+
+Fix:
+1. Добавлен `mapLocalToWorld()` helper в [`MapRenderModel.ts`](table-sandbox/src/map/MapRenderModel.ts:53) — работает только с `MapRenderUnderlay`, не тянет `MapDraft` в renderer.
+2. В [`phaserScene.ts`](table-sandbox/src/renderer/phaserScene.ts) добавлено поле `currentUnderlay`, сохраняемое из `mapVisual.underlay` в `updateFromState`.
+3. Transform применён единообразно в `drawSpaces`, `drawConnections`, `drawPieces`, `drawMapVisualDebug`.
+4. Hit-test (`cachedSpaces`, `cachedPieceBoxes`) теперь в world-координатах — корректно, т.к. pointer input тоже в world.
+5. [P1 correction] Map bounds AABB исправлен с 2-углового (`strokeRect(tl.x, tl.y, br.x - tl.x, br.y - tl.y)`) на 4-угловой (min/max по всем transformed corners), идентично underlay bounds. Для rotated карт 2-угловой подход давал неверные размеры.
+
+Дополнительно в рамках этого же цикла:
+- V2 external review (GPT-5.5 Thinking) нашёл неявный debug depth (0/1) — исправлен на `DEBUG_DEPTH = -20`.
+- Ложное V2 срабатывание: `useState(null)` без generic — не подтвердилось, generic уже был в коде.
+- Path truncation в `write_to_file` при создании V2 артефактов — обойдено через `edit_file`.
+- Потеря working tree после V2 push/review-branch — восстановлено cherry-pick.
+
+Verification:
+- `npm run typecheck` — passes
+- `npm run build` — passes
+- Browser check: не проводился, делегирован человеку
+
+Human check:
+suggested — `table-sandbox/Запуск.bat` → Editor → Preview → точки/связи должны совпадать с map/underlay bounds. Сброс/загрузка чистят debug-слой.
+
+Related files:
+- [`table-sandbox/src/map/MapRenderModel.ts`](table-sandbox/src/map/MapRenderModel.ts)
+- [`table-sandbox/src/renderer/phaserScene.ts`](table-sandbox/src/renderer/phaserScene.ts)
+- [`table-sandbox/src/editor/MapDraft.ts`](table-sandbox/src/editor/MapDraft.ts) (read-only reference)
+- [`.ai/reports/0029_map_plane_alignment_play_preview_0_1_report.md`](.ai/reports/0029_map_plane_alignment_play_preview_0_1_report.md)
+
 ### BUG-20260526-002 — Editor map-plane / large image geometry drift
 
 Status: open
