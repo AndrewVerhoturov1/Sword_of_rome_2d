@@ -1,0 +1,119 @@
+# Journal Draft — V3-20260531-091439-ork-planner-doc-critique
+# Создан: Kilo Notebook V3 import-run
+# Версия journal: 0.1 (Phase 3 template)
+
+# === Идентификация ===
+
+v3_id: "V3-20260531-091439-ork-planner-doc-critique"
+
+timestamp: "2026-05-31T04:34:00Z"
+
+# === Статус импорта ===
+
+import_status: "imported"
+# 8 critiques successfully imported. No source files overwritten.
+
+# === Исходный пакет ===
+
+source_package:
+  package_id: "V3-20260531-091439-ork-planner-doc-critique"
+  source_type: "local_archive_path"
+  source_value: "C:/Users/andre/Downloads/V3-20260531-091439-ork-planner-doc-critique.zip"
+  manifest_path: ".ai/v3/staging/V3-20260531-091439-ork-planner-doc-critique/manifest.yaml"
+  zip_archive: "C:/Users/andre/Downloads/V3-20260531-091439-ork-planner-doc-critique.zip"
+  checksums_verified: true
+  # Все 10 SHA256 хэшей совпали. checksums.sha256 пропущен по policy (не хэширует сам себя).
+
+# === Импортированные файлы ===
+
+imported_files:
+  - path: ".ai/subprojects/ork_planner/reviews/V3-ork_planner_readme.md"
+    action: "create"
+    sha256_match: true
+    notes: "Critique of ork_planner_readme.md"
+  - path: ".ai/subprojects/ork_planner/reviews/V3-ork_planner_navigation.md"
+    action: "create"
+    sha256_match: true
+    notes: "Critique of ork_planner_navigation.md"
+  - path: ".ai/subprojects/ork_planner/reviews/V3-ork_planner_plan_full.md"
+    action: "create"
+    sha256_match: true
+    notes: "Critique of ork_planner_plan_full.md"
+  - path: ".ai/subprojects/ork_planner/reviews/V3-ork_planner_plan_index.md"
+    action: "create"
+    sha256_match: true
+    notes: "Critique of ork_planner_plan_index.md"
+  - path: ".ai/subprojects/ork_planner/reviews/V3-ork_planner_plan_active_1.md"
+    action: "create"
+    sha256_match: true
+    notes: "Critique of ork_planner_plan_active_1.md"
+  - path: ".ai/subprojects/ork_planner/reviews/V3-ork_planner_journal.md"
+    action: "create"
+    sha256_match: true
+    notes: "Critique of ork_planner_journal.md"
+  - path: ".ai/subprojects/ork_planner/reviews/V3-ork_planner_status.md"
+    action: "create"
+    sha256_match: true
+    notes: "Critique of ork_planner_status.md"
+  - path: ".ai/subprojects/ork_planner/reviews/V3-ork_planner_decisions.md"
+    action: "create"
+    sha256_match: true
+    notes: "Critique of ork_planner_decisions.md"
+
+# === Пропущенные файлы ===
+
+skipped_files: []
+# Все 8 файлов пакета успешно обработаны. Пропусков нет.
+# README_FOR_CODEX.md, README_FOR_KILO.md, manifest.yaml, checksums.sha256 — control files, не записываются в repo.
+
+# === Заблокированные файлы ===
+
+blocked_files: []
+# Все файлы прошли проверку allowed/forbidden paths. Блокировок нет.
+
+# === Заметки о верификации ===
+
+verification_notes:
+  manifest_valid: true
+  all_files_in_manifest: true
+  no_extra_files: true
+  checksums_all_match: true
+  allowed_paths_valid: true
+  forbidden_paths_respected: true
+  package_type: "critique_package"
+  scope: "workflow_docs"
+  post_import_testing: "waived"
+
+# === Статус ручной проверки ===
+
+human_review_status: "pending"
+# Начальное значение. После Codex review и human verdict будет обновлён.
+
+# === Codex review (будет добавлен позже) ===
+
+# codex_review:
+#   reviewer: "codex"
+#   verdict: "<accept | accept_with_notes | revision_needed | reject>"
+#   timestamp: "<ISO 8601 UTC>"
+#   summary: "<краткое резюме>"
+#   checks:
+#     journal_valid: true
+#     files_exist: true
+#     files_match_request: true
+#     scope_respected: true
+#     allowed_paths_respected: true
+#     forbidden_paths_respected: true
+#     acceptance_criteria_met: true
+#   notes: "<подробные заметки>"
+#   human_review_required: true
+#   human_review_items:
+#     - "<что проверить человеку>"
+
+# === Human review (будет добавлен позже) ===
+
+# human_review:
+#   reviewer: "human"
+#   verdict: "<accept | revision | reject>"
+#   timestamp: "<ISO 8601 UTC>"
+#   notes: "<комментарий человека>"
+#   codex_recommendation: "<accept | revision_needed | reject>"
