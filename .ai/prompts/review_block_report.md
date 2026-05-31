@@ -1,6 +1,8 @@
-# Промпт для Lead/Strategist: проверка Block Report
+# Промпт для Lead/Strategist: проверка Block Report (legacy)
 
-Используй этот промпт, когда Block Orchestrator вернул Block Report.
+> **Legacy/history only.** Этот промпт относится к закрытой `B1/BOS/block-orchestration` системе (`SP-20260530-b1-boss-rollout`). Не используется как активный промпт. Активный маршрут: `Planner -> Orc documentation-driven subproject execution`.
+
+Ранее использовался, когда Block Orchestrator возвращал Block Report.
 
 ---
 

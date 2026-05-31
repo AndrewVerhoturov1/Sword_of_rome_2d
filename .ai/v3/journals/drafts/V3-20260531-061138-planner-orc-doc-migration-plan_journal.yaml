@@ -1,0 +1,82 @@
+# Journal Draft — V3-20260531-061138-planner-orc-doc-migration-plan
+# Создан: Kilo Notebook V3 import-run
+# Версия journal: 0.1 (Phase 3 template)
+
+# === Идентификация ===
+
+v3_id: "V3-20260531-061138-planner-orc-doc-migration-plan"
+
+timestamp: "2026-05-31T06:22:00Z"
+
+# === Статус импорта ===
+
+import_status: "imported"
+# Все файлы успешно импортированы.
+
+# === Исходный пакет ===
+
+source_package:
+  package_id: "V3-20260531-061138-planner-orc-doc-migration-plan"
+  source_type: "local_archive_path"
+  source_value: "C:/Users/andre/Downloads/V3-20260531-061138-planner-orc-doc-migration-plan.zip"
+  manifest_path: "_v3_temp_import/V3-20260531-061138-planner-orc-doc-migration-plan/manifest.yaml"
+  zip_archive: "C:/Users/andre/Downloads/V3-20260531-061138-planner-orc-doc-migration-plan.zip"
+  checksums_verified: true
+  # Все 4 SHA256 хэша совпали.
+
+# === Импортированные файлы ===
+
+imported_files:
+  - path: ".ai/plans/implementation/planner_orc_documentation_migration_plan.md"
+    action: "create"
+    sha256_match: true
+    notes: "Импортирован через binary-safe copy. Post-write SHA256 подтверждён."
+
+# === Пропущенные файлы ===
+
+skipped_files: []
+# Все файлы пакета успешно обработаны. Пропусков нет.
+
+# === Заметки о верификации ===
+
+verification_notes:
+  manifest_valid: true
+  all_files_in_manifest: true
+  no_extra_files: true
+  checksums_all_match: true
+  allowed_paths_valid: true
+  forbidden_paths_respected: true
+
+# === Статус ручной проверки ===
+
+human_review_status: "pending"
+# Начальное значение. После Codex review и human verdict будет обновлён.
+
+# === Codex review (будет добавлен позже) ===
+
+# codex_review:
+#   reviewer: "codex"
+#   verdict: "<accept | accept_with_notes | revision_needed | reject>"
+#   timestamp: "<ISO 8601 UTC>"
+#   summary: "<краткое резюме>"
+#   checks:
+#     journal_valid: true
+#     files_exist: true
+#     files_match_request: true
+#     scope_respected: true
+#     allowed_paths_respected: true
+#     forbidden_paths_respected: true
+#     acceptance_criteria_met: true
+#   notes: "<подробные заметки>"
+#   human_review_required: true
+#   human_review_items:
+#     - "<что проверить человеку>"
+
+# === Human review (будет добавлен позже) ===
+
+# human_review:
+#   reviewer: "human"
+#   verdict: "<accept | revision | reject>"
+#   timestamp: "<ISO 8601 UTC>"
+#   notes: "<комментарий человека>"
+#   codex_recommendation: "<accept | revision_needed | reject>"

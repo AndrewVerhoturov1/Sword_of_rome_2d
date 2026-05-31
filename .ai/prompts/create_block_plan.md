@@ -1,11 +1,8 @@
-# Промпт для Lead/Planning Chat: создание Block Plan и Context Pack
+# Промпт для Lead/Planning Chat: создание Block Plan и Context Pack (legacy)
 
-Используй этот промпт, когда нужно подготовить Block Plan и Context Pack для одного блока в рамках chunk.
+> **Legacy/history only.** Этот промпт относится к закрытой `B1/BOS/block-orchestration` системе (`SP-20260530-b1-boss-rollout`). Не используется как активный промпт. Активный маршрут: `Planner -> Orc documentation-driven subproject execution`.
 
-Этот промпт используется в двух режимах:
-
-- **Обычный режим** — Codex самостоятельно инициирует block planning в рамках ordinary workflow path.
-- **Режим `/b1` (или `/б1`)** — explicit planning-only mode, включаемый только по явному shortcut-вызову пользователя. В этом режиме Codex обязан: спроектировать младшего оркестратора (`Block Orchestrator Chat`); спроектировать `2-4` заранее задуманных clean agent calls (`Planned Agent Sequence`); отделить planned calls от contingency / repair runs. Режим не выполняет block work, не запускает executor-ы и не готовит executor packages до human approval design. Уточняющие вопросы и approval происходят внутри `/b1` до передачи управления в execution layer.
+Ранее использовался для подготовки Block Plan и Context Pack для одного блока.
 
 ---
 

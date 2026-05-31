@@ -5,6 +5,8 @@ Task Control Pack ID: `TCP-SP-20260530-b1-boss-rollout-v1`
 Status: `closed_by_user`
 Owner layer: `none`
 
+> **Legacy/history only.** Эта папка — архив закрытой `B1/BOS/block-orchestration` системы. Не использовать как активный шаблон для новых подпроектов. Активный маршрут: `Planner -> Orc documentation-driven subproject execution`. Хранить для истории и аудита.
+
 Closure mode:
 Old `B1/BOS` rollout system is closed. Do not continue blocks, do not create new `B1` tasks, do not restart old hierarchy without new direct user instruction.
 

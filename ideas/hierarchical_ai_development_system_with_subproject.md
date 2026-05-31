@@ -1,5 +1,11 @@
 # Иерархическая система AI-разработки через планирование, Boss Orchestrator и B1-блоки
 
+> **Legacy note:**
+> Этот документ описывает старую `B1/BOS/block-orchestration` иерархическую систему.
+> Она заменена как активный маршрут на `Planner -> Orc documentation-driven subproject execution`.
+> Активный design source: [`ideas/subproject_single_execution_chat_documentation_system_v2.md`](subproject_single_execution_chat_documentation_system_v2.md).
+> Хранить только для истории.
+
 ---
 
 # Верхний слой системы: «подпроект»

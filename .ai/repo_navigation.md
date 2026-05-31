@@ -104,8 +104,8 @@
 - [`rules/kilo_debugger.md`](rules/kilo_debugger.md) — правила Kilo Debugger.
 - [`rules/kilo_tester.md`](rules/kilo_tester.md) — правила Kilo Tester.
 - [`rules/kilo_refactor.md`](rules/kilo_refactor.md) — правила Kilo Refactor.
-- [`prompts/`](prompts/) — промпты для создания handoff, external request, block orchestration.
-- [`templates/`](templates/) — шаблоны для block plan, report, orchestration package.
+- [`prompts/`](prompts/) — промпты для создания handoff и external request.
+- [`templates/`](templates/) — шаблоны (legacy block templates).
 - [`validators/`](validators/) — валидаторы workflow-артефактов.
 - [`external_chats/external_chat_rules.md`](external_chats/external_chat_rules.md) — правила для External Web Chat.
 - [`external_chats/external_agent_static_manual.md`](external_chats/external_agent_static_manual.md) — статический мануал для внешних агентов.
@@ -171,13 +171,20 @@
 
 ## Public vs Local-only
 
-## Subproject Rollout Slice
+## Planner -> Orc Active Workflow
 
-- [`subprojects/SP-20260530-b1-boss-rollout/`](subprojects/SP-20260530-b1-boss-rollout/) — первый subproject-container для rollout маршрута `Subproject -> Boss -> B1`.
-- [`subprojects/SP-20260530-b1-boss-rollout/blocks/BLOCK-001-task-control-pack-smoke/BLOCK_PLAN.md`](subprojects/SP-20260530-b1-boss-rollout/blocks/BLOCK-001-task-control-pack-smoke/BLOCK_PLAN.md) — план первого docs-only smoke-блока.
-- [`subprojects/SP-20260530-b1-boss-rollout/blocks/BLOCK-001-task-control-pack-smoke/CONTEXT_PACK.md`](subprojects/SP-20260530-b1-boss-rollout/blocks/BLOCK-001-task-control-pack-smoke/CONTEXT_PACK.md) — context pack для `BLOCK-001`.
-- [`subprojects/SP-20260530-b1-boss-rollout/blocks/BLOCK-001-task-control-pack-smoke/ORCHESTRATOR_PACKAGE.md`](subprojects/SP-20260530-b1-boss-rollout/blocks/BLOCK-001-task-control-pack-smoke/ORCHESTRATOR_PACKAGE.md) — package artifact для найма Block Orchestrator Chat на первый smoke-блок.
-- [`subprojects/SP-20260530-b1-boss-rollout/blocks/BLOCK-001-task-control-pack-smoke/BLOCK_ORCHESTRATOR_PROMPT.md`](subprojects/SP-20260530-b1-boss-rollout/blocks/BLOCK-001-task-control-pack-smoke/BLOCK_ORCHESTRATOR_PROMPT.md) — готовый prompt для запуска Block Orchestrator Chat по `BLOCK-001`.
+Активная модель выполнения подпроектов: `Planner -> Orc documentation-driven subproject execution`. См. [`AGENTS.md`](../AGENTS.md), секция `Planner -> Orc documentation-driven subproject execution`.
+
+- [`ideas/subproject_single_execution_chat_documentation_system_v2.md`](../ideas/subproject_single_execution_chat_documentation_system_v2.md) — accepted replacement design source.
+- [`.ai/plans/implementation/planner_orc_documentation_migration_plan.md`](plans/implementation/planner_orc_documentation_migration_plan.md) — migration plan (draft_for_import).
+
+## Legacy / Historical Workflow Experiments
+
+> **Legacy/history only.** Следующие артефакты относятся к закрытой `B1/BOS/block-orchestration` системе. Не использовать как активный маршрут или шаблон.
+
+- [`subprojects/SP-20260530-b1-boss-rollout/`](subprojects/SP-20260530-b1-boss-rollout/) — закрытый subproject-container старого rollout маршрута `Subproject -> Boss -> B1`. Статус: `closed_by_user`. Не активный шаблон.
+- [`subprojects/SP-20260530-b1-boss-rollout/SYSTEM_CLOSURE.md`](subprojects/SP-20260530-b1-boss-rollout/SYSTEM_CLOSURE.md) — closure-документ закрытой системы.
+- [`subprojects/SP-20260530-b1-boss-rollout/SUBPROJECT_STATE.md`](subprojects/SP-20260530-b1-boss-rollout/SUBPROJECT_STATE.md) — состояние закрытого подпроекта.
 
 ### Public (canon, references, docs, scripts, ideas, .ai core)
 
@@ -194,11 +201,9 @@
 Эти пути не надо считать публичным каноном проекта, пока человек отдельно не скажет обратное.
 ## Recent Additions
 
-- [`rules/subagent_tools.md`](rules/subagent_tools.md) — canonical per-task tool set for block workflow: `V1-Синтез`, `V3-Ревью`, `Kilo`, `Субагент-микро`, plus selection boundaries and `V3-Ревью` vs `/v3 import-entry route`.
+- [`rules/model_roster.md`](rules/model_roster.md) — политика выбора моделей.
 
-- [`plans/implementation/boss_orchestrator_bootstrap.md`](plans/implementation/boss_orchestrator_bootstrap.md) — bootstrap-ориентир для следующего Boss Orchestrator chat: роль, границы, default inputs, first practical mission.
-
-- [`plans/implementation/hierarchical_subproject_workflow_work_plan.md`](plans/implementation/hierarchical_subproject_workflow_work_plan.md) — короткий operational work plan по запуску subproject/Boss/B1 rollout без полной повторной декомпозиции master plan.
+- [`rules/kilo_mode_contract.md`](rules/kilo_mode_contract.md) — контракты Kilo mode-ов.
 
 - [`plans/implementation/first_product_code_block.md`](plans/implementation/first_product_code_block.md) — the concrete implementation brief that freezes the first coding block before technical bootstrap begins.
 

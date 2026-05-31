@@ -1,4 +1,6 @@
-# Block Plan Template
+# Block Plan Template (legacy)
+
+> **Legacy/history only.** Этот шаблон относится к закрытой `B1/BOS/block-orchestration` системе (`SP-20260530-b1-boss-rollout`). Не используется как активный шаблон. Активный маршрут: `Planner -> Orc documentation-driven subproject execution`.
 
 ## Block ID
 

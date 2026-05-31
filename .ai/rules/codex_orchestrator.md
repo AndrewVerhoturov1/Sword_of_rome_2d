@@ -339,16 +339,9 @@ Codex поддерживает пять коротких repo-level entry-ком
 - только если ID не найден в индексе и нет соответствующего notebook entry, разрешено говорить, что `/v1`-ответ не найден;
 - отсутствие raw external response в текущем чате не является достаточным основанием для вывода `нечего проверять`.
 
-### `/b1` и `/б1` — планирование блока с младшим оркестратором
+### `/b1` и `/б1` — планирование блока с младшим оркестратором (legacy)
 
-- `/b1` и `/б1` включаются только по явному shortcut-вызову пользователя.
-- Это planning-only mode для одного большого блока.
-- Режим обязан:
-  - спроектировать младшего оркестратора (`Block Orchestrator Chat`);
-  - спроектировать `2-4` заранее задуманных clean agent calls (`Planned Agent Sequence`);
-  - отделить planned calls от contingency / repair runs — contingency runs не маскируются под заранее задуманные planned calls.
-- Режим не выполняет block work, не запускает executor-ы и не готовит executor packages до human approval design.
-- Уточняющие вопросы и approval происходят внутри `/b1` до передачи управления в execution layer.
+> **Legacy/history only.** `/b1` — это shortcut из закрытой `B1/BOS/block-orchestration` системы (`SP-20260530-b1-boss-rollout`). Не используется как активный shortcut. Активный маршрут: `Planner -> Orc documentation-driven subproject execution`. Сохранён только для истории.
 
 ### `/v3` и `/V3` (`/в3` и `/В3`) — V3 import-entry route
 
@@ -369,88 +362,42 @@ Codex поддерживает пять коротких repo-level entry-ком
 
 При явном shortcut `/v3` Codex **обязан** использовать шаблон [`.ai/prompts/create_v3_shortcut_prompt.md`](../prompts/create_v3_shortcut_prompt.md). Launch package, написанный вручную без шаблона, не считается готовым `/v3` launch package и не должен выдаваться пользователю.
 
-## Role separation for block orchestration
+## Planner -> Orc documentation-driven subproject execution
 
-В рамках split-схемы `PILOT-005 planning / PILOT-006 execution` четыре сущности разведены как разные роли и не должны смешиваться:
+> **Legacy note:** Старая `B1/BOS/block-orchestration` система (Boss Orchestrator, Block Orchestrator Chat, Block Orchestrator Package, Task Control Pack, Junior Orchestrator) закрыта. Артефакты — в `.ai/subprojects/SP-20260530-b1-boss-rollout/`. Активный маршрут: `Planner -> Orc`.
 
-1. **`Strategist PILOT-005 planning layer`** — создаёт planning document и block artifacts. Эти артефакты являются source of truth для execution layer и не переизобретаются заново.
-2. **`Main Execution Orchestrator Chat`** — не выполняет block work сам и не готовит executor handoff или external package для block execution напрямую. Он открывает block-level orchestration и обязан сначала создать `Block Orchestrator Package`, а затем нанять младшего оркестратора как внутреннего subagent.
-3. **`Block Orchestrator Chat`** — остаётся orchestrator-only. Он читает approved planning artifacts и workflow canon, выбирает следующий agent path, но не делает substantive repo work сам. Только `Block Orchestrator Chat` внутри своего контекста создаёт следующий `Executor Run`.
-4. **`Executor Run`** — это только `Kilo Code` или `External Web Chat`. Любой `repo reconnaissance`, `repo lookup`, `target discovery`, `command discovery`, `test discovery` внутри блока считается substantive block work и должен идти через `Kilo Code`.
+Активная модель:
 
-### Fail-fast preflight-check для execution layer
+```text
+Planner
+  готовит документацию подпроекта
+  определяет scope, план, контекст, checkpoints и следующий шаг выполнения
+  не создаёт папки B1-блоков
 
-Перед началом работы `PILOT-006` и каждый `Block Orchestrator Chat` обязан ответить на три вопроса:
+Orc
+  один главный исполнительный чат для подпроекта
+  читает документацию, выполняет slice, обновляет прогресс
+  вызывает Kilo, V1, V2, V3 или external review только как инструменты
+```
 
-- `Этот чат orchestrator или executor?` — ответ должен быть `orchestrator`.
-- `Какой первый agent path он обязан вызвать?` — должен быть явно указан `Kilo Code` или `External Web Chat`.
-- `Есть ли у него право самому читать repo ради block work?` — ответ должен быть `нет`.
+### Роли
 
-Если ответ на третий вопрос не `нет`, запуск считается `blocked`.
-
-### Block Orchestrator Package
-
-`Block Orchestrator Package` — это обязательный artifact для найма младшего оркестратора как внутреннего subagent. `Main Execution Orchestrator Chat` создаёт этот package и использует его для запуска `Block Orchestrator Chat` внутри своего контекста. Этот package содержит:
-
-- ссылку на approved planning document и block artifacts;
-- scope и boundary текущего блока;
-- recommended agent path (`Kilo Code` или `External Web Chat`);
-- explicit stop conditions;
-- ссылку на актуальный workflow canon.
-
-`Main Execution Orchestrator Chat` не имеет права пропустить этот шаг и сразу создать `Kilo handoff` или `external launch package` для executor. Если старший оркестратор начинает готовить executor handoff напрямую, запуск считается `blocked`.
-
-Если внутренний subagent path недоступен или явно запрещён человеком, допустим fallback: ручное открытие отдельного чата младшего оркестратора с передачей ему `Block Orchestrator Package`. Fallback не является основным механизмом.
-
-Если `Block Orchestrator Chat` начинает делать substantive repo work сам вместо подготовки `Executor Run`, запуск считается `blocked`.
+1. **Planner** — готовит и поддерживает planning/documentation. Не выполняет substantive repo work.
+2. **Orc** — главный исполнительный чат. Читает документацию подпроекта, выполняет slice, обновляет документацию.
+3. **V1 / V2 / V3 / Kilo** — инструменты. Вызываются Orc по необходимости.
+4. **Human** — финальный владелец процесса.
 
 ### Kilo handoff
 
-`Kilo handoff` создаётся только для `Executor Run`, а не для `Block Orchestrator Chat`.
+`Kilo handoff` создаётся для `Executor Run` (Kilo Code), а не для оркестрационного слоя.
 
-### Runtime block orchestration operating contract
+### Planned Human Checkpoints
 
-Поверх role-gates (`CHUNK-013`) и hiring-contract (`CHUNK-014`) закреплены operating-правила на основе evidence из `PILOT-006`:
+Каждый execution slice обязан содержать `Planned Human Checkpoints` — либо перечислены, либо `none` с обоснованием.
 
-#### Junior Block Orchestrator execution boundary
+### Default escalation path
 
-`Block Orchestrator Chat` (младший оркестратор):
-- выбирает следующий agent path (`Kilo Code` или `External Web Chat`);
-- готовит `Kilo handoff` / `External Web Chat` package;
-- **не запускает `Kilo Code` сам**;
-- ручной запуск executor остаётся обязанностью человека.
-
-#### Planned Agent Sequence
-
-Каждый `Block Plan` обязан содержать `Planned Agent Sequence` — заранее спроектированную последовательность substantive agent tasks (обычно 2-4 задачи на блок). Planned tasks должны быть явно отделены от contingency / repair runs.
-
-#### Planned Human Checkpoints
-
-`Block Plan` и `Block Orchestrator Package` обязаны содержать `Planned Human Checkpoints`.
-Это обязательное явное поле:
-- либо перечислены checkpoints;
-- либо указано `none` с коротким обоснованием.
-
-Для UI/runtime blocks отсутствие checkpoint должно быть осознанным исключением, а не молчаливым пропуском.
-
-#### Internal-subagent resource policy
-
-Default для `Block Orchestrator Chat` — bounded internal subagent profile на `gpt-5.4` с `low` reasoning. Повышение — только по явной escalation-причине.
-
-#### Senior orchestrator non-interference
-
-`Main Execution Orchestrator Chat` (старший оркестратор):
-- не дублирует внутренний ход младшего в основном чате;
-- не вмешивается до `Clarification Request`, user request или review-point;
-- после завершения шага делает review/acceptance.
-
-#### Direct canonical dependencies
-
-Младший оркестратор может открывать прямые workflow/canon dependencies, на которые явно ссылаются уже переданные ему approved artifacts. Каждое расширение фиксируется. Вне этого правила — `Blocked / Clarification Request`.
-
-#### Default escalation path
-
-При scope ambiguity, missing dependency, невозможности выбрать agent path или конфликте инструкций младший оркестратор сразу возвращает короткий `Blocked / Clarification Request`. Ранняя эскалация — default behavior.
+При ambiguity, missing dependency или конфликте инструкций Orc сразу возвращает `Blocked / Clarification Request`. Ранняя эскалация — default behavior.
 
 ## Navigation boundaries
 

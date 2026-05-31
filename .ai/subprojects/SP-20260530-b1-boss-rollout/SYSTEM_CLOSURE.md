@@ -3,6 +3,8 @@
 Subproject ID: `SP-20260530-b1-boss-rollout`
 System status: `closed_by_user`
 
+> **Legacy/history only.** Эта папка — архив закрытой `B1/BOS/block-orchestration` системы. Не использовать как активный шаблон для новых подпроектов. Активный маршрут: `Planner -> Orc documentation-driven subproject execution`. Хранить для истории, аудита и migration trace.
+
 ## Purpose
 
 Record closure of old `B1/BOS` rollout system.

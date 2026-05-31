@@ -1,8 +1,10 @@
-# Рабочий план: запуск подпроекта для hierarchical Subproject / Boss / B1 rollout
+# Рабочий план: запуск подпроекта для hierarchical Subproject / Boss / B1 rollout (legacy)
+
+> **Legacy/history only.** Этот документ — старый рабочий план для закрытой `B1/BOS/block-orchestration` системы (`SP-20260530-b1-boss-rollout`). Статус: `legacy`. Superseded by: `Planner -> Orc documentation-driven subproject execution`. Не использовать как активный implementation plan. Хранить только как историческую запись.
 
 ## Status
 
-Это короткий рабочий план для начала внедрения маршрута `Subproject -> Boss -> B1` в репозитории.
+Это короткий рабочий план для начала внедрения маршрута `Subproject -> Boss -> B1` в репозитории (legacy).
 
 Документ **не заменяет** большой master rollout plan и **не утверждает**, что весь маршрут уже проверен на практике. Сейчас полезнее не расширять стратегию, а создать управляемую стартовую точку, от которой можно безопасно перейти к минимальному исполнимому процессу.
 

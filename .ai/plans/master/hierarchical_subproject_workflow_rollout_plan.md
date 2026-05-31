@@ -1,4 +1,6 @@
-# Master rollout plan: hierarchical subproject / Boss / B1 workflow system
+# Master rollout plan: hierarchical subproject / Boss / B1 workflow system (legacy)
+
+> **Legacy/history only.** Этот документ — старый master rollout plan для закрытой `B1/BOS/block-orchestration` системы (`SP-20260530-b1-boss-rollout`). Статус: `legacy / superseded as active workflow route`. Superseded by: `Planner -> Orc documentation-driven subproject execution`. Не продолжать его фазы как активный маршрут. Хранить только для истории.
 
 > **Содержание (TOC) — для быстрой навигации агентов. Читай только нужные главы, не весь документ.**
 

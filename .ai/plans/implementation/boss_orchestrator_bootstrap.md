@@ -1,8 +1,10 @@
-# Boss Orchestrator Bootstrap
+# Boss Orchestrator Bootstrap (legacy)
+
+> **Legacy/history only.** Этот документ — старый bootstrap для Boss Orchestrator из закрытой `B1/BOS/block-orchestration` системы (`SP-20260530-b1-boss-rollout`). Статус: `legacy`. Не использовать для запуска новых Boss-сессий. Активный маршрут: `Planner -> Orc documentation-driven subproject execution`.
 
 ## Status
 
-Рабочий bootstrap-документ для следующего Boss Orchestrator chat.
+Рабочий bootstrap-документ для следующего Boss Orchestrator chat (legacy).
 
 Это pre-subproject bootstrap: он нужен до того, как в repo появится первая каноническая сущность подпроекта и её собственный `BOSS_BOOTSTRAP.md`.
 

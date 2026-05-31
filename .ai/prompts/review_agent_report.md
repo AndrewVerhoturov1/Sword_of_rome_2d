@@ -27,8 +27,7 @@
 - не является ли агентный run декоративным/tiny без material progress;
 - нет ли self-justified exception post factum (exception должен быть pre-approved);
 - соблюдена ли sequential agent policy (если было несколько agent steps);
-- если handoff требует agent-first execution, а report не содержит Agent Execution Evidence — это blocking;
-- если handoff требует `Block Orchestrator Package`, а report не показывает его использование — это blocking.
+- если handoff требует agent-first execution, а report не содержит Agent Execution Evidence — это blocking.
 - есть ли в report обязательные policy sections: `Баги и сложности`, `Human Check`, `Runtime metadata`;
 - соответствует ли `Human Check` реальному типу задачи;
 - если задача про bug/debug/repeated issue, был ли bug journal lookup;

@@ -1,34 +1,23 @@
 # Subagent Tools
 
+> **Legacy note:** Originally created for the closed `B1/BOS/block-orchestration` system (`Subproject -> Boss -> Block Orchestrator -> task planning`). The tool names themselves (`V1-Синтез`, `V3-Ревью`, `Kilo`, `Субагент-микро`) remain usable as optional tools for Planner or Orc, but the old block-orchestration framing is legacy/history only. Active route: `Planner -> Orc documentation-driven subproject execution`.
+
 ## Status
 
-Canonical rule for tool selection inside subagent task planning for block workflow.
-
-This document defines a small named set of tools that a Block Orchestrator can assign per task inside a block. It is not a global routing document for the whole repo.
+Optional tool reference for Planner/Orc subproject execution. Not a global routing document for the whole repo.
 
 ## Purpose
 
-This file exists to make block/task planning readable.
-
-Instead of vague wording like:
-
-- `V1 + something`
-- `V3 + something`
-- `maybe Kilo`
-
-use one explicit `Subagent Tool:` value per task.
+Defines a small named set of external tools that Planner or Orc can use when planning or executing subproject tasks. Use one explicit tool name per task instead of vague combinations.
 
 ## Scope
 
-This rule applies only to:
+This rule applies to:
 
-- `Subproject -> Boss -> Block Orchestrator -> task planning`
-- block plans
-- block orchestration packages
-- block prompts
+- Planner/Orc subproject task planning
 - similar workflow docs where one concrete task needs one primary execution tool
 
-This rule does not define the whole repo routing model.
+This rule does not define the whole repo routing model. It is not tied to the old Boss/B1 hierarchy.
 
 ## Canonical Tool Set
 
@@ -43,12 +32,11 @@ Do not add `V2` here yet.
 
 ## Classification
 
-These are subagent tools.
+These are external tools usable by Planner or Orc.
 
 Meaning:
 
-- subagent uses tool;
-- Block Orchestrator chooses tool per task;
+- Planner or Orc selects tool per task;
 - each task should have one primary tool;
 - if no tool fits honestly, return `Blocked / Clarification Request`.
 
@@ -203,7 +191,7 @@ Limits:
 
 ## Required Task Field
 
-Block/task docs should use this field:
+Planner/Orc task docs should use this field:
 
 ```md
 Subagent Tool: `V3-Ревью`
