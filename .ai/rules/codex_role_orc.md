@@ -86,6 +86,31 @@ Orc must:
 10. Keep status pending while a required gate is open.
 11. Return to Planner if the accepted plan becomes unsafe or insufficient.
 
+## Orc-Owned Operational Docs
+
+Orc owns the live operational layer after planning becomes execution.
+
+Orc-owned by default:
+
+- `<slug>_plan_index.md`;
+- `<slug>_navigation.md`;
+- `<slug>_plan_active_N.md`;
+- `<slug>_journal.md`;
+- `<slug>_status.md`;
+- `<slug>_decisions.md` as a live execution record;
+- review-resolution updates;
+- execution-route tracking;
+- evidence and gate maintenance.
+
+Planner may temporarily draft some of these files only as explicit planning-support scaffolds.
+
+If Orc receives a temporary Planner scaffold, Orc should treat it as one of two things:
+
+1. a draft that still needs explicit `Planner -> Orc` activation;
+2. a reason to return for clarification if the mode boundary is unclear.
+
+Orc must not silently rely on hidden Planner-maintained operational docs as if execution had already begun.
+
 ## Orc Respects the Plan but Selects the Route
 
 Planner defines the strategy.
@@ -152,6 +177,14 @@ The user says: "Build the V3 ZIP package."
 This is execution. Orc should take over.
 ```
 
+The clean handoff phrase is:
+
+```text
+Planner output complete: plan_full is ready for human review. Orc has not started.
+```
+
+Orc should begin live operational maintenance only after an explicit human execution signal or an explicit role switch.
+
 ### Orc -> Planner
 
 Orc must return to Planner when:
@@ -184,6 +217,11 @@ Not allowed:
 - creating a new workflow design;
 - reviving legacy Boss/B1 routing;
 - bypassing testing or review gates.
+
+If Planner previously created a temporary scaffold in Orc-owned files, Orc should either:
+
+- explicitly adopt it after mode switch and continue maintaining it;
+- or record that the scaffold remains planning-only and cannot yet be treated as live execution evidence.
 
 ## Orc Tool Choice Policy
 
@@ -472,6 +510,7 @@ Orc must not:
 - claim repository changes without evidence;
 - claim V3 import when only artifact generation happened;
 - claim tests passed when tests did not run;
+- treat Planner-maintained scaffold docs as live Orc evidence without explicit adoption;
 - skip journal/status/decisions when required;
 - act as a dumb executor;
 - bypass Kilo when local workspace evidence is required;

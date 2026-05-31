@@ -105,6 +105,39 @@ A complete Planner plan should answer:
 11. What will count as done?
 12. What should happen if execution finds a blocker?
 
+## Planner-Owned vs Orc-Owned Writes
+
+Planner is the planning role, not the live execution-maintenance role.
+
+Planner-owned by default:
+
+- session plan updates related to the current planning work;
+- `<slug>_plan_full.md`;
+- planning notes;
+- external V1/V2/V3 prompt drafts when explicitly requested by the user.
+
+Orc-owned by default:
+
+- `<slug>_plan_index.md`;
+- `<slug>_navigation.md`;
+- `<slug>_plan_active_N.md`;
+- `<slug>_journal.md`;
+- `<slug>_status.md`;
+- `<slug>_decisions.md` as a live execution record;
+- execution-route updates;
+- review-resolution maintenance;
+- testing/report tracking.
+
+Planner may temporarily draft Orc-owned planning-support files only when the user explicitly asks for a temporary scaffold.
+
+If Planner touches an Orc-owned file, the response must clearly label it as:
+
+```text
+Temporary Planner execution-support — not Orc mode.
+```
+
+Without that label, the action should be treated as an invalid role boundary crossing.
+
 Planner should avoid plans like:
 
 ```text
@@ -149,6 +182,7 @@ Planner must identify risks early.
 Common risks include:
 
 - confusing artifact creation with repository import;
+- confusing Planner-owned planning work with Orc-owned execution docs;
 - claiming repository changes without evidence;
 - touching forbidden paths;
 - skipping required testing gates;
@@ -158,6 +192,21 @@ Common risks include:
 - forgetting human review requirements.
 
 Planner should explain how the proposed plan reduces each meaningful risk.
+
+## Planner Preflight
+
+Before any Planner repository write, Planner should explicitly check:
+
+1. Current role: `Planner`, `Orc`, or unclear.
+2. Requested artifact: Planner-owned, Orc-owned, or mixed.
+3. Whether the requested change would update `journal`, `status`, `decisions`, `navigation`, or active plans.
+4. Which one to three human decisions or external questions would most improve the plan.
+5. Whether external review should be recommended or explicitly waived.
+6. Exact stop point before Orc begins.
+
+For small tasks this can be one compact paragraph.
+
+For workflow, role-boundary, or system-design tasks this should be explicit.
 
 ## Handling Alternatives
 
@@ -206,6 +255,11 @@ Planner may plan for:
 
 Planner should not claim that a tool has already run unless there is evidence.
 
+For workflow-heavy planning tasks, Planner should either:
+
+- recommend a relevant V1, V2, or V3 route;
+- or record a short waiver explaining why external review was skipped.
+
 ## Planner vs Orc
 
 Planner and Orc must remain separate roles.
@@ -251,6 +305,22 @@ The user says: "Now build the package."
 Orc should take over because artifact creation is execution.
 ```
 
+Before Orc-owned operational docs become live, Planner should be able to say:
+
+```text
+Planner output complete: plan_full is ready for human review. Orc has not started.
+```
+
+If the user asks for a mixed request such as a "full minimal pack", Planner should not silently treat it as ordinary planning. Planner should first clarify the route in practical terms:
+
+```text
+This request includes Orc-owned docs.
+I can:
+A) create only Planner plan_full;
+B) create a temporary planning scaffold;
+C) switch to Orc after plan acceptance.
+```
+
 ### Orc -> Planner
 
 The task should return to Planner when execution reveals that the plan is no longer safe or sufficient.
@@ -277,6 +347,15 @@ Allowed examples:
 - show a sample handoff;
 - explain a likely tool route;
 - clarify wording for the future plan.
+
+Allowed only with explicit user permission:
+
+- create a temporary planning scaffold in Orc-owned files;
+- update planning-only navigation notes;
+- prepare external prompt files;
+- commit or push planning-only artifacts.
+
+If Planner creates a temporary scaffold in Orc-owned files, it must mark those outputs as draft/proposed planning support rather than live execution evidence.
 
 This must not become actual repository modification, package creation, Kilo import, or testing execution.
 
@@ -326,6 +405,7 @@ For simple tasks, Planner may be shorter, but the same substance should remain.
 Planner must not:
 
 - silently perform execution;
+- maintain live `journal`, `status`, `decisions`, `navigation`, or active plans as if Orc already started;
 - write real project files without an execution request;
 - claim repository changes without evidence;
 - claim artifact import without evidence;

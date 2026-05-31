@@ -2239,6 +2239,14 @@ Planner may temporarily perform execution-support actions only when the user exp
 
 Planner не превращается в Orc. Он просто помогает подготовить инфраструктуру планирования.
 
+Если Planner временно трогает Orc-owned документы, это должно быть явно помечено как temporary scaffold / planning support, а не как live execution maintenance.
+
+Правило:
+
+```text
+Temporary Planner execution-support — not Orc mode.
+```
+
 ---
 
 ### Planner и V1/V2/V3
@@ -2345,6 +2353,8 @@ Planner's main output is a high-quality full plan:
 
 Planner may also draft related planning docs, but the full plan is the primary result.
 
+Если Planner драфтит related planning docs, они по умолчанию считаются proposed scaffold, пока не произошёл явный `Planner -> Orc` switch.
+
 ## Behavior
 
 Planner should:
@@ -2369,6 +2379,8 @@ The user may temporarily ask Planner to:
 - collect context;
 - commit/push planning artifacts;
 - update navigation.
+
+Это не должно автоматически превращать Planner в владельца live `navigation`, `active plans`, `journal`, `status` или `decisions`.
 
 ## Boundaries
 
@@ -2480,6 +2492,8 @@ Orc отвечает не только за выполнение отдельн�
 6. Create/update `<slug>_status.md`.
 7. Ensure `<slug>_decisions.md` exists and contains key accepted decisions.
 ```
+
+Если какие-то из этих файлов были заранее созданы Planner как temporary scaffold, Orc должен либо явно принять их в live execution layer после `Planner -> Orc` switch, либо пересоздать/обновить их как собственные operational documents.
 
 Если полный план большой, Orc может создать:
 
@@ -2885,6 +2899,12 @@ Mode switch: Planner -> Orc
 Reason: full plan accepted, execution begins.
 ```
 
+Рекомендуемая явная формула перед стартом Orc:
+
+```text
+Planner output complete: plan_full is ready for human review. Orc has not started.
+```
+
 ### Orc -> Planner
 
 Происходит, когда:
@@ -2916,6 +2936,18 @@ Planner может временно выполнить действие подд
 ```
 
 Но это не означает полноценный переход в Orc.
+
+Если запрос смешанный, например "создай full minimal pack", Planner должен явно обозначить развилку:
+
+```text
+This request includes Orc-owned docs.
+I can:
+A) create only Planner plan_full;
+B) create a temporary planning scaffold;
+C) switch to Orc after plan acceptance.
+```
+
+Без такой явной развилки Planner слишком легко начинает незаметно вести Orc-layer.
 
 ---
 
@@ -3165,6 +3197,7 @@ Orc should convert the full plan into active execution, choose tools, execute, a
 
 - Planner owns `<slug>_plan_full.md`.
 - Orc owns `<slug>_plan_index.md`, `<slug>_navigation.md`, active plans, journal, status, and execution route.
+- Planner may temporarily draft some of these files only as proposed scaffold, not as live execution maintenance.
 - Mode switches should be explicit.
 ```
 
@@ -3208,6 +3241,7 @@ The full plan is strategic, but execution requires shorter practical plans.
 
 - `<slug>_plan_full.md` is the strategy document.
 - `<slug>_plan_active_N.md` files are operational documents.
+- `navigation`, `journal`, `status`, and live `decisions` are also operational documents owned by Orc after mode switch.
 - Orc may reorganize execution order inside active plans if it respects the accepted full plan or records deviations.
 ```
 
