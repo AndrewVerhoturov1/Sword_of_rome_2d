@@ -1,164 +1,197 @@
 # Ork Planner Full Plan
 
 Slug: `ork_planner`  
-Status: draft_v1  
+Status: draft  
 Last updated: 2026-05-31
 
 <a id="purpose"></a>
 
 ## 1. Purpose
 
-Создать новый подпроект `ork_planner` как planning-first documentation container в active системе `Planner -> Orc`.
+Создать новый подпроект `ork_planner` как documentation container в active системе `Planner -> Orc`.
 
-Этот первый план не запускает Orc-mode, не открывает execution slice и не создаёт legacy B1/BOS-структуру. Его задача — зафиксировать безопасную стартовую рамку подпроекта и подготовить следующие решения человека.
+Цель этого setup-шага: подготовить минимальный active documentation set для подпроекта и на этом остановиться, не переходя к execution work.
 
 <a id="current-execution-model"></a>
 
 ## 2. Current Execution Model
 
-- текущая роль: `Planner`;
-- active route проекта: `Planner -> Orc`;
-- этот шаг создаёт только planning artifact;
-- Orc пока не запускается;
-- `V1` может использоваться как внешний second opinion для усиления плана;
-- `V2`, `V3`, `Kilo` на этом шаге не обязательны.
+Принятая схема для этого подпроекта:
 
-<a id="scope"></a>
+- один Planning Chat;
+- один будущий Execution Chat;
+- context compaction;
+- документация как внешняя память;
+- V1/V2/V3/Kilo как внешние инструменты;
+- без постоянных субагентов;
+- без отдельных B1 block folders.
 
-## 3. Scope Of This First Version
+На текущем шаге Orc-mode не запускается.
 
-В scope первой версии:
+<a id="documentation-structure"></a>
 
-- создать папку подпроекта `ork_planner`;
-- записать первый полный planning-документ;
-- зафиксировать границы подпроекта;
-- предложить точечные `/v1` вопросы, которые могут улучшить дальнейший план.
+## 3. Documentation Structure
 
-Вне scope первой версии:
-
-- запуск Orc;
-- создание execution logs, reports или B1-like артефактов;
-- product-code work;
-- изменение global workflow docs;
-- утверждение окончательной структуры downstream execution-файлов без дополнительной проверки.
-
-<a id="subproject-boundary"></a>
-
-## 4. Subproject Boundary
-
-`ork_planner` трактуется как подпроект для planning/documentation работы вокруг роли Planner и её рабочего маршрута внутри active repo workflow.
-
-Подпроект пока не объявляется большим program-level migration stream. На этой стадии он остаётся узким контейнером для:
-
-- уточнения обязанностей Planner;
-- подготовки безопасного handoff в Orc только тогда, когда человек сочтёт это уместным;
-- накопления решений по planning-side workflow без возврата к legacy `Boss / B1 / Junior Orchestrator`.
-
-<a id="initial-structure"></a>
-
-## 5. Initial Structure
-
-Первая версия intentionally минимальна:
-
-```text
-.ai/subprojects/ork_planner/
-  ork_planner_plan_full.md
-```
-
-Следующие документы считаются вероятными кандидатами для следующего шага, но сейчас не создаются автоматически:
+Подпроект в первой версии должен содержать только следующие документы:
 
 - `ork_planner_readme.md`
 - `ork_planner_navigation.md`
+- `ork_planner_plan_full.md`
 - `ork_planner_plan_index.md`
 - `ork_planner_plan_active_1.md`
+- `ork_planner_journal.md`
 - `ork_planner_status.md`
 - `ork_planner_decisions.md`
+
+<a id="slug-naming-rule"></a>
+
+### 3.1. Slug Naming Rule
+
+Все документы подпроекта начинаются с `ork_planner_`.
+
+<a id="required-files"></a>
+
+### 3.2. Required Files
+
+- `ork_planner_readme.md`
+- `ork_planner_navigation.md`
+- `ork_planner_plan_full.md`
+- `ork_planner_plan_index.md`
+- `ork_planner_plan_active_1.md`
 - `ork_planner_journal.md`
+- `ork_planner_status.md`
+- `ork_planner_decisions.md`
 
-Причина: для роли `Planner` важнее сначала зафиксировать первый полный план и проверить его человеком, чем сразу раздувать execution-pack.
+<a id="optional-files"></a>
 
-<a id="role-rules"></a>
+### 3.3. Optional Files
 
-## 6. Planner Rules For This Subproject
+- `ork_planner_plan_active_2.md`
+- `ork_planner_plan_active_3.md`
+- `ork_planner_reports.md`
 
-- Planner не должен молча становиться Orc.
-- Planner обязан советоваться с человеком на важных развилках.
-- Planner должен предлагать внешний чат, когда нужен bounded second opinion по planning/design вопросам.
-- Planner не должен реанимировать legacy `Boss / B1 / Junior Orchestrator`.
-- Planner не должен создавать лишнюю иерархию до подтверждения, что она реально нужна.
+Эти файлы сейчас не создаются.
 
-<a id="suggested-v1-questions"></a>
+<a id="removed-files"></a>
 
-## 7. Suggested `/v1` Questions
+### 3.4. Files We Do Not Use By Default
 
-Ниже три точечных `/v1` вопроса, которые могут улучшить следующий шаг плана.
+- `blocks/`
+- `B1-*`
+- `BOSS_*`
+- `TASK_CONTROL_PACK*`
+- `SUBPROJECT_STATE.md`
+- `PLANNER_HANDOFF.md`
+- `ORC_EXECUTION_LOG.md`
+- `CHECKPOINTS.md`
+- `CONTEXT_INDEX.md`
 
-### V1-Question 1 — minimal subproject artifact set
+<a id="plan-index-rules"></a>
 
-Цель: проверить, какой минимальный набор документов действительно нужен именно для Planner-first старта подпроекта, не смешивая его с Orc bootstrap.
+## 4. Plan Index Rules
 
-Короткая формулировка вопроса:
+- использовать semantic anchors;
+- не использовать line ranges как основной механизм;
+- держать anchors стабильными и понятными;
+- обновлять index при существенных изменениях полного плана.
 
-```text
-Нужен grounded second opinion: для нового subproject `ork_planner` в active route `Planner -> Orc` какой минимальный стартовый documentation set логичнее создать сразу, если текущая роль = Planner, а Orc ещё не запускается? Сравни варианты: только `plan_full`, `plan_full + readme`, полный minimal pack. Дай recommendation с аргументами за минимальность, clarity и non-legacy safety.
-```
+<a id="active-plan-rules"></a>
 
-### V1-Question 2 — граница Planner vs Orc
+## 5. Active Plan Rules
 
-Цель: уточнить, какие planning artifacts должен подготовить Planner до handoff, а какие должны впервые появляться уже в первом Orc-шаге.
+`ork_planner_plan_active_1.md` описывает только setup-срез подпроекта:
 
-Короткая формулировка вопроса:
+- создать документационный каркас;
+- не переходить к product-work;
+- не запускать Orc;
+- остановиться после bootstrap.
 
-```text
-Нужен grounded second opinion: в active workflow `Planner -> Orc` где лучше провести границу между Planner artifacts и first Orc bootstrap? Какие документы Planner должен создавать сам, а какие лучше отложить до первого Orc step, чтобы не смешивать planning и execution?
-```
+<a id="journal-rules"></a>
 
-### V1-Question 3 — naming and file contract
+## 6. Journal Rules
 
-Цель: проверить, не конфликтует ли текущая идея `ork_planner_plan_full.md` с accepted design source и migration notes, и какой naming safest для active подпроекта.
+`ork_planner_journal.md` фиксирует только фактически выполненные действия.
 
-Короткая формулировка вопроса:
+Для первой версии достаточно одной стартовой записи:
 
-```text
-Нужен grounded second opinion: для нового active subproject `ork_planner` какой naming/file contract safest с учётом accepted design source про slug-prefixed files и migration notes про Planner -> Orc? Проверь, достаточно ли старта с `ork_planner_plan_full.md`, или safer добавить ещё один companion file сразу.
-```
+- подпроект создан;
+- набор файлов создан;
+- следующий шаг остаётся за человеком.
 
-<a id="human-checkpoints"></a>
+<a id="status-command"></a>
 
-## 8. Planned Human Checkpoints
+## 7. Status Command
 
-- Человек смотрит, согласен ли он с тем, что первая версия подпроекта пока состоит только из `plan_full`.
-- Человек выбирает, какой из трёх `/v1` вопросов запускать первым, если внешний second opinion нужен сейчас.
-- Только после этого решается, надо ли расширять подпроект до `readme/navigation/status/decisions` или передавать следующий шаг Orc.
+`ork_planner_status.md` хранит ближайшее состояние подпроекта.
+
+После этого setup-шагa статус должен показывать:
+
+- текущий active plan = `ork_planner_plan_active_1.md`;
+- текущий шаг = setup завершён;
+- следующий шаг = человек открывает active plan и решает, когда передавать работу Orc.
+
+<a id="decisions-policy"></a>
+
+## 8. Decisions Policy
+
+`ork_planner_decisions.md` фиксирует только важные решения.
+
+Для первой версии обязательно зафиксировать:
+
+- active route = `Planner -> Orc`;
+- legacy `B1/BOS` не используется;
+- текущий setup не запускает Orc-mode.
+
+<a id="context-compaction"></a>
+
+## 9. Context Compaction Workflow
+
+После сжатия контекста продолжение должно идти так:
+
+1. Прочитать `ork_planner_status.md`.
+2. Прочитать `ork_planner_plan_active_1.md`.
+3. При необходимости открыть `ork_planner_navigation.md`.
+4. Продолжить только с следующего human-approved шага.
+
+<a id="external-tool-usage"></a>
+
+## 10. V1 / V2 / V3 / Kilo Usage
+
+- `V1` допустим как внешний second opinion по planning-вопросам, когда человек считает это уместным.
+- `V2` сейчас не нужен.
+- `V3` сейчас не нужен.
+- `Kilo` сейчас не нужен.
+
+Этот план не встраивает конкретные `/v1` prompts внутрь repo-документации.
+
+<a id="reports-policy"></a>
+
+## 11. Reports Policy
+
+`ork_planner_reports.md` считается optional и в первой версии не создаётся.
 
 <a id="risks"></a>
 
-## 9. Risks
+## 12. Risks
 
-- Слишком раннее создание полного documentation-pack может незаметно включить Orc bootstrap раньше времени.
-- Слишком маленький старт может оказаться неудобным для resume/navigation.
-- Без внешнего second opinion можно слишком быстро принять локальное naming/structure решение, которое потом придётся корректировать.
-- Есть риск по инерции повторить legacy-паттерны из старых rollout-артефактов.
+- спутать planning setup с Orc bootstrap;
+- случайно восстановить legacy `Boss / B1 / Junior Orchestrator`;
+- раздуть подпроект лишними файлами;
+- начать product-work вместо ограниченного setup-шагa;
+- забыть, что global workflow docs в этой задаче менять нельзя.
 
 <a id="acceptance-criteria"></a>
 
-## 10. Acceptance Criteria
+## 13. Acceptance Criteria
 
-Первая версия плана считается созданной, если:
+Подпроект считается успешно настроенным, если:
 
-- существует папка `.ai/subprojects/ork_planner/`;
-- в ней есть `ork_planner_plan_full.md`;
-- план явно фиксирует active route `Planner -> Orc`;
-- план явно запрещает возврат к legacy `Boss / B1 / Junior Orchestrator`;
-- план содержит 3 точечных `/v1` вопроса для улучшения следующего шага;
-- план не запускает Orc и не создаёт legacy/execution дерево.
-
-<a id="next-step"></a>
-
-## 11. Next Step
-
-Ближайший следующий шаг после review человеком:
-
-1. Выбрать, нужен ли сейчас один из трёх `/v1` вопросов.
-2. Если нужен — подготовить конкретный `/v1` prompt по repo template.
-3. Если не нужен — решить, расширять ли подпроект до compact Planner pack (`readme/navigation/status/decisions`) или оставить только `plan_full` до первого Orc handoff.
+- создана папка `.ai/subprojects/ork_planner/`;
+- внутри ровно 8 стартовых файлов;
+- все имена имеют префикс `ork_planner_`;
+- `ork_planner_plan_full.md` содержит semantic anchors;
+- `ork_planner_plan_index.md` ссылается на anchors полного плана;
+- `ork_planner_status.md` указывает на `ork_planner_plan_active_1.md` как текущий active plan;
+- `ork_planner_reports.md` не создан;
+- legacy B1/BOS артефакты не созданы;
+- global workflow docs не менялись.
