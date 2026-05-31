@@ -45,7 +45,15 @@ Line ranges are not authoritative and should not be required.
 
 1. `ork_planner_status.md`
 2. `ork_planner_plan_active_1.md`
-3. `ork_planner_journal.md` latest entry if needed
+3. `ork_planner_decisions.md`
+4. `ork_planner_journal.md` latest entry if needed
+
+### After critique import
+
+1. `ork_planner_status.md`
+2. `ork_planner_decisions.md`
+3. `reviews/` imported critique files
+4. `ork_planner_plan_full.md` relevant anchors
 
 ### Deep understanding
 
@@ -59,4 +67,4 @@ Line ranges are not authoritative and should not be required.
 1. Update `ork_planner_journal.md`
 2. Update `ork_planner_status.md`
 3. Update `ork_planner_decisions.md` if decisions were made
-4. Update `ork_planner_navigation.md` if files/links changed
+4. Update `ork_planner_navigation.md` if files or links changed

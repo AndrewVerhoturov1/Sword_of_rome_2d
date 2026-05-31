@@ -1,4 +1,4 @@
-# Ork Planner Active Plan 1 — Setup Bootstrap
+# Ork Planner Active Plan 1 - Setup Bootstrap
 
 Slug: `ork_planner`  
 Status: done  
@@ -9,7 +9,7 @@ Related full plan anchors:
 
 ## Goal
 
-Создать минимальный documentation container подпроекта `ork_planner` и остановиться после setup.
+Создать минимальный documentation container по подпроекту `ork_planner` и остановиться после setup.
 
 ## Non-goals
 
@@ -21,7 +21,7 @@ Related full plan anchors:
 
 ## Steps
 
-### Step 001 — Create subproject folder
+### Step 001 - Create subproject folder
 
 Status: done
 
@@ -31,7 +31,7 @@ Action:
 Acceptance:
 Папка существует и используется только для документов подпроекта.
 
-### Step 002 — Create required documentation files
+### Step 002 - Create required documentation files
 
 Status: done
 
@@ -41,7 +41,7 @@ Action:
 Acceptance:
 Все обязательные файлы существуют. Optional и legacy файлы не созданы.
 
-### Step 003 — Stop after bootstrap
+### Step 003 - Stop after bootstrap
 
 Status: done
 
@@ -57,4 +57,5 @@ Acceptance:
 
 - документационный каркас создан;
 - status указывает на human-controlled next step;
+- decisions фиксируют active route и no-legacy policy;
 - setup не вышел за границы planning bootstrap.

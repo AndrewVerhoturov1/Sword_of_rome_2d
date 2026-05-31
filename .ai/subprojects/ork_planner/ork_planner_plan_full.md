@@ -1,7 +1,7 @@
 # Ork Planner Full Plan
 
 Slug: `ork_planner`  
-Status: draft  
+Status: active  
 Last updated: 2026-05-31
 
 <a id="purpose"></a>
@@ -112,10 +112,11 @@ Last updated: 2026-05-31
 
 `ork_planner_journal.md` фиксирует только фактически выполненные действия.
 
-Для первой версии достаточно одной стартовой записи:
+Для первой версии достаточно стартовой bootstrap-записи и отдельной review-follow-up записи:
 
 - подпроект создан;
 - набор файлов создан;
+- critique import при необходимости фиксируется отдельной записью;
 - следующий шаг остаётся за человеком.
 
 <a id="status-command"></a>
@@ -124,11 +125,12 @@ Last updated: 2026-05-31
 
 `ork_planner_status.md` хранит ближайшее состояние подпроекта.
 
-После этого setup-шагa статус должен показывать:
+После этого setup-шага статус должен показывать:
 
 - текущий active plan = `ork_planner_plan_active_1.md`;
-- текущий шаг = setup завершён;
-- следующий шаг = человек открывает active plan и решает, когда передавать работу Orc.
+- current state = bootstrap complete, paused before Orc;
+- current step = none, waiting for human decision;
+- следующий шаг = человек смотрит active plan, decisions и review layer, затем решает, когда передавать работу Orc.
 
 <a id="decisions-policy"></a>
 
@@ -140,6 +142,7 @@ Last updated: 2026-05-31
 
 - active route = `Planner -> Orc`;
 - legacy `B1/BOS` не используется;
+- critique files живут только в `reviews/` и не перезаписывают core docs;
 - текущий setup не запускает Orc-mode.
 
 <a id="context-compaction"></a>
@@ -150,8 +153,10 @@ Last updated: 2026-05-31
 
 1. Прочитать `ork_planner_status.md`.
 2. Прочитать `ork_planner_plan_active_1.md`.
-3. При необходимости открыть `ork_planner_navigation.md`.
-4. Продолжить только с следующего human-approved шага.
+3. Прочитать `ork_planner_decisions.md`.
+4. При необходимости открыть `ork_planner_navigation.md`.
+5. Если импортированы critique-материалы и они ещё не разрешены, прочитать `reviews/`.
+6. Продолжить только со следующего human-approved шага.
 
 <a id="external-tool-usage"></a>
 
@@ -159,7 +164,7 @@ Last updated: 2026-05-31
 
 - `V1` допустим как внешний second opinion по planning-вопросам, когда человек считает это уместным.
 - `V2` сейчас не нужен.
-- `V3` сейчас не нужен.
+- `V3` уже был использован для external critique package; его review files живут только в `reviews/`.
 - `Kilo` сейчас не нужен.
 
 Этот план не встраивает конкретные `/v1` prompts внутрь repo-документации.
@@ -177,7 +182,8 @@ Last updated: 2026-05-31
 - спутать planning setup с Orc bootstrap;
 - случайно восстановить legacy `Boss / B1 / Junior Orchestrator`;
 - раздуть подпроект лишними файлами;
-- начать product-work вместо ограниченного setup-шагa;
+- спутать critique files в `reviews/` с core source docs;
+- начать product-work вместо ограниченного setup-шага;
 - забыть, что global workflow docs в этой задаче менять нельзя.
 
 <a id="acceptance-criteria"></a>
@@ -192,6 +198,7 @@ Last updated: 2026-05-31
 - `ork_planner_plan_full.md` содержит semantic anchors;
 - `ork_planner_plan_index.md` ссылается на anchors полного плана;
 - `ork_planner_status.md` указывает на `ork_planner_plan_active_1.md` как текущий active plan;
+- `ork_planner_decisions.md` явно фиксирует active route, no-legacy policy и review isolation policy;
 - `ork_planner_reports.md` не создан;
 - legacy B1/BOS артефакты не созданы;
 - global workflow docs не менялись.

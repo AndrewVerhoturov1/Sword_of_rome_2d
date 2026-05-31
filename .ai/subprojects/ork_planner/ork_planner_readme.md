@@ -22,12 +22,13 @@ Owner model: `Planner -> Orc`
 
 ## Scope
 
-Что входит в подпроект сейчас:
+Что входит сейчас:
 
 - создать папку подпроекта;
 - создать 8 стартовых документов;
 - зафиксировать active route `Planner -> Orc`;
-- зафиксировать stop-point после bootstrap.
+- остановиться после bootstrap;
+- отделить source docs от critique artifacts.
 
 ## Out of Scope
 
@@ -40,13 +41,18 @@ Owner model: `Planner -> Orc`
 
 ## Main Documents
 
-- `ork_planner_navigation.md` — карта подпроекта.
-- `ork_planner_plan_full.md` — полный подробный план.
-- `ork_planner_plan_index.md` — оглавление полного плана.
-- `ork_planner_plan_active_1.md` — текущий setup-план.
-- `ork_planner_journal.md` — журнал выполнения.
-- `ork_planner_status.md` — ближайшее состояние.
-- `ork_planner_decisions.md` — принятые решения.
+- `ork_planner_readme.md` - короткий вход в подпроект.
+- `ork_planner_navigation.md` - карта подпроекта.
+- `ork_planner_plan_full.md` - полный подробный план.
+- `ork_planner_plan_index.md` - оглавление полного плана.
+- `ork_planner_plan_active_1.md` - текущий setup-план.
+- `ork_planner_journal.md` - журнал выполнения.
+- `ork_planner_status.md` - ближайшее состояние.
+- `ork_planner_decisions.md` - принятые решения.
+
+## Review Materials
+
+Если critique-пакеты уже импортированы, они живут только в `reviews/` и не заменяют core `ork_planner_*.md` файлы.
 
 ## Current Status
 
