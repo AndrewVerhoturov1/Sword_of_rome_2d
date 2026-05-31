@@ -58,6 +58,7 @@ in_progress
 - `Session run: 003` - review imported critique, accept partial findings, update source docs conservatively, prepare git checkpoint.
 - `Session run: 004` - prepare `/v1` external root-cause question about Planner role drift and rule/process fixes.
 - `Session run: 005` - read `V1-20260531-221800`, accept conservative fixes, patch Planner/Orc rules and active design source.
+- `Session run: 006` - archive current `ork_planner` bootstrap scaffold under `drafts/planner_bootstrap_scaffold_2026-05-31/`.
 
 ## User Overrides
 
@@ -81,3 +82,10 @@ in_progress
 - `V1-20260531-221800` imported into notebook and used as grounded second opinion for Planner role drift.
 - Accepted fix direction: ownership boundary, Planner preflight, explicit Planner -> Orc gate, external-review consideration or waiver, no hidden Planner-maintained Orc docs.
 - Applied rule-layer patch in `codex_role_planner.md`, `codex_role_orc.md`, and `subproject_single_execution_chat_documentation_system_v2.md`.
+
+## Session Update After Scaffold Archival
+
+- Current `ork_planner` bootstrap scaffold moved from root `.ai/subprojects/ork_planner/` into `drafts/planner_bootstrap_scaffold_2026-05-31/`.
+- Moved all root `ork_planner_*.md` core docs without changing their meaning.
+- Moved `reviews/` into `drafts/planner_bootstrap_scaffold_2026-05-31/reviews/`.
+- Root `.ai/subprojects/ork_planner/` now intentionally contains only `drafts/`.
