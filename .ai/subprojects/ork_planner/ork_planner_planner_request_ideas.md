@@ -70,9 +70,9 @@ Planner-owned backlog для идей будущих запросов и routing
 
 ### I-002 — Future `/v1` critique for battle-plan structure
 
-- Status: `staged`
+- Status: `promoted`
 - Route family: `/v1`
-- Trigger: после появления первого сильного `ork_planner_plan_full.md`
+- Trigger: после импорта первого живого `ork_planner_plan_full.md`
 - Idea:
 - спросить внешний чат, достаточно ли жёстко Planner зафиксировал:
 - `three hard phases`;
@@ -80,6 +80,9 @@ Planner-owned backlog для идей будущих запросов и routing
 - gate между local proof и repo-level alignment.
 - Why useful:
 - это узкий bounded second opinion по role-boundary и battle-plan design.
+- Resolution:
+- идея принята как следующий шаг после локального импорта первого `plan_full`;
+- critique должен читать уже живой repo файл, а не сырой V3 ZIP.
 
 ### I-003 — Future V3 critique package for canonical planner docs
 

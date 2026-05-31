@@ -366,6 +366,24 @@ Last updated: 2026-06-01
 - или их содержимое явно вкладывается в prompt package.
 - После публикации этих файлов GitHub-first снова становится основным режимом.
 
+### D-042 — Первый V3 ZIP для `ork_planner_plan_full.md` импортируется вручную после local review
+
+- Для первого драфта выбран local route:
+- raw ZIP хранится в `_local/v3_drafts/ork_planner/`;
+- Planner локально проверяет package structure и содержимое;
+- затем один файл `ork_planner_plan_full.md` вручную вытаскивается в живой repo path.
+- Это не `/v3 import-entry` и не `Kilo Notebook V3`.
+
+### D-043 — После импорта первого `plan_full` нужен bounded `/v1` critique
+
+- Следующий внешний шаг = prompt-only `/v1` review уже живого `ork_planner_plan_full.md`.
+- Цель review:
+- найти contradictions;
+- проверить role boundaries;
+- проверить lifecycle/gates/nav pass/battle-plan logic;
+- не переписывать план с нуля.
+- Это critique imported planner artifact, не новый first-draft generation route.
+
 <a id="execution-sequence"></a>
 
 ## Execution Sequence
