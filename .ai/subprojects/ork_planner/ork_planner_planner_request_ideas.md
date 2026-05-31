@@ -70,25 +70,26 @@ Planner-owned backlog для идей будущих запросов и routing
 
 ### I-002 — Future `/v1` critique for battle-plan structure
 
-- Status: `promoted`
+- Status: `promoted and executed`
 - Route family: `/v1`
 - Trigger: после импорта первого живого `ork_planner_plan_full.md`
 - Idea:
 - спросить внешний чат, достаточно ли жёстко Planner зафиксировал:
 - `three hard phases`;
-- strict template для `plan_active_N`;
+- strict template для `battle_plan`;
 - gate между local proof и repo-level alignment.
 - Why useful:
 - это узкий bounded second opinion по role-boundary и battle-plan design.
 - Resolution:
 - идея принята как следующий шаг после локального импорта первого `plan_full`;
 - critique должен читать уже живой repo файл, а не сырой V3 ZIP.
+- `2026-06-01`: реализовано через `V1-20260601-015836`; дальше остаётся только локальное принятие или частичное принятие его findings.
 
 ### I-003 — Future V3 critique package for canonical planner docs
 
 - Status: `staged`
 - Route family: `V3`
-- Trigger: когда будут готовы `plan_full`, `plan_navigation`, `plan_index`, `readme`
+- Trigger: когда будут готовы `plan_full`, `plan_index`, `navigation`, `journal`, `battle_plan`, `readme`, `status`, `decisions`
 - Idea:
 - собрать artifact package только для critique canonical planner docs, без запуска Orc execution layer.
 - Why useful:
@@ -111,3 +112,23 @@ Planner-owned backlog для идей будущих запросов и routing
 - Resolution:
 - идея принята;
 - request готовится как `V3-Ревью`, не как `/v3` import-entry route.
+
+### I-005 — Rewrite V3 package for canonical `ork_planner_plan_full.md`
+
+- Status: `promoted`
+- Route family: `V3`
+- Trigger: после local critique и human clarification по первому imported `plan_full`
+- Idea:
+- заказать у внешнего `V3` полный rewrite уже живого `ork_planner_plan_full.md`;
+- убрать active V3/package хвосты;
+- пересобрать lifecycle в 6 стадий;
+- заменить `plan_navigation` на агентный `plan_index`;
+- заменить `plan_active_1` на `ork_planner_battle_plan.md`;
+- убрать `Unresolved Decisions`;
+- переписать gates и repo-level alignment wave.
+- Why useful:
+- дешевле по контексту, чем переписывать весь большой документ локально;
+- проще заставить внешний чат вернуть цельный новый canonical текст, чем патчить старый кусками.
+- Resolution:
+- идея принята;
+- нужен новый `V3-Ревью` request с commit-pinned контекстом уже после публикации planner clarifications.

@@ -78,32 +78,30 @@ Last updated: 2026-06-01
 - прочитать `ork_planner_plan_full.md`;
 - расставить и/или починить anchors в `plan_full`;
 - добавить короткий `Quick Navigation` внутрь `plan_full`;
-- создать `ork_planner_plan_navigation.md`;
-- создать тонкий `ork_planner_plan_index.md`;
-- создать `ork_planner_readme.md`;
+- создать `ork_planner_plan_index.md`;
+- создать `ork_planner_navigation.md`;
+- создать `ork_planner_journal.md`;
 - остановиться и вернуть report.
 
-### D-007 — Два navigation-layer и отдельный plan index
+### D-007 — `plan_index` остаётся, `plan_navigation` убирается
 
-- Должны существовать оба navigation-файла:
-- `ork_planner_plan_navigation.md` — маршрут чтения большого плана;
-- `ork_planner_navigation.md` — общая навигация подпроекта.
-- `ork_planner_plan_index.md` тоже остаётся.
+- `ork_planner_plan_navigation.md` не нужен.
+- Для большого плана остаётся только `ork_planner_plan_index.md`.
+- Общая навигация подпроекта живёт в `ork_planner_navigation.md`.
 - Роли разделены так:
 - `Quick Navigation` внутри `plan_full` — быстрый вход в самом файле;
-- `plan_navigation` — human reading route большого плана;
-- `plan_index` — тонкая anchor-map и cross-doc reference layer;
+- `plan_index` — агентный маршрут чтения и рабочий index большого плана;
 - `navigation` — общая навигация по подпроекту.
 
-### D-008 — Общая subproject navigation появляется позже
+### D-008 — Общая subproject navigation появляется сразу
 
-- `ork_planner_navigation.md` не создаётся в первом nav pass.
-- Она появляется во втором Orc шаге, после nav pass, после подготовки боевых планов и после human approval.
+- `ork_planner_navigation.md` создаётся уже в первом nav pass.
+- Это часть минимального nav/bootstrap слоя перед дальнейшей работой Orc.
 
-### D-009 — `readme` нужен сразу
+### D-009 — `readme` переносится в Stage 4
 
-- `ork_planner_readme.md` нужен уже в первом Orc nav pass.
-- Но это не означает создание полного live execution layer в том же run.
+- `ork_planner_readme.md` не создаётся в первом Orc nav pass.
+- Он создаётся позже, когда Orc после battle-plan approval пишет весь оставшийся local docs layer.
 
 ### D-010 — Боевые планы отделены от nav pass
 
@@ -120,21 +118,23 @@ Last updated: 2026-06-01
 ### D-012 — Первый docs execution slice идёт только после approval
 
 - Только после утверждения боевых планов Orc начинает реальную работу подпроекта.
-- Первый реальный docs execution slice должен стартовать с:
-- `codex_role_planner.md`
-- `codex_role_orc.md`
-- `codex_orchestrator.md`
-- `.ai/repo_navigation.md`
+- Это решение в ранней формулировке больше не читается как старт с repo-level files.
+- Актуальная трактовка после D-019 и D-020:
+- первый реальный docs execution slice остаётся local-first внутри `.ai/subprojects/ork_planner/`;
+- repo-level файлы вроде `codex_role_planner.md`, `codex_role_orc.md`, `codex_orchestrator.md`, `.ai/repo_navigation.md` и `AGENTS.md` относятся к отдельной future alignment wave после полного local cycle.
 
 ### D-013 — Будущий live execution doc-set
 
 - После approval Orc собирает минимальный live execution layer:
+- уже существующие после nav pass:
 - `ork_planner_navigation.md`
-- `ork_planner_plan_active_N.md`
-- `ork_planner_status.md`
 - `ork_planner_journal.md`
+- уже существующий после отдельного шага battle-plan:
+- `ork_planner_battle_plan.md`
+- создаваемые в remaining local docs wave:
+- `ork_planner_readme.md`
+- `ork_planner_status.md`
 - `ork_planner_decisions.md`
-- Отдельный `readme` уже существует раньше, с nav pass.
 
 ### D-014 — Kilo route первого nav pass заранее не фиксируется жёстко
 
@@ -191,25 +191,24 @@ Last updated: 2026-06-01
 - Одних canonical docs недостаточно.
 - После первого полного цикла внутри `ork_planner` должны быть:
 - `ork_planner_plan_full.md`
-- `ork_planner_plan_navigation.md`
 - `ork_planner_plan_index.md`
-- `ork_planner_readme.md`
 - `ork_planner_navigation.md`
-- `ork_planner_plan_active_1.md` или последовательность `plan_active_N`
-- `ork_planner_status.md`
 - `ork_planner_journal.md`
+- `ork_planner_battle_plan.md`
+- `ork_planner_readme.md`
+- `ork_planner_status.md`
 - `ork_planner_decisions.md`
 
-### D-022 — Planner фиксирует `three hard phases`, но не точное число `plan_active_N`
+### D-022 — Planner фиксирует `three hard phases`, но не раздувает battle-layer
 
 - Planner не оставляет Orc полную свободу в разрезке execution route.
 - Нельзя смешивать три фазы:
 - local live ops bootstrap;
 - local docs execution + human acceptance;
 - repo-level alignment.
-- Orc может сам решить, будет ли это 3 или больше active plans, но границы фаз жёсткие.
+- По умолчанию достаточно одного `ork_planner_battle_plan.md`, если человек не утвердил более сложную схему отдельно.
 
-### D-023 — Каждый `plan_active_N` должен иметь strict execution template
+### D-023 — `battle_plan` должен иметь strict execution template
 
 - Боевой план не должен быть свободной запиской.
 - Минимум обязательных блоков:
@@ -274,14 +273,13 @@ Last updated: 2026-06-01
 - Большой план не ограничивается только описанием ролей документов.
 - Для key docs нужно задать минимальные обязательные блоки, но не превращать план в полный template pack.
 - Это относится как минимум к:
-- `plan_navigation`
 - `plan_index`
 - `readme`
 - `navigation`
 - `status`
 - `journal`
 - `decisions`
-- `plan_active_N`
+- `battle_plan`
 
 ### D-031 — В `plan_full` нужна compact migration map
 
@@ -383,6 +381,8 @@ Last updated: 2026-06-01
 - проверить lifecycle/gates/nav pass/battle-plan logic;
 - не переписывать план с нуля.
 - Это critique imported planner artifact, не новый first-draft generation route.
+- `2026-06-01`: critique получен через `V1-20260601-015836`.
+- Следующий локальный шаг после этого critique: targeted Planner cleanup и human acceptance decision по `plan_full`.
 
 <a id="execution-sequence"></a>
 
@@ -396,18 +396,65 @@ Last updated: 2026-06-01
 4. Orc через первый Kilo run делает nav pass:
 - anchors
 - `Quick Navigation`
-- `ork_planner_plan_navigation.md`
 - `ork_planner_plan_index.md`
-- `ork_planner_readme.md`
-5. Orc через отдельный Kilo run создаёт боевые планы.
-6. Человек утверждает боевые планы.
-7. Orc начинает первый local docs execution slice.
-8. После local proof и human acceptance Orc может переходить к первому repo-level alignment wave:
+- `ork_planner_navigation.md`
+- `ork_planner_journal.md`
+5. Перед первым реальным Orc run человек прогоняет Orc через `grill-me` в plan mode.
+6. Orc через отдельный Kilo run создаёт `ork_planner_battle_plan.md`.
+7. Человек утверждает боевой план.
+8. Orc создаёт весь оставшийся local docs layer `ork_planner`, кроме глобальных repo-level файлов.
+9. После этого создаётся новый маленький docs-only подпроект с нуля и на нём проходится весь цикл `Planner -> Orc`.
+10. Только после успешного fresh pilot и human acceptance Orc может переходить к первому repo-level alignment wave:
 - `.ai/rules/codex_role_planner.md`
 - `.ai/rules/codex_role_orc.md`
 - `.ai/rules/codex_orchestrator.md`
 - `.ai/repo_navigation.md`
 - `AGENTS.md`
+
+### D-044 — Перед первым Orc run обязателен `grill-me` gate
+
+- До первого реального Orc запуска человек прогоняет Orc через `grill-me` в plan mode.
+- Только после этого даётся команда на живой Orc run.
+
+### D-045 — `Section 11` в rewritten `plan_full` сжимается до provenance note
+
+- История первого V3 package может остаться только как краткая provenance note.
+- Она не должна оставаться частью активного lifecycle.
+- В rewritten `plan_full` не должно быть route-описания распаковки, import-stage и package-lane как текущей работы.
+
+### D-046 — `Unresolved Decisions` убираются из rewritten `plan_full`
+
+- К моменту нового rewrite `plan_full` должен быть decision-complete.
+- Отдельный раздел `Unresolved Decisions` в конце файла не нужен.
+- Нерешённые поздние вещи не должны оставаться как хвосты в canonical plan.
+
+### D-047 — `ork_planner_plan_index.md` нужен для агентов, не для человека
+
+- Это не human reading guide.
+- Это агентный index и рабочий маршрут чтения большого `plan_full`.
+- Для человека главным входом позже остаются `readme` и общая `navigation`.
+
+### D-048 — После local ork_planner cycle обязателен fresh tiny docs-only pilot
+
+- До repo-level alignment нужен новый маленький подпроект, созданный с нуля.
+- На нём должен быть пройден полный цикл `Planner -> Orc`.
+- Задача должна быть маленькой и быстрой, чтобы проверять именно техпроцесс на чистом контексте.
+
+### D-049 — Первая repo-level alignment wave имеет фиксированный scope
+
+- Scope первой wave:
+- `codex_role_planner.md`
+- `codex_role_orc.md`
+- `codex_orchestrator.md`
+- `.ai/repo_navigation.md`
+- `AGENTS.md`
+- Role docs не правятся раньше успешного fresh pilot.
+
+### D-050 — `ork_planner_battle_plan.md` заменяет `plan_active_1` в этом подпроекте
+
+- `ork_planner_plan_active_1.md` не является canonical operational file для `ork_planner`.
+- Вместо него используется один понятный `ork_planner_battle_plan.md`.
+- Только если позже человек отдельно утвердит более сложную схему, можно обсуждать дополнительные battle files.
 
 <a id="open-notes"></a>
 
