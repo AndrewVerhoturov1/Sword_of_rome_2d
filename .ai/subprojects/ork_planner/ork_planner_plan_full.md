@@ -497,15 +497,24 @@ No `plan_active_1`. No multiple battle files by default. One file is enough unle
 
 ### 8.4. Stage 4 artifact model {#stage-4-artifact-model}
 
-Stage 4 creates remaining local docs for `ork_planner`, except global repo-level files. Minimum:
+Stage 4 creates remaining local docs for `ork_planner` and one reusable template layer for future subprojects, still without opening repo-level alignment. Minimum:
 
 ```text
 .ai/subprojects/ork_planner/ork_planner_readme.md
 .ai/subprojects/ork_planner/ork_planner_status.md
 .ai/subprojects/ork_planner/ork_planner_decisions.md
+.ai/subprojects/templates/subproject_plan_full_template.md
+.ai/subprojects/templates/subproject_plan_index_template.md
+.ai/subprojects/templates/subproject_navigation_template.md
+.ai/subprojects/templates/subproject_journal_template.md
+.ai/subprojects/templates/subproject_battle_plan_template.md
+.ai/subprojects/templates/subproject_readme_template.md
+.ai/subprojects/templates/subproject_status_template.md
+.ai/subprojects/templates/subproject_decisions_template.md
+.ai/subprojects/templates/subproject_templates_guide.md
 ```
 
-Stage 4 may update Stage 2 and Stage 3 docs as part of local docs completion, but only inside `.ai/subprojects/ork_planner/` and only under approved `battle_plan` scope.
+Stage 4 may update Stage 2 and Stage 3 docs as part of local docs completion, but only inside `.ai/subprojects/ork_planner/` and `.ai/subprojects/templates/`, and only under approved `battle_plan` scope.
 
 ### 8.5. Stage 5 artifact model {#stage-5-artifact-model}
 
@@ -637,8 +646,10 @@ Stage 4 starts only after the battle plan is approved.
 Goal:
 
 - complete the remaining local docs system for `ork_planner`;
+- create reusable templates for the full `Planner -> Orc` doc set so future subprojects can start from a proven base;
+- create one guide that explains how to use those templates and what each file is responsible for;
 - prove that documentation supports continuation, status, journal, decisions, and human understanding;
-- keep all work local to `.ai/subprojects/ork_planner/`;
+- keep all work local to `.ai/subprojects/ork_planner/` and `.ai/subprojects/templates/`;
 - avoid repo-level alignment until local docs are accepted.
 
 Minimum new files:
@@ -647,6 +658,15 @@ Minimum new files:
 .ai/subprojects/ork_planner/ork_planner_readme.md
 .ai/subprojects/ork_planner/ork_planner_status.md
 .ai/subprojects/ork_planner/ork_planner_decisions.md
+.ai/subprojects/templates/subproject_plan_full_template.md
+.ai/subprojects/templates/subproject_plan_index_template.md
+.ai/subprojects/templates/subproject_navigation_template.md
+.ai/subprojects/templates/subproject_journal_template.md
+.ai/subprojects/templates/subproject_battle_plan_template.md
+.ai/subprojects/templates/subproject_readme_template.md
+.ai/subprojects/templates/subproject_status_template.md
+.ai/subprojects/templates/subproject_decisions_template.md
+.ai/subprojects/templates/subproject_templates_guide.md
 ```
 
 Stage 4 may update:
@@ -661,7 +681,11 @@ ork_planner_plan_full.md
 
 But `plan_full` updates remain limited unless human explicitly sends the work back to Planner for plan revision.
 
-Stage 4 exits only after human acceptance that the local `ork_planner` docs system is understandable and usable.
+Stage 4 exits only after human acceptance that:
+
+- the local `ork_planner` docs system is understandable and usable;
+- the reusable template layer is understandable as a base for future subprojects;
+- the guide clearly explains what each template file is for and how to use the set.
 
 ### 9.5. Stage 5 — Fresh tiny docs-only pilot subproject from scratch {#stage-5-fresh-tiny-docs-only-pilot}
 
@@ -1010,7 +1034,7 @@ Stage 3 creates one file:
 .ai/subprojects/ork_planner/ork_planner_battle_plan.md
 ```
 
-It is the single operational plan for the next local execution wave. It replaces the older `plan_active_1` idea for this pilot.
+It is the single operational plan for the remaining pilot path after accepted `Stage 2`. It replaces the older `plan_active_1` idea for this pilot.
 
 ### 13.1. Preconditions {#battle-plan-preconditions}
 
@@ -1026,7 +1050,8 @@ Before creating `ork_planner_battle_plan.md`:
 
 The battle plan answers:
 
-- what remains to be created locally;
+- what remains to be done in `Stage 4`, `Stage 5`, and `Stage 6`;
+- what reusable documentation base must be produced for future subprojects;
 - in what order;
 - by which route;
 - what each step may touch;
@@ -1154,6 +1179,15 @@ Stage 4 must create at least:
 .ai/subprojects/ork_planner/ork_planner_readme.md
 .ai/subprojects/ork_planner/ork_planner_status.md
 .ai/subprojects/ork_planner/ork_planner_decisions.md
+.ai/subprojects/templates/subproject_plan_full_template.md
+.ai/subprojects/templates/subproject_plan_index_template.md
+.ai/subprojects/templates/subproject_navigation_template.md
+.ai/subprojects/templates/subproject_journal_template.md
+.ai/subprojects/templates/subproject_battle_plan_template.md
+.ai/subprojects/templates/subproject_readme_template.md
+.ai/subprojects/templates/subproject_status_template.md
+.ai/subprojects/templates/subproject_decisions_template.md
+.ai/subprojects/templates/subproject_templates_guide.md
 ```
 
 It may update existing local docs:
@@ -1166,7 +1200,7 @@ ork_planner_battle_plan.md
 ork_planner_plan_full.md
 ```
 
-But all updates must remain inside `.ai/subprojects/ork_planner/` unless human explicitly returns the work to Planner and expands the plan. Stage 4 is not repo-level alignment.
+But all updates must remain inside `.ai/subprojects/ork_planner/` and `.ai/subprojects/templates/` unless human explicitly returns the work to Planner and expands the plan. Stage 4 is not repo-level alignment.
 
 ### 15.2. What `readme` must do {#readme-purpose-stage-4}
 
@@ -1214,7 +1248,38 @@ It should record decisions made during live execution, such as:
 
 It should not rewrite planner-stage history.
 
-### 15.5. Human acceptance of Stage 4 {#stage-4-human-acceptance}
+### 15.5. What Stage 4 reusable templates and guide must do {#stage-4-templates-guide}
+
+The reusable template layer in `.ai/subprojects/templates/` must cover the full planned documentation set used by this pilot:
+
+- `subproject_plan_full_template.md`
+- `subproject_plan_index_template.md`
+- `subproject_navigation_template.md`
+- `subproject_journal_template.md`
+- `subproject_battle_plan_template.md`
+- `subproject_readme_template.md`
+- `subproject_status_template.md`
+- `subproject_decisions_template.md`
+
+The guide file:
+
+```text
+.ai/subprojects/templates/subproject_templates_guide.md
+```
+
+must explain in plain Russian:
+
+- when each template is used;
+- who owns the corresponding document;
+- what the file is for;
+- what the file must not become;
+- what should be created first in a new subproject;
+- which files are human-first and which are agent-oriented;
+- how the set supports `Planner -> Orc`.
+
+The template layer must be reusable, not hard-coded only for `ork_planner`.
+
+### 15.6. Human acceptance of Stage 4 {#stage-4-human-acceptance}
 
 Stage 4 is accepted only if human can do a practical read-and-follow test:
 
@@ -1224,8 +1289,10 @@ Stage 4 is accepted only if human can do a practical read-and-follow test:
 4. Understand current stage and next step.
 5. See what has been done in `journal`.
 6. See what decisions are accepted in `decisions`.
-7. Confirm that no repo-level alignment started early.
-8. Confirm that no legacy active route returned.
+7. Open `.ai/subprojects/templates/subproject_templates_guide.md`.
+8. Understand what each reusable template is for and how a future subproject should use them.
+9. Confirm that no repo-level alignment started early.
+10. Confirm that no legacy active route returned.
 
 If the human cannot understand the route, Stage 4 is not accepted even if all files exist.
 
@@ -1544,7 +1611,7 @@ Rules:
 Purpose:
 
 ```text
-One operational battle plan for local docs completion.
+One operational battle plan for the remaining pilot path.
 ```
 
 Minimum blocks:
@@ -1704,6 +1771,37 @@ Rules:
 - should not rewrite Planner decisions;
 - can reference Planner decisions when they guide execution.
 
+### 19.8. Reusable template layer for future subprojects {#minimal-reusable-template-layer}
+
+Purpose:
+
+```text
+Reusable base for future Planner -> Orc subprojects.
+```
+
+Required files:
+
+```text
+.ai/subprojects/templates/subproject_plan_full_template.md
+.ai/subprojects/templates/subproject_plan_index_template.md
+.ai/subprojects/templates/subproject_navigation_template.md
+.ai/subprojects/templates/subproject_journal_template.md
+.ai/subprojects/templates/subproject_battle_plan_template.md
+.ai/subprojects/templates/subproject_readme_template.md
+.ai/subprojects/templates/subproject_status_template.md
+.ai/subprojects/templates/subproject_decisions_template.md
+.ai/subprojects/templates/subproject_templates_guide.md
+```
+
+Rules:
+
+- file and folder names stay English;
+- document bodies may be Russian;
+- templates must be generic enough for future subprojects;
+- templates must preserve role boundaries and human gates;
+- the guide must explain order of use and file responsibility in simple Russian;
+- `ork_planner` may be the proving ground, but the template layer must not be locked to `ork_planner` wording.
+
 ---
 
 ## 20. Acceptance gates {#acceptance-gates}
@@ -1791,9 +1889,13 @@ Required evidence:
 - `ork_planner_readme.md` created;
 - `ork_planner_status.md` created;
 - `ork_planner_decisions.md` created;
+- template layer created in `.ai/subprojects/templates/`;
+- `subproject_templates_guide.md` created;
 - `navigation` updated to include actual docs;
+- `navigation` updated to include template layer;
 - `journal` records Stage 4 actions;
 - human can follow docs route;
+- human can understand how the templates should be reused by future subprojects;
 - no repo-level files touched;
 - human accepts local docs system.
 
@@ -1877,7 +1979,7 @@ Run mandatory grill-me.
 Orc proposes route; human chooses.
 Stage 2 creates exactly plan_index + navigation + journal.
 Stage 3 creates one battle_plan and stops for approval.
-Stage 4 completes local ork_planner docs.
+Stage 4 completes local ork_planner docs and creates reusable templates plus usage guide.
 Stage 5 proves the workflow on a fresh tiny docs-only subproject.
 Stage 6 aligns only the fixed repo-level files.
 Planner -> Orc remains the only active route.

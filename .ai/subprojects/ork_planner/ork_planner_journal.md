@@ -1,112 +1,167 @@
-# Ork Planner Journal
+# Журнал Ork Planner
 
-Slug: `ork_planner`  
-Owner: `Orc`  
-Status: `active`  
-Started: 2026-06-01
+Слаг: `ork_planner`  
+Владелец: `Orc`  
+Статус: `active`  
+Начат: 2026-06-01
 
-## Journal policy
+## Политика журнала
 
-- This file records factual execution actions only.
-- No fake backfill.
-- Planned future work stays in `plan_full`, not here.
-- Human verdict must be recorded as pending until explicitly received.
+- Этот файл фиксирует только фактические действия по выполнению.
+- Нельзя делать выдуманный backfill.
+- Запланированная будущая работа должна жить в `plan_full`, а не здесь.
+- Вердикт человека должен оставаться `pending`, пока человек явно его не дал.
 
-## Entry format
+## Формат записи
 
 ```md
-### J-YYYYMMDD-001 - <short title>
+### J-YYYYMMDD-001 - <короткий заголовок>
 
-- Lifecycle stage:
-- Role:
-- Tool route:
-- Session reference:
-- Files created:
-- Files modified:
-- Evidence:
-- Verification:
-- Human verdict:
-- Bugs and difficulties:
-- Next step:
+- Этап жизненного цикла:
+- Роль:
+- Маршрут выполнения:
+- Ссылка на сессию:
+- Созданные файлы:
+- Изменённые файлы:
+- Подтверждение:
+- Проверка:
+- Вердикт человека:
+- Баги и сложности:
+- Следующий шаг:
 ```
 
-## Historical context note
+## Исторический контекст
 
-Planner-owned history stays in [ork_planner_plan_decisions.md](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/ork_planner/ork_planner_plan_decisions.md).
+Planner-owned история остаётся в [ork_planner_plan_decisions.md](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/ork_planner/ork_planner_plan_decisions.md).
 
-This journal starts only with live Orc execution evidence.
+Этот журнал начинается только с live Orc execution evidence.
 
-## Entries
+## Записи
 
-### J-20260601-001 - Stage 2 nav layer creation
+### J-20260601-001 - Создание nav layer для Stage 2
 
-- Lifecycle stage: `Stage 2 - First Orc nav pass`
-- Role: `Orc`
-- Tool route: direct Codex work (`Codex-only exception` by explicit human override; originally approved route was `Kilo Handoff Runner`)
-- Session reference: `not available`
-- Files created:
+- Этап жизненного цикла: `Stage 2 - First Orc nav pass`
+- Роль: `Orc`
+- Маршрут выполнения: direct Codex work (`Codex-only exception` по явному human override; изначально approved route был `Kilo Handoff Runner`)
+- Ссылка на сессию: `not available`
+- Созданные файлы:
   - [ork_planner_plan_index.md](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/ork_planner/ork_planner_plan_index.md)
   - [ork_planner_navigation.md](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/ork_planner/ork_planner_navigation.md)
   - [ork_planner_journal.md](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/ork_planner/ork_planner_journal.md)
-- Files modified: none
-- Evidence:
-  - `plan_index` created as agent-oriented retrieval map
-  - `navigation` created as subproject-wide map
-  - `journal` created and initialized with first factual entry
-  - `plan_full` anchor audit performed; no Stage 2 edit needed
-- Verification:
-  - local file existence check
-  - `git diff --stat` / `git diff --name-only` review limited to Stage 2 scope
-- Human verdict: pending
-- Bugs and difficulties:
-  - no content bug found in `plan_full`
-  - route changed from planned Kilo path to direct Codex work only because human explicitly asked for self-execution
-- Next step:
-  - return Stage 2 report
-  - wait for human acceptance or requested corrections
-  - do not start Stage 3 before human acceptance
+- Изменённые файлы: нет
+- Подтверждение:
+  - `plan_index` создан как agent-oriented retrieval map
+  - `navigation` создан как subproject-wide map
+  - `journal` создан и инициализирован первой фактической записью
+  - выполнен anchor audit для `plan_full`; правки для Stage 2 не потребовались
+- Проверка:
+  - локальная проверка существования файлов
+  - просмотр `git diff --stat` / `git diff --name-only` в пределах scope `Stage 2`
+- Вердикт человека: `pending`
+- Баги и сложности:
+  - содержательных проблем в `plan_full` не найдено
+  - маршрут сменился с planned Kilo path на direct Codex work только потому, что человек явно попросил self-execution
+- Следующий шаг:
+  - вернуть `Stage 2 report`
+  - дождаться принятия человеком или запроса на правки
+  - не начинать `Stage 3` до human acceptance
 
-### J-20260601-002 - Stage 2 acceptance and process-retrospective note
+### J-20260601-002 - Принятие Stage 2 и process-retrospective note
 
-- Lifecycle stage: `Stage 2 - First Orc nav pass`
-- Role: `Orc`
-- Tool route: direct Codex work for journal update and checkpoint preparation
-- Session reference: `not available`
-- Files created: none
-- Files modified:
+- Этап жизненного цикла: `Stage 2 - First Orc nav pass`
+- Роль: `Orc`
+- Маршрут выполнения: direct Codex work для обновления журнала и подготовки checkpoint
+- Ссылка на сессию: `not available`
+- Созданные файлы: нет
+- Изменённые файлы:
   - [ork_planner_journal.md](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/ork_planner/ork_planner_journal.md)
-- Evidence:
-  - human stated that during `grill-me` the Orc asked overly low-value questions even though the plan had already been detailed and approved
-  - human stated that the only materially correct `grill-me` question was how the task should be executed
-  - human requested this note to remain in the journal so a person can later think about why the system behaved that way
-  - human requested a separate note that Codex bypassed the earlier direct instruction to execute through the Kilo route
-  - human confirmed that the Stage 2 files themselves are good and accepted
-- Verification:
-  - human acceptance and retrospective note recorded from the current chat
-  - no file content outside the journal changed in this checkpoint-preparation step
-- Human verdict: `Stage 2 report accepted by human`
-- Bugs and difficulties:
-  - during `pre-Orc grill-me gate`, Orc asked too many low-value questions against an already approved plan; only the execution-route question materially helped
-  - Codex earlier made a process error by bypassing the direct instruction to execute through the Kilo route; this was later corrected, and direct execution happened only after explicit human override
-- Next step:
-  - make workflow checkpoint commit
-  - push accepted Stage 2 state
-  - keep Stage 3 closed until separate human instruction
+- Подтверждение:
+  - человек сообщил, что во время `grill-me` Orc задавал слишком много низкоценных вопросов, хотя план уже был подробно расписан и утверждён
+  - человек сообщил, что единственный действительно полезный вопрос на этом gate был про то, как именно выполнять задачу
+  - человек попросил оставить эту заметку в журнале, чтобы потом можно было отдельно подумать, почему система сработала именно так
+  - человек попросил отдельно зафиксировать, что Codex обошёл более раннее прямое указание выполнять задачу через Kilo route
+  - человек подтвердил, что сами файлы `Stage 2` хорошие и приняты
+- Проверка:
+  - human acceptance и retrospective note записаны по текущему чату
+  - за пределами журнала в этом checkpoint-preparation step содержимое не менялось
+- Вердикт человека: `Stage 2 report accepted by human`
+- Баги и сложности:
+  - на `pre-Orc grill-me gate` Orc задал слишком много low-value вопросов при уже утверждённом плане; по сути полезным был только вопрос про execution route
+  - ранее Codex допустил process error и обошёл прямое указание идти через Kilo route; позже это было исправлено, и direct execution произошёл только после явного human override
+- Следующий шаг:
+  - сделать workflow checkpoint commit
+  - push принятого состояния `Stage 2`
+  - держать `Stage 3` закрытым до отдельной команды человека
 
-## Bugs and difficulties
+### J-20260601-003 - Правило языка для документации
 
-Current status:
+- Этап жизненного цикла: `post-Stage-2 accepted state`
+- Роль: `Orc`
+- Маршрут выполнения: direct Codex work для docs-only update
+- Ссылка на сессию: `not available`
+- Созданные файлы: нет
+- Изменённые файлы:
+  - [ork_planner_journal.md](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/ork_planner/ork_planner_journal.md)
+- Подтверждение:
+  - человек явно потребовал вести всю документацию на русском языке
+  - человек отдельно уточнил, что [ork_planner_journal.md](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/ork_planner/ork_planner_journal.md) он будет читать часто
+  - по этой причине журнал переведён на русский в первую очередь
+- Проверка:
+  - содержимое журнала переведено на русский
+  - English identifiers, file names и route names сохранены как technical identifiers
+- Вердикт человека: `recorded`
+- Баги и сложности:
+  - правило языка раньше не было явно зафиксировано внутри самого журнала, из-за чего часть документации была оставлена на английском
+- Следующий шаг:
+  - дальше вести документацию подпроекта на русском
+  - сохранять English только для technical identifiers, file names, IDs и machine-readable значений там, где это нужно
+
+### J-20260601-004 - Универсальные process rules для Stage 4 и следующих подпроектов
+
+- Этап жизненного цикла: `Stage 3 - battle plan clarification`
+- Роль: `Orc`
+- Маршрут выполнения: direct Codex work для docs-only clarification
+- Ссылка на сессию: `not available`
+- Созданные файлы: нет
+- Изменённые файлы:
+  - [ork_planner_battle_plan.md](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/ork_planner/ork_planner_battle_plan.md)
+  - [ork_planner_journal.md](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/ork_planner/ork_planner_journal.md)
+- Подтверждение:
+  - человек уточнил, что боевой план должен быть не описанием только следующего шага, а сокращённым и более конкретным конспектом полного плана без уже пройденных этапов
+  - человек отдельно указал, что большие смысловые переписывания таких документов нельзя начинать без явного разрешения
+  - человек уточнил, что при `Stage 4` нужно учитывать не всю историческую хронику `ork_planner`, а только универсальные process rules из журнала и planner decisions
+  - человек подтвердил, что эти универсальные правила надо учитывать и в будущих подпроектах, а не только внутри `ork_planner`
+- Проверка:
+  - battle plan уточнён под модель `Stage 4-6 condensed route`
+  - в журнале зафиксировано, что для `Stage 4` и дальше берутся только универсальные правила, а не вся локальная история
+- Вердикт человека: `recorded`
+- Баги и сложности:
+  - ранее battle plan был ошибочно сужен до `Stage 4 only`
+  - ранее Orc начал готовиться к большому смысловому переписыванию battle plan без предварительного явного разрешения человека
+- Следующий шаг:
+  - при `Stage 4` и в будущих подпроектах учитывать только универсальные правила из журнала и planner decisions
+  - не переносить локальные частные эпизоды как обязательный canon для всех подпроектов
+  - ждать human verdict по обновлённому battle plan
+
+## Баги и сложности
+
+Текущий статус:
 
 ```text
 found and logged
 ```
 
-Logged process issues:
+Зафиксированные process issues:
 
-- `grill-me` asked low-value questions despite an already approved detailed plan
-- only the execution-route question was clearly useful at that gate
-- Codex previously bypassed the approved Kilo execution route before later explicit human override
+- `grill-me` задавал низкоценные вопросы при уже утверждённом подробном плане
+- на этом gate явно полезным был только вопрос про execution route
+- Codex ранее обошёл approved Kilo execution route до последующего явного human override
+- правило русского языка для документации не было достаточно жёстко зафиксировано в самом журнале
+- battle plan был сначала ошибочно сужен до `Stage 4 only`, хотя человек понимает его как конспект всего оставшегося `plan_full`
+- большая смысловая переработка battle plan была преждевременно подготовлена без предварительного явного разрешения человека
 
-## Open follow-ups
+## Открытые follow-ups
 
-- Keep Stage 3 blocked until explicit human instruction
+- Держать `Stage 3` заблокированным до явной команды человека
+- Дальше вести документацию подпроекта на русском языке
+- Для `Stage 4` и будущих подпроектов брать из журнала и planner decisions только универсальные process rules
