@@ -138,6 +138,7 @@ planned
 ## Checkpoint State
 
 - `ork_planner` использован как source-of-truth для Stage 5 constraints, reduced docs set, gates и stop rules.
+- Canonical baseline plan перенесён в подпроект: `.ai/subprojects/v3_request_pack_skill_pilot/v3_request_pack_skill_pilot_plan_full.md`.
 - Текущий planning artifact не является start signal для `Stage 5 execution`.
 - Текущий planning artifact не является разрешением на repo-level promotion.
-- Следующий безопасный шаг: человек решает, какой следующий planning/proof route нужен — `V1`, `V3` или локальный следующий planning step.
+- Следующий безопасный шаг: человек решает, какой следующий planning/proof route нужен - `V1`, `V3` или локальный следующий planning step.
