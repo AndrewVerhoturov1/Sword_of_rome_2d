@@ -237,3 +237,35 @@ Decision mirror:
 - Следующий шаг:
   - local Codex/human review revised package;
   - не начинать Stage 5 без отдельного explicit approval.
+
+### J-20260602-001 - Human accepted temporary Stage 5 bridge direction
+
+- Этап жизненного цикла: `между Stage 4 accepted и Stage 5 preparation`
+- Роль: `Orc`
+- Маршрут выполнения: `/v1` grounded second opinion -> human acceptance -> journal capture
+- Ссылка на внешний вопрос: `V1-20260602-061552`
+- Подтверждение:
+  - человек принял идею одного временного bridge-документа для первого `Stage 5` tiny docs-only pilot;
+  - bridge не считается repo-level standard и нужен только как временный переходник до `Stage 6`;
+  - рекомендуемый путь bridge-документа принят человеком: `.ai/subprojects/ork_planner/ork_planner_stage5_first_pilot_bridge.md`;
+  - для первого `Stage 5` pilot принят reduced set из 6 обязательных файлов:
+    - `{stage5_slug}_plan_full.md`
+    - `{stage5_slug}_battle_plan.md`
+    - `{stage5_slug}_readme.md`
+    - `{stage5_slug}_status.md`
+    - `{stage5_slug}_navigation.md`
+    - `{stage5_slug}_journal.md`
+  - `plan_index` и `decisions` допустимо waive-нуть для первого tiny pilot, если не появится явная причина их заводить;
+  - сам bridge-документ сейчас не пишется; человек отдельно указал, что позже его должен написать `Kilo`;
+  - `Stage 5` execution этим решением не начат.
+- Проверка:
+  - прочитан notebook entry `.ai/external_chats/notebook/2026-06-02_V1-20260602-061552_grounded-second-opinion-po-stage-5-bridge.md`;
+  - подтверждено human сообщение: `Принимаю. Пока ничего не делай. Сам файл позже напишет кило, ты только запиши в журнал, запуш все`.
+- Вердикт человека: `accepted`
+- Баги и сложности:
+  - notebook entry содержит сломанные по кодировке русские фрагменты;
+  - смысл ответа читается и был отдельно подтверждён человеком;
+  - до отдельного запуска `Kilo` bridge-файл не создавать.
+- Следующий шаг:
+  - при отдельной команде человека подготовить/запустить `Kilo` на написание `ork_planner_stage5_first_pilot_bridge.md`;
+  - не начинать `Stage 5` без отдельного human сигнала.
