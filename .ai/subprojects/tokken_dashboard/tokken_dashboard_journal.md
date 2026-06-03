@@ -13,6 +13,9 @@ Started: `2026-06-03`
 - [J-20260603-002](#j-20260603-002)
 - [J-20260603-003](#j-20260603-003)
 - [J-20260603-004](#j-20260603-004)
+- [J-20260603-005](#j-20260603-005)
+- [J-20260604-001](#j-20260604-001)
+- [J-20260604-002](#j-20260604-002)
 - [Bugs And Difficulties](#bugs-and-difficulties)
 - [Open Follow-ups](#open-follow-ups)
 
@@ -162,7 +165,7 @@ Started: `2026-06-03`
   - `user.email` найден;
   - `user.account_id` найден;
   - `conversation.id` найден;
-  - `prompt` и `prompt_length` тоже найдены, поэтому считаются чувствительными для parser/dashboard pipeline.
+  - `prompt` и `prompt_length` тоже найдены как prompt metadata; для будущего parser/dashboard pipeline нужен отдельный policy-layer по их сохранению или маскированию.
 - Проверка cleanup:
   - временный `[otel]` блок удален из [config.toml](C:/Users/andre/.codex/config.toml);
   - SHA256 текущего [config.toml](C:/Users/andre/.codex/config.toml) совпал с backup [config.toml.bak-otel-file-smoke-20260603-214412](C:/Users/andre/.codex/config.toml.bak-otel-file-smoke-20260603-214412);
@@ -175,7 +178,131 @@ Started: `2026-06-03`
   - во время `codex exec` обычный Codex runtime пытался обращаться к внешним MCP/analytics endpoint из существующего config; OTel наружу не отправлялся, но для полностью изолированного будущего теста нужен временный config с отключенными внешними MCP/analytics.
 - Следующий шаг:
   - строить parser можно на локальном raw-файле;
-  - dashboard разрешать только после redaction слоя, который удаляет минимум `user.email`, `user.account_id`, `conversation.id`, `prompt`, `prompt_length`.
+  - dashboard разрешать только после redaction слоя, который удаляет или маскирует минимум `user.email`, `user.account_id`, `conversation.id`, `host.name` и чувствительные auth/header поля.
+
+<a id="j-20260603-005"></a>
+
+### J-20260603-005 - Локальный forensics parser выпустил sanitized OTel artifacts для token diagnostics
+
+- Этап жизненного цикла: `Stage 1 - local forensics parser working`
+- Роль: `Orc`
+- Маршрут выполнения: `direct`
+- Ссылка на сессию: `not available`
+- Related decisions: [D-20260603-007](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/tokken_dashboard_decisions.md#d-20260603-007), [R-20260603-003](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/tokken_dashboard_decisions.md#r-20260603-003)
+- Созданные файлы:
+  - [codex_token_debugger.py](/D:/Codex+Kilocode/projects/sword-of-rome-web/scripts/codex_token_debugger.py)
+  - [test_codex_token_debugger.py](/D:/Codex+Kilocode/projects/sword-of-rome-web/tests/test_codex_token_debugger.py)
+  - [codex_otel_sample.jsonl](/D:/Codex+Kilocode/projects/sword-of-rome-web/tests/fixtures/codex_otel_sample.jsonl)
+- Локальные output artifacts:
+  - [clean_events.jsonl](/D:/Codex+Kilocode/projects/sword-of-rome-web/_local/codex-token-debugger/smoke-20260603-r2/clean_events.jsonl)
+  - [token_usage.jsonl](/D:/Codex+Kilocode/projects/sword-of-rome-web/_local/codex-token-debugger/smoke-20260603-r2/token_usage.jsonl)
+  - [spans.jsonl](/D:/Codex+Kilocode/projects/sword-of-rome-web/_local/codex-token-debugger/smoke-20260603-r2/spans.jsonl)
+  - [metrics.jsonl](/D:/Codex+Kilocode/projects/sword-of-rome-web/_local/codex-token-debugger/smoke-20260603-r2/metrics.jsonl)
+  - [sessions.jsonl](/D:/Codex+Kilocode/projects/sword-of-rome-web/_local/codex-token-debugger/smoke-20260603-r2/sessions.jsonl)
+  - [session_summary.json](/D:/Codex+Kilocode/projects/sword-of-rome-web/_local/codex-token-debugger/smoke-20260603-r2/session_summary.json)
+  - [warnings.jsonl](/D:/Codex+Kilocode/projects/sword-of-rome-web/_local/codex-token-debugger/smoke-20260603-r2/warnings.jsonl)
+  - [diagnostic_report.md](/D:/Codex+Kilocode/projects/sword-of-rome-web/_local/codex-token-debugger/smoke-20260603-r2/diagnostic_report.md)
+- Подтверждение:
+  - parser читает локальный raw OTel `json/jsonl` и пишет набор sanitized artifacts без внешних endpoint-ов;
+  - unit test `python -m unittest tests.test_codex_token_debugger` прошел;
+  - реальный запуск на [codex-otel.json](C:/Users/andre/.codex/tmp/otel-file-smoke-20260603-214412/codex-otel.json) создал `clean_events=36`, `token_usage=6`, `spans=80`, `metrics=49`, `sessions=27`, `warnings=5`;
+  - в `clean_events.jsonl`, `token_usage.jsonl`, `spans.jsonl`, `metrics.jsonl`, `sessions.jsonl` не найдено `user.email`, `user.account_id`, `conversation.id`;
+  - `prompt_length` в sanitized outputs сохраняется как диагностический сигнал, а `prompt` сохраняется только если уже пустой или `[REDACTED]`;
+  - parser автоматически поднял предупреждения `many_mcp_servers`, `prompt_metadata_present`, `high_input_low_output`, `tool_or_mcp_activity_near_expensive_turn`, `private_fields_detected_in_raw`;
+  - token fields из raw подтверждены и вынесены в `token_usage.jsonl` и `session_summary.json`.
+- Проверка:
+  - `python -m unittest tests.test_codex_token_debugger`
+  - `python scripts\codex_token_debugger.py --input C:\Users\andre\.codex\tmp\otel-file-smoke-20260603-214412\codex-otel.json --output-dir D:\Codex+Kilocode\projects\sword-of-rome-web\_local\codex-token-debugger\smoke-20260603-r2`
+  - `rg -n -F 'user.email' ...`, `rg -n -F 'user.account_id' ...`, `rg -n -F 'conversation.id' ...` по основным sanitized JSONL-файлам вернули пустой результат.
+- Вердикт человека: `not applicable`
+- Баги и сложности:
+  - warning `private_fields_detected_in_raw` сначала терял список полей из-за слишком агрессивной sanitization логики, затем это исправлено;
+  - `session_summary.json` пока агрегирует часть записей грубо и может давать дублирующиеся session-подобные срезы для `service/model`, если raw не несет одного стабильного sanitized session id;
+  - консоль PowerShell в текущей среде показывает UTF-8 русский текст с кракозябрами, но сами файлы пишутся в UTF-8.
+- Следующий шаг:
+  - отдельно решить, какой sanitized session key и какой whitelist полей нужны для будущего dashboard/parser schema;
+  - не переходить к dashboard до отдельного решения по allowed fields.
+
+<a id="j-20260604-001"></a>
+
+### J-20260604-001 - Подготовлен A/B turn-cost experiment package с current и minimal/no MCP режимами
+
+- Этап жизненного цикла: `Stage 1 - turn-cost A/B experiment prepared`
+- Роль: `Orc`
+- Маршрут выполнения: `direct`
+- Ссылка на сессию: `not available`
+- Related decisions: [D-20260603-002](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/tokken_dashboard_decisions.md#d-20260603-002), [D-20260603-003](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/tokken_dashboard_decisions.md#d-20260603-003), [D-20260603-004](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/tokken_dashboard_decisions.md#d-20260603-004), [D-20260603-005](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/tokken_dashboard_decisions.md#d-20260603-005), [D-20260603-006](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/tokken_dashboard_decisions.md#d-20260603-006), [D-20260604-001](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/tokken_dashboard_decisions.md#d-20260604-001), [R-20260604-001](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/tokken_dashboard_decisions.md#r-20260604-001)
+- Созданные файлы:
+  - [codex_otel_ab_experiment.py](/D:/Codex+Kilocode/projects/sword-of-rome-web/scripts/codex_otel_ab_experiment.py)
+  - [test_codex_otel_ab_experiment.py](/D:/Codex+Kilocode/projects/sword-of-rome-web/tests/test_codex_otel_ab_experiment.py)
+- Локальные runtime artifacts:
+  - [experiment_manifest.json](/D:/Codex+Kilocode/projects/sword-of-rome-web/_local/codex-token-debugger/ab-turn-cost-20260604-otab02/experiment_manifest.json)
+  - [runbook.md](/D:/Codex+Kilocode/projects/sword-of-rome-web/_local/codex-token-debugger/ab-turn-cost-20260604-otab02/runbook.md)
+  - [compare_summary.template.json](/D:/Codex+Kilocode/projects/sword-of-rome-web/_local/codex-token-debugger/ab-turn-cost-20260604-otab02/compare/compare_summary.template.json)
+  - [compare_report.template.md](/D:/Codex+Kilocode/projects/sword-of-rome-web/_local/codex-token-debugger/ab-turn-cost-20260604-otab02/compare/compare_report.template.md)
+  - [config.current-with-otel.toml](C:/Users/andre/.codex/tmp/otel-ab-turn-cost-20260604-otab02/config.current-with-otel.toml)
+  - [config.minimal-no-mcp-with-otel.toml](C:/Users/andre/.codex/tmp/otel-ab-turn-cost-20260604-otab02/config.minimal-no-mcp-with-otel.toml)
+  - [config.original.toml](C:/Users/andre/.codex/tmp/otel-ab-turn-cost-20260604-otab02/config.original.toml)
+  - [collector-A-current-config.yaml](C:/Users/andre/.codex/tmp/otel-ab-turn-cost-20260604-otab02/collector-A-current-config.yaml)
+  - [collector-B-minimal-config.yaml](C:/Users/andre/.codex/tmp/otel-ab-turn-cost-20260604-otab02/collector-B-minimal-config.yaml)
+  - [apply-current-config.ps1](C:/Users/andre/.codex/tmp/otel-ab-turn-cost-20260604-otab02/apply-current-config.ps1)
+  - [apply-minimal-config.ps1](C:/Users/andre/.codex/tmp/otel-ab-turn-cost-20260604-otab02/apply-minimal-config.ps1)
+  - [restore-original-config.ps1](C:/Users/andre/.codex/tmp/otel-ab-turn-cost-20260604-otab02/restore-original-config.ps1)
+  - [config.toml.bak-otel-ab-turn-cost-20260604-otab02](C:/Users/andre/.codex/config.toml.bak-otel-ab-turn-cost-20260604-otab02)
+- Подтверждение:
+  - подготовлен отдельный experiment package для двухрежимного сценария `A-current-config` vs `B-minimal-config`;
+  - `current` variant сохраняет MCP окружение и добавляет только локальный `[otel]` блок на `localhost`;
+  - `minimal/no MCP` variant удаляет все `[mcp_servers.*]` секции и добавляет тот же локальный `[otel]` блок;
+  - compare template уже хранит mode/turn структуру `A1/A2/A3` и `B1/B2/B3`, а также поля `same_session_reliable`, `tool_call_status`, `tool_mcp_activity`;
+  - backup [config.toml.bak-otel-ab-turn-cost-20260604-otab02](C:/Users/andre/.codex/config.toml.bak-otel-ab-turn-cost-20260604-otab02) и [config.original.toml](C:/Users/andre/.codex/tmp/otel-ab-turn-cost-20260604-otab02/config.original.toml) byte-identical текущему live [config.toml](C:/Users/andre/.codex/config.toml);
+  - live [config.toml](C:/Users/andre/.codex/config.toml) на этом шаге не менялся.
+- Проверка:
+  - `python -m unittest tests.test_codex_otel_ab_experiment`
+  - `python -m unittest tests.test_codex_token_debugger`
+  - `Get-FileHash -Algorithm SHA256 config.toml, backup, config.original.toml`
+- Вердикт человека: `not applicable`
+- Баги и сложности:
+  - первый вариант prep-script портил точный SHA256 backup из-за записи через `write_text`; это исправлено, теперь backup и `config.original.toml` сохраняются byte-identical;
+  - A/B run пока еще не выполнялся, потому что дальше нужен ручной restart между stop points.
+- Следующий шаг:
+  - это `STOP POINT 1`: backup/config/collector prepared;
+  - дальше по команде человека перейти к записи current config и ждать ручной restart для `continue A run`.
+
+<a id="j-20260604-002"></a>
+
+### J-20260604-002 - Tool/MCP Activity Inspector построил forensic-отчет по sanitized A/B outputs
+
+- Этап жизненного цикла: `Stage 1 - tool/MCP activity inspector working`
+- Роль: `Orc`
+- Маршрут выполнения: `direct`
+- Ссылка на сессию: `not available`
+- Related decisions: [D-20260604-002](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/tokken_dashboard_decisions.md#d-20260604-002)
+- Созданные файлы:
+  - [tool_mcp_activity_inspector.py](/D:/Codex+Kilocode/projects/sword-of-rome-web/scripts/tool_mcp_activity_inspector.py)
+  - [test_tool_mcp_activity_inspector.py](/D:/Codex+Kilocode/projects/sword-of-rome-web/tests/test_tool_mcp_activity_inspector.py)
+- Локальные output artifacts:
+  - [tool_mcp_activity.jsonl](/D:/Codex+Kilocode/projects/sword-of-rome-web/_local/codex-token-debugger/ab-turn-cost-20260604-otab02/compare/tool_mcp_activity/tool_mcp_activity.jsonl)
+  - [tool_mcp_activity_summary.json](/D:/Codex+Kilocode/projects/sword-of-rome-web/_local/codex-token-debugger/ab-turn-cost-20260604-otab02/compare/tool_mcp_activity/tool_mcp_activity_summary.json)
+  - [tool_mcp_activity_report.md](/D:/Codex+Kilocode/projects/sword-of-rome-web/_local/codex-token-debugger/ab-turn-cost-20260604-otab02/compare/tool_mcp_activity/tool_mcp_activity_report.md)
+- Подтверждение:
+  - inspector использует sanitized outputs из `A-current-config-rerun/parsed`, `B-minimal-config/parsed` и [compare_summary.json](/D:/Codex+Kilocode/projects/sword-of-rome-web/_local/codex-token-debugger/ab-turn-cost-20260604-otab02/compare/compare_summary.json);
+  - raw OTel не читался;
+  - Codex config не менялся;
+  - новых OTel-прогонов не запускалось;
+  - найдено `1222` Tool/MCP activity records;
+  - основные activity types: `mcp_server_inventory`, `mcp_init`, `mcp_tool_discovery`, `mcp_transport`, `tool_call_build`, `tool_call_metric`, `tool_call_duration_metric`, `tool_related_span`, `mcp_related_span`;
+  - `current config` имеет `681` activity records, `minimal/no MCP` имеет `541`;
+  - вывод по token overhead остается из `compare_summary.json`: current примерно на `+10.1k` input tokens дороже minimal, tool-turn добавляет около `+200` input tokens.
+- Проверка:
+  - `python -m unittest tests.test_tool_mcp_activity_inspector`
+  - `python scripts\tool_mcp_activity_inspector.py --compare-summary _local\codex-token-debugger\ab-turn-cost-20260604-otab02\compare\compare_summary.json --a-parsed _local\codex-token-debugger\ab-turn-cost-20260604-otab02\A-current-config-rerun\parsed --b-parsed _local\codex-token-debugger\ab-turn-cost-20260604-otab02\B-minimal-config\parsed --output-dir _local\codex-token-debugger\ab-turn-cost-20260604-otab02\compare\tool_mcp_activity`
+  - `rg -n "user\.email|user\.account_id|conversation\.id|host\.name|authorization|cookie|access_token|refresh_token|id_token" _local\codex-token-debugger\ab-turn-cost-20260604-otab02\compare\tool_mcp_activity` вернул пустой результат.
+- Вердикт человека: `pending`
+- Баги и сложности:
+  - часть tool/MCP metrics видна на mode-level, но не попадает в короткие turn windows по timestamp, поэтому для таких записей используется `mode_level` или limitation в отчете;
+  - OTel не дает точный per-tool token accounting, поэтому inspector не делает выводов вида "этот tool съел X tokens".
+- Следующий шаг:
+  - если диагностику продолжать, делать `MCP inventory / schema size report`: количество tools на MCP server, размеры descriptions/schemas и rough token estimate schema payload.
 
 <a id="bugs-and-difficulties"></a>
 

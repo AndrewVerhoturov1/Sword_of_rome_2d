@@ -3,13 +3,14 @@
 Slug: `tokken_dashboard`  
 Owner: `Orc`  
 Status: `active`  
-Last updated: `2026-06-03`  
+Last updated: `2026-06-04`
 Decision layer: `subproject-level accepted decisions`
 
 ## Quick Navigation
 
 - [Purpose](#purpose)
 - [Accepted Decisions](#accepted-decisions)
+- [D-20260604-002](#d-20260604-002)
 - [Corrected Decisions](#corrected-decisions)
 - [Rejected Options](#rejected-options)
 - [Waivers](#waivers)
@@ -90,7 +91,7 @@ Decision layer: `subproject-level accepted decisions`
 - Decision: для следующего parser/dashboard исследования рабочим локальным входом считать файл [codex-otel.json](C:/Users/andre/.codex/tmp/otel-file-smoke-20260603-214412/codex-otel.json), созданный через OpenTelemetry Collector `file` exporter на `localhost`.
 - Reason: этот файл реально содержит `logs`, `traces`, `metrics` и token usage поля, поэтому он достаточен для разработки локального parser.
 - Confirmed token fields: `input_token_count`, `output_token_count`, `cached_token_count`, `reasoning_token_count`, `tool_token_count`, `codex.turn.token_usage.*`, `gen_ai.usage.*`, `codex.usage.*`, `token_type`.
-- Privacy rule: перед dashboard или долговременным хранением удалять минимум `user.email`, `user.account_id`, `conversation.id`, `prompt`, `prompt_length`.
+- Privacy rule: перед dashboard или долговременным хранением удалять или маскировать минимум `user.email`, `user.account_id`, `conversation.id`, `host.name` и чувствительные `authorization/cookie/api-key/password/secret` поля. `prompt_length` можно сохранять как диагностический сигнал. `prompt` можно сохранять только если значение уже пустое или `[REDACTED]`, иначе значение нужно заменять на `[REDACTED]`.
 - Consequence: raw-файл можно читать локальным parser-ом, но нельзя публиковать, коммитить или показывать в dashboard без redaction.
 - Boundary: `log_user_prompt = false` остается обязательным, но не считается достаточной защитой.
 - Human approval: `recorded`
@@ -105,6 +106,43 @@ Decision layer: `subproject-level accepted decisions`
 - Reason: так проще читать документы, меньше дублирования и легче поддерживать один canonical decision source.
 - Consequence: journal остается factual log, а decisions становятся главным местом для рабочих правил.
 - Boundary: это не отменяет того, что фактическое событие и проверка все равно должны быть зафиксированы в journal.
+- Human approval: `recorded`
+
+<a id="d-20260603-007"></a>
+
+### D-20260603-007 - Следующий допустимый этап: локальный forensics parser раньше dashboard и раньше token optimization
+
+- Status: `accepted`
+- Source: `user instruction on 2026-06-03`
+- Decision: следующий этап подпроекта `tokken_dashboard` ограничивается локальным `forensics parser` для raw OTel файла. Parser читает только локальный raw input и выпускает только очищенные локальные артефакты: `clean_events.jsonl`, `token_usage.jsonl`, `spans.jsonl`, `metrics.jsonl`, `sessions.jsonl` или `session_summary.json`, `warnings.jsonl`, `diagnostic_report.md`.
+- Reason: уже подтверждено, что raw OTel содержит полезные `logs`, `traces`, `metrics` и token fields, но также содержит приватные поля. Значит сначала нужен слой local parsing + redaction, а не visualization и не optimization.
+- Consequence: рабочей целью следующего шага считается forensic-разбор причин перерасхода токенов по sanitized data, а не построение dashboard и не изменение поведения Codex.
+- Boundary: raw OTel file не публиковать, наружу не отправлять, код приложения не менять, telemetry optimization не делать на этом этапе. Dashboard может опираться только на sanitized outputs после отдельного решения.
+- Human approval: `recorded`
+
+<a id="d-20260604-001"></a>
+
+### D-20260604-001 - Сравнение turn cost делать как A/B эксперимент из двух режимов по три сообщения в одной session
+
+- Status: `accepted`
+- Source: `user instruction on 2026-06-04`
+- Decision: следующий turn-cost эксперимент для `tokken_dashboard` делать не как три изолированных одиночных run, а как два режима: `A-current-config` и `B-minimal-config`. В каждом режиме выполнять ровно три сообщения в одной и той же session/thread: первый short no-tool turn, второй short no-tool turn, третий safe tool turn.
+- Same-session rule: внутри одного режима `A1 -> A2 -> A3` и `B1 -> B2 -> B3` нельзя менять config и нельзя перезапускать Codex. Между режимами разрешен только controlled config swap + fresh restart. После restore original config нужен отдельный fresh restart.
+- Reason: только такой формат позволяет увидеть baseline overhead, cache effect второго сообщения и реальную стоимость turn с инструментом без смешивания разных session.
+- Consequence: compare-артефакты должны хранить не только run-level summary, но и mode/turn структуру с `turn_index`, `tool_call_status`, `cached_tokens`, `tool_mcp_activity` и флагом `same_session_reliable`.
+- Boundary: не делать вывод о точных токенах конкретного инструмента. OTel показывает token usage by turn и tool/MCP activity, но не гарантирует per-tool token accounting.
+- Human approval: `recorded`
+
+<a id="d-20260604-002"></a>
+
+### D-20260604-002 - Tool/MCP Activity Inspector строится только поверх sanitized outputs и не утверждает per-tool tokens
+
+- Status: `accepted`
+- Source: `user instruction on 2026-06-04`
+- Decision: следующий диагностический слой `Tool/MCP Activity Inspector` должен читать уже готовые sanitized parser outputs и `compare_summary.json`, нормализовать Tool/MCP activity records, привязывать их к `mode/turn` best-effort через окна `window_start/window_end`, и выпускать `tool_mcp_activity.jsonl`, `tool_mcp_activity_summary.json`, `tool_mcp_activity_report.md`.
+- Reason: текущий A/B результат уже показывает token deltas по turn, но нужен отдельный forensic слой, который объясняет, какая Tool/MCP активность была рядом с дорогими ходами.
+- Consequence: inspector может показывать activity, counts, spans, metrics, proximity и current-vs-minimal различия, но не должен утверждать точные токены конкретного tool или MCP server.
+- Boundary: не запускать новые OTel-прогоны, не менять Codex config, не читать raw OTel без необходимости, не делать dashboard, не выводить приватные значения.
 - Human approval: `recorded`
 
 <a id="corrected-decisions"></a>
@@ -125,6 +163,15 @@ Decision layer: `subproject-level accepted decisions`
 
 ## Rejected options
 
+<a id="r-20260604-001"></a>
+
+### R-20260604-001 - Сравнивать turn cost по трем отдельным одиночным run
+
+- Status: `rejected`
+- Option: мерить baseline, second turn и tool turn через отдельные независимые запуски вместо одной session на режим.
+- Reason: такой формат ломает session continuity и не дает чисто измерить cache effect и накопление history между первым, вторым и tool turn.
+- Safe alternative: использовать двухрежимный A/B сценарий `A1 -> A2 -> A3` и `B1 -> B2 -> B3` с manual restart только между режимами и после restore.
+
 <a id="r-20260603-001"></a>
 
 ### R-20260603-001 - Простой Python probe как основной приемник для Codex baseline
@@ -142,6 +189,15 @@ Decision layer: `subproject-level accepted decisions`
 - Option: оставить telemetry включенной после smoke-test и сразу собирать raw поток как есть.
 - Reason: в сыром потоке уже замечены чувствительные поля уровня `user.email`, `user.account_id`, `conversation.id`.
 - Safe alternative: перед постоянным сбором сделать локальную схему capture + redaction.
+
+<a id="r-20260603-003"></a>
+
+### R-20260603-003 - Сразу строить dashboard или делать token optimization поверх raw OTel
+
+- Status: `rejected`
+- Option: перейти сразу к dashboard, графикам или рекомендациям по оптимизации токенов без отдельного forensic parser и redaction слоя.
+- Reason: raw поток пока небезопасен для прямого показа и еще не разложен в стабильные диагностические сущности уровня events, spans, metrics, sessions и warnings.
+- Safe alternative: сначала локальный parser выпускает sanitized artifacts и только потом отдельно решается вопрос про dashboard или optimization workflow.
 
 <a id="waivers"></a>
 
