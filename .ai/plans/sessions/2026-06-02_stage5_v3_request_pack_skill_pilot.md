@@ -6,7 +6,7 @@
 
 ## Status
 
-planned
+handoff-prepared
 
 ## Goal
 
@@ -126,7 +126,10 @@ planned
 
 ## Runs
 
-- `Planning turn: 001` - прочитан `ork_planner_stage5_first_pilot_bridge.md`, связанные `ork_planner` docs, V3 contracts/prompts/templates и зафиксирован Stage 5 planning artifact.
+| Session run | Summary |
+|---|---|
+| 001 | прочитан `ork_planner_stage5_first_pilot_bridge.md`, связанные `ork_planner` docs, V3 contracts/prompts/templates и зафиксирован Stage 5 planning artifact |
+| 002 | локально прочитан внешний draft `v3_request_pack_skill_pilot_plan_full_draft.md`, подтверждено что draft полезен как input, но слишком велик для canonical `plan_full`; подготовлен отдельный Kilo handoff на compaction и точечную правку baseline `plan_full` |
 
 ## User Overrides
 
@@ -134,11 +137,14 @@ planned
 - Закоммитить и запушить artifact.
 - Целевой home для итогового skill: глобальный личный Codex skill.
 - Proof bar усилен: skill должен дойти дальше request pack и довести flow до годного внешнего `V3 artifact package`.
+- Подготовить Kilo-задачу, чтобы отдельный Kilo run выполнил compaction и содержательную правку pilot `plan_full`, после чего Codex сделает review.
 
 ## Checkpoint State
 
 - `ork_planner` использован как source-of-truth для Stage 5 constraints, reduced docs set, gates и stop rules.
 - Canonical baseline plan перенесён в подпроект: `.ai/subprojects/v3_request_pack_skill_pilot/v3_request_pack_skill_pilot_plan_full.md`.
+- Внешний draft `v3_request_pack_skill_pilot_plan_full_draft.md` локально оценён как review input, а не как новый canonical plan.
+- Следующий execution slice выделен отдельно: узкий Kilo docs run на compaction и правку только canonical `v3_request_pack_skill_pilot_plan_full.md`.
 - Текущий planning artifact не является start signal для `Stage 5 execution`.
 - Текущий planning artifact не является разрешением на repo-level promotion.
-- Следующий безопасный шаг: человек решает, какой следующий planning/proof route нужен - `V1`, `V3` или локальный следующий planning step.
+- Следующий безопасный шаг: выполнить подготовленный Kilo handoff, затем сделать Codex review report и diff.

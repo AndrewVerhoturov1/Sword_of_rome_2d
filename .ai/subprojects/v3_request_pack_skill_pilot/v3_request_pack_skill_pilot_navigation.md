@@ -1,22 +1,13 @@
 # V3 Request Pack Skill Pilot Navigation
 
-Слаг: `v3_request_pack_skill_pilot`  
-Владелец: `Orc`  
-Статус: `draft / pending review`  
-Дата обновления: `2026-06-02`
+Slug: `v3_request_pack_skill_pilot`  
+Owner: `Orc`  
+Status: `draft / pending external run`  
+Date: `2026-06-02`
 
 ## Назначение
 
-Этот файл — карта документов подпроекта.
-
-Он показывает:
-
-- какие документы уже существуют;
-- какие документы сейчас canonical;
-- что читать человеку;
-- что читать `Orc`;
-- чего пока нет;
-- какие файлы не надо трактовать как active source.
+Это карта документов подпроекта и связанных request artifacts.
 
 ## Current lifecycle stage
 
@@ -27,13 +18,7 @@ Stage 5 pilot
 Gate state:
 
 ```text
-pending human review of battle plan
-```
-
-Stage warning:
-
-```text
-Do not claim next stage started unless human gate is closed.
+V3 request draft prepared; pending human send to external chat
 ```
 
 ## Active route
@@ -42,11 +27,7 @@ Do not claim next stage started unless human gate is closed.
 Planner -> Orc
 ```
 
-## Start here
-
-### Human-first route
-
-Человеку обычно читать так:
+## Human-first route
 
 1. `v3_request_pack_skill_pilot_readme.md`
 2. `v3_request_pack_skill_pilot_navigation.md`
@@ -54,19 +35,16 @@ Planner -> Orc
 4. `v3_request_pack_skill_pilot_journal.md`
 5. `v3_request_pack_skill_pilot_plan_full.md`
 
-### Orc route
-
-`Orc` обычно читать так:
+## Orc route
 
 1. `v3_request_pack_skill_pilot_navigation.md`
-2. `v3_request_pack_skill_pilot_plan_index.md`
-3. `v3_request_pack_skill_pilot_plan_full.md`
-4. `v3_request_pack_skill_pilot_decisions.md`
-5. latest `v3_request_pack_skill_pilot_journal.md`
+2. `v3_request_pack_skill_pilot_battle_plan.md`
+3. `v3_request_pack_skill_pilot_plan_index.md`
+4. `v3_request_pack_skill_pilot_plan_full.md`
+5. `v3_request_pack_skill_pilot_decisions.md`
+6. latest `v3_request_pack_skill_pilot_journal.md`
 
-## Canonical file list
-
-Сейчас canonical документами подпроекта являются только реально существующие файлы:
+## Canonical subproject docs
 
 - `v3_request_pack_skill_pilot_plan_full.md`
 - `v3_request_pack_skill_pilot_battle_plan.md`
@@ -76,42 +54,42 @@ Planner -> Orc
 - `v3_request_pack_skill_pilot_journal.md`
 - `v3_request_pack_skill_pilot_navigation.md`
 
-## Existing documents
+## Linked V3 request artifacts
 
-### Planner-owned documents
+Эти файлы уже существуют, но не входят в canonical subproject docs list, потому что лежат в `.ai/v3/requests/`:
+
+- `V3-20260602-114035-v3-request-pack-skill-draft_request.md`
+- `V3-20260602-114035-v3-request-pack-skill-draft_prompt.md`
+- `V3-20260602-114035-v3-request-pack-skill-draft_send_note.md`
+
+## What exists already
 
 | File | Purpose | Audience |
 |---|---|---|
-| `v3_request_pack_skill_pilot_plan_full.md` | Стратегическая база пилота | human + agents |
-| `v3_request_pack_skill_pilot_battle_plan.md` | Сжатый operational-конспект remaining path | human + agents |
+| `v3_request_pack_skill_pilot_plan_full.md` | стратегическая база | human + agents |
+| `v3_request_pack_skill_pilot_battle_plan.md` | сжатый operational summary | human + agents |
+| `v3_request_pack_skill_pilot_readme.md` | human-first вход | human |
+| `v3_request_pack_skill_pilot_decisions.md` | долгоживущие решения | human + agents |
+| `v3_request_pack_skill_pilot_plan_index.md` | retrieval map по `plan_full` | agents |
+| `v3_request_pack_skill_pilot_journal.md` | factual log | human + agents |
+| `v3_request_pack_skill_pilot_navigation.md` | эта карта | human + agents |
 
-### Orc-owned documents
-
-| File | Purpose | Audience |
-|---|---|---|
-| `v3_request_pack_skill_pilot_readme.md` | Human-first вход | human-first |
-| `v3_request_pack_skill_pilot_decisions.md` | Долгоживущие решения и границы | human + agents |
-| `v3_request_pack_skill_pilot_plan_index.md` | Agent-oriented retrieval map по `plan_full` | agents |
-| `v3_request_pack_skill_pilot_journal.md` | Фактический стартовый журнал | human + agents |
-| `v3_request_pack_skill_pilot_navigation.md` | Карта документов подпроекта | human + agents |
-
-## Planned or not created yet
-
-Эти файлы и артефакты сейчас не созданы и не должны трактоваться как existing:
+## What does not exist yet
 
 | File or artifact | State | Notes |
 |---|---|---|
-| `v3_request_pack_skill_pilot_status.md` | `not created` | не входит в current minimal set |
-| skill files | `not created` | global skill materialization закрыт отдельным human gate |
-| request files | `not created` | `V3 request` не готовится на этом шаге |
-| proof artifacts | `not created` | proof не запущен |
-| scripts | `not created` | automation пока не открыт, кроме возможного узкого helper по отдельному решению |
+| `v3_request_pack_skill_pilot_status.md` | `not created` | не входит в текущий набор |
+| returned package | `not created` | внешний чат ещё не запускался |
+| import artifacts | `not created` | import-stage не открыт |
+| global skill files | `not created` | materialization требует отдельного human gate |
+| scripts | `not created` | broad automation не открыта |
 | repo-level docs | `not created` | repo-level promotion не открыт |
 
 ## Non-canonical / do not use as active source
 
-- `v3_request_pack_skill_pilot_plan_full_draft.md` — draft, не использовать вместо accepted `plan_full`.
-- Любые legacy route docs — не возвращать как active route.
+- любые legacy route docs;
+- любой draft, который пытается подменить accepted `plan_full`;
+- любой package, который ещё не прошёл package-only review.
 
 ## Reading routes by need
 
@@ -119,12 +97,12 @@ Planner -> Orc
 |---|---|
 | Понять подпроект как человек | `readme -> navigation -> decisions -> journal -> plan_full` |
 | Продолжить работу как `Orc` | `navigation -> battle_plan -> plan_index -> plan_full -> decisions -> latest journal` |
-| Проверить стратегию | `plan_full -> plan_index` |
-| Проверить фактический старт | `journal` |
+| Отправить готовый V3 request | `navigation -> linked V3 request artifacts -> prompt -> external chat` |
+| Проверить фактические действия | `journal` |
 
 ## Maintenance rule
 
-- Добавлять файл в canonical list только после его реального создания.
-- Не записывать `battle_plan` или `status` как обязательные стартовые документы.
+- Не добавлять файл в canonical subproject docs, пока он реально не создан в подпроектной папке.
 - Не объявлять `Stage 6` открытым.
+- Не смешивать request, package, import и accepted result.
 - Не возрождать legacy route.

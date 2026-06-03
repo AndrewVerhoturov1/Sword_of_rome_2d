@@ -9,100 +9,93 @@ Active route: `Planner -> Orc`
 
 ## Что это
 
-`v3_request_pack_skill_pilot` — это docs-only подпроект для первого `Stage 5` pilot по теме `V3 request pack` preparation skill.
+`v3_request_pack_skill_pilot` — docs-only подпроект для первого `Stage 5` pilot по теме skill `v3-request-pack-prep`.
 
-Этот подпроект не запускает skill execution и не открывает следующий stage. Он держит локальный набор документов, чтобы зафиксировать границы пилота, точки human gate и безопасный стартовый контекст для дальнейшей работы.
+Подпроект нужен, чтобы отдельно держать:
 
-## Зачем он существует
+- planning;
+- boundaries;
+- human gates;
+- V3 request preparation;
+- package-only review.
 
-Подпроект нужен, чтобы не смешивать:
+Он не равен skill execution, import-stage или accepted result.
 
-- планирование пилота;
-- materialization skill;
-- подготовку `V3 request`;
-- получение внешнего package;
+## Зачем он нужен
+
+Подпроект защищает от путаницы между:
+
+- request;
+- returned package;
 - import;
-- accepted result.
+- accepted result;
+- global skill materialization.
 
-Практическая цель простая: сначала держать пилот как понятный docs-only слой, а не разворачивать раньше времени skill files, proof artifacts, scripts или repo-level promotion.
+Смысл простой: сначала собрать безопасный docs-layer, потом по отдельным human решениям двигаться дальше.
 
-## Текущий статус простыми словами
-
-Сейчас мы на этапе `Stage 5 pilot`. Уже есть принятый стратегический `plan_full` и создан минимальный стартовый docs set для маршрута `Planner -> Orc`.
-
-Уже принято для этого подпроекта:
+## Что уже принято
 
 - active route `Planner -> Orc`;
 - подпроект остаётся docs-only;
 - `request != package != import != accepted result`;
 - `Stage 6` не открыт;
 - repo-level promotion не открыт;
-- global skill materialization не разрешён без отдельного human gate;
+- global skill materialization требует отдельного human gate;
 - automation допустим только как узкий `request-pack preflight helper` по отдельному human decision;
-- human approval ничем не подменяется.
+- human approval ничем не заменяется.
 
-Ещё не начато:
+## Что уже подготовлено
 
-- `status`;
-- skill execution;
-- подготовка `V3 request`;
-- proof run;
-- import;
-- открытие `Stage 6`;
-- repo-level promotion.
+- `plan_full`;
+- minimal docs set;
+- accepted `battle_plan`;
+- локальный V3 request draft на repo-local `skill_draft`.
 
-## Что читать сначала
+## Что читать
 
 | Ситуация | Читать |
 |---|---|
-| Хочу быстро понять подпроект | этот `readme`, потом `v3_request_pack_skill_pilot_navigation.md` |
-| Хочу увидеть принятые границы | `v3_request_pack_skill_pilot_decisions.md` |
-| Хочу увидеть фактический стартовый шаг | `v3_request_pack_skill_pilot_journal.md` |
-| Хочу проверить стратегическую базу | `v3_request_pack_skill_pilot_plan_full.md` |
-| Я агент и хочу быстро найти нужный блок в плане | `v3_request_pack_skill_pilot_plan_index.md` |
+| Быстро понять подпроект | этот `readme`, потом `navigation` |
+| Проверить границы | `decisions` |
+| Проверить стратегию | `plan_full` |
+| Найти нужный блок в плане | `plan_index` |
+| Проверить фактические действия | `journal` |
 
-## Какие документы уже существуют
+## Какие документы уже есть
 
-Сейчас в canonical стартовый набор входят:
+Canonical docs подпроекта:
 
-- `v3_request_pack_skill_pilot_plan_full.md` — стратегическая база подпроекта.
-- `v3_request_pack_skill_pilot_battle_plan.md` — сжатый operational-конспект remaining path в текущих границах.
-- `v3_request_pack_skill_pilot_readme.md` — human-first вход.
-- `v3_request_pack_skill_pilot_decisions.md` — долгоживущие решения и границы.
-- `v3_request_pack_skill_pilot_plan_index.md` — agent-oriented retrieval map по `plan_full`.
-- `v3_request_pack_skill_pilot_journal.md` — фактический журнал стартовых действий.
-- `v3_request_pack_skill_pilot_navigation.md` — карта документов подпроекта.
+- `v3_request_pack_skill_pilot_plan_full.md`
+- `v3_request_pack_skill_pilot_battle_plan.md`
+- `v3_request_pack_skill_pilot_readme.md`
+- `v3_request_pack_skill_pilot_decisions.md`
+- `v3_request_pack_skill_pilot_plan_index.md`
+- `v3_request_pack_skill_pilot_journal.md`
+- `v3_request_pack_skill_pilot_navigation.md`
 
-## Чего ещё пока нет
+Связанные V3 request artifacts:
 
-Сейчас специально не созданы:
+- `V3-20260602-114035-v3-request-pack-skill-draft_request.md`
+- `V3-20260602-114035-v3-request-pack-skill-draft_prompt.md`
+- `V3-20260602-114035-v3-request-pack-skill-draft_send_note.md`
 
-- `v3_request_pack_skill_pilot_status.md`;
-- skill files;
-- request files;
-- proof artifacts;
-- handoff files;
-- scripts;
-- новые repo-level docs.
+## Что ещё не начато
+
+- `status`;
+- внешний V3 request run;
+- returned package;
+- import;
+- skill materialization в global home;
+- `Stage 6`;
+- repo-level promotion.
 
 ## Current safe next step
 
-Безопасный следующий шаг: человеку открыть `battle_plan`, `navigation`, `decisions` и подтвердить, что battle plan остаётся внутри docs-only границ и не открывает proof, import или `Stage 6`.
+Открыть prepared V3 prompt, отправить его во внешний чат и вернуть сюда ZIP package или ZIP-ready representation для package-only review.
 
 ## Role warning
 
-- `Planner` владеет стратегией.
-- `Orc` ведёт execution evidence и operational docs.
+- `Planner` держит стратегию.
+- `Orc` ведёт operational docs и evidence.
 - Human закрывает gates.
 - Agent recommendation не равен human approval.
-
-## Non-canonical files
-
-- `v3_request_pack_skill_pilot_plan_full_draft.md` — draft-слой, не использовать как active source вместо accepted `plan_full`.
-
-## Human check
-
-1. Откройте [v3_request_pack_skill_pilot_battle_plan.md](D:\Codex+Kilocode\projects\sword-of-rome-web\.ai\subprojects\v3_request_pack_skill_pilot\v3_request_pack_skill_pilot_battle_plan.md).
-2. Проверьте, что там нет запуска skill, proof, import, `V3 request` или `Stage 6`, а следующий шаг — только ваш verdict.
-3. Если всё верно, ответьте: `battle_plan принят`.
-4. Если что-то не так, напишите простыми словами, какой блок нужно исправить.

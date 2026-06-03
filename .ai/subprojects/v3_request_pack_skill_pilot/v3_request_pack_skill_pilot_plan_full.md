@@ -15,10 +15,11 @@
 ## Быстрый итог
 
 - Новый подпроект живёт в `.ai/subprojects/v3_request_pack_skill_pilot/`.
-- Итоговый skill целится в глобальный путь `C:\Users\andre\.codex\skills\v3-request-pack-prep\`.
+- Proposed skill home до отдельного capability-sensitive human gate: `C:\Users\andre\.codex\skills\v3-request-pack-prep\`.
 - Сам подпроект остаётся repo-local и docs-only.
 - Первый proof идёт на узком `workflow_docs`-профиле.
 - Полезность skill должна быть доказана не только сборкой request pack, но и получением по нему годного внешнего `V3 artifact package`.
+- Допустим только один узкий helper script-класс: `request-pack preflight`, и только по отдельному human decision.
 - `Stage 6` этим планом не открыт.
 - Human approval ничем не подменяется.
 
@@ -89,11 +90,11 @@ Waiver:
 
 `v3-request-pack-prep`
 
-Целевой home:
+Proposed skill home до отдельного capability-sensitive human gate:
 
 `C:\Users\andre\.codex\skills\v3-request-pack-prep\`
 
-Skill v1 должен уметь:
+Skill version 1 должен уметь:
 
 - помогать собирать `V3 request pack` для внешнего чата;
 - удерживать обязательные поля `v3_request_contract.md`;
@@ -102,12 +103,43 @@ Skill v1 должен уметь:
 - помогать собирать `allowed_paths`, `forbidden_paths`, `expected_files`, `acceptance_criteria`, `known_risks`;
 - помогать выбирать безопасный proof task под первый внешний прогон.
 
-Skill v1 не должен:
+Skill version 1 не должен:
 
 - сам импортировать package;
 - писать repo files напрямую;
 - выполнять post-import testing;
 - расширяться за пределы `workflow_docs` без нового planner/human gate.
+
+## Authorization boundary
+
+Принятие этого `plan_full` разрешает только:
+
+- уточнять и пересматривать локальные planning docs подпроекта;
+- готовить следующий human decision point;
+- при отдельном решении человека готовить узкий `V3 request` на внешний draft planning docs.
+
+Принятие этого `plan_full` не разрешает:
+
+- materialize global skill;
+- запускать внешний proof автоматически;
+- импортировать какой-либо package;
+- обновлять repo-level workflow docs как promoted standard;
+- открывать `Stage 6`;
+- писать scripts, кроме отдельно одобренного узкого preflight helper.
+
+### Что skill version 1 должен предотвращать
+
+Skill version 1 должен активно удерживать от типичных ошибок:
+
+- внешнему чату переданы только локальные пути вместо commit-pinned GitHub raw URLs;
+- raw URLs не pinned к конкретному commit;
+- `allowed_paths` слишком широкие, `forbidden_paths` пропущены;
+- external chat попросили писать в repo напрямую;
+- `current_stage` не указан или неверен;
+- `post_import_testing.mode` пропущен;
+- human approval ослаблен или заменён;
+- scope расширен до scripts/product code без нового gate;
+- proof остановился на request pack, внешний package не проверен.
 
 ## Proof profile для первого пилота
 
@@ -123,9 +155,77 @@ Skill v1 не должен:
 - без кода
 - без scripts
 
-Важно: полезность skill считается доказанной только если flow доходит до реального внешнего package.
+### First proof must be boring
 
-Минимальный proof bar:
+Первый proof должен быть намеренно скучным и узким:
+
+- один внешний чат;
+- один `V3 request pack`;
+- один returned package;
+- один create-only markdown target;
+- без overwrite;
+- без import;
+- без `schemas`;
+- без `product_code`.
+
+### Candidate boring proof task
+
+Базовый кандидат для первого proof:
+
+- создать один короткий markdown-файл:
+  - `.ai/subprojects/v3_request_pack_skill_pilot/examples/example_v3_request_pack_checklist.md`
+- `scope = workflow_docs`
+- `action = create`
+- `post_import_testing.mode = waived`
+- `allowed_paths` ограничить:
+  - `.ai/subprojects/v3_request_pack_skill_pilot/examples/`
+- `forbidden_paths` явно включить:
+  - `AGENTS.md`
+  - `.ai/repo_navigation.md`
+  - `.ai/v3/contracts/`
+  - `.ai/rules/`
+  - `scripts/`
+  - `src/`
+  - `package.json`
+
+### Full V3 request checklist
+
+Первый proof request pack должен явно покрывать все обязательные поля контракта:
+
+- `v3_id`
+- `task_title`
+- `generated_by`
+- `action`
+- `scope`
+- `current_stage`
+- `context_summary`
+- `task_description`
+- `allowed_paths`
+- `forbidden_paths`
+- `expected_files`
+- `package_format`
+- `acceptance_criteria`
+- `known_risks`
+- `post_import_testing`
+- `no_repo_access_statement`
+
+### Request-pack-only proof недостаточен
+
+Proof должен дойти до реального внешнего `V3 artifact package`, а не остановиться на красивом request pack. Request pack — необходимый, но не достаточный шаг. Полезность skill считается доказанной только если flow доходит до годного внешнего package.
+
+### Evidence layers
+
+Proof должен давать четыре слоя evidence:
+
+**Evidence A — Request pack quality.** Реальный request pack с обязательными полями `v3_request_contract.md`, commit-pinned raw URLs, allowed/forbidden paths, expected files, acceptance criteria, чёткой границей `request != package != import`.
+
+**Evidence B — External package quality.** Внешний чат возвращает реальный ZIP artifact package (не только советы). Пакет содержит `manifest.yaml`, `README_FOR_KILO.md`, `README_FOR_CODEX.md`, `checksums.sha256`, `files/`.
+
+**Evidence C — Package-only review.** Пакет проверяется без импорта. Review подтверждает: manifest существует, файлы совпадают со списком, хэши сходятся, пути внутри `allowed_paths`, вне `forbidden_paths`, scope остаётся `workflow_docs`, пакет не утверждает, что repo изменён.
+
+**Evidence D — Human gate preservation.** Review явно фиксирует: human approval всё ещё обязателен, import-stage не начат, Stage 6 не начат.
+
+### Минимальный proof bar
 
 1. skill помогает собрать один реальный `V3 request pack`;
 2. по этому pack внешний чат возвращает один реальный `V3 artifact package`;
@@ -134,6 +234,8 @@ Skill v1 не должен:
 ## Lifecycle и gates
 
 ### Stage 5 pilot lifecycle
+
+Operational detail держать в `battle_plan`. Сам `plan_full` фиксирует только крупные gates и границы.
 
 1. `Planner phase`
    Зафиксировать `plan_full`, folder, target skill path, scope, proof profile и waivers.
@@ -167,7 +269,23 @@ Skill v1 не должен:
 - Пока не закрыт текущий human gate, следующий execution step не стартует.
 - Package generation не равен import-stage.
 - Годный внешний package не равен accepted repo result.
+- Package-only review — обязательный шаг перед любым решением об импорте.
+- Package-only review не открывает import-stage автоматически.
 - Принятый `Stage 5` pilot не равен началу `Stage 6`.
+
+## Package-only review
+
+Package-only review — это проверка полученного внешнего `V3 artifact package` без его импорта в репозиторий. Review подтверждает:
+
+- ZIP содержит один root folder формата `V3-YYYYMMDD-HHMMSS-short-topic/`, а не россыпь файлов в корне;
+- `manifest.yaml` существует, файлы совпадают со списком;
+- SHA-256 хэши из `checksums.sha256` сходятся;
+- все target paths внутри `allowed_paths`, ни один не в `forbidden_paths`;
+- scope остаётся `workflow_docs`, action остаётся `create`;
+- пакет не утверждает, что repo уже изменён;
+- пакет не заявляет, что результат accepted или импортирован.
+
+Package-only review — это gate перед любым решением об импорте. Он не открывает import-stage и не является human verdict.
 
 ## Как пилот докажет полезность skill
 
@@ -180,6 +298,7 @@ Skill v1 не должен:
 - request pack удерживает GitHub-first context mode;
 - request pack не допускает forbidden-path drift;
 - внешний чат по этому request pack возвращает годный `V3 artifact package`, а не только советы;
+- package проходит package-only review (без импорта);
 - человеку понятно, что со skill flow стал чище, быстрее или стабильнее, чем ручная сборка.
 
 Returned package считать годным только если:
@@ -192,17 +311,48 @@ Returned package считать годным только если:
 - есть `checksums.sha256`;
 - project files лежат только под `files/`;
 - package не заявляет, что repo уже изменён;
-- package остаётся внутри `workflow_docs` scope.
+- package остаётся внутри `workflow_docs` scope;
+- scope не расширился до scripts/product code без нового gate.
+
+Даже успешный pilot даёт только `candidate skill/process evidence`. Он не даёт автоматического разрешения на repo-level promotion, import-stage или `Stage 6`.
+
+## Automation policy
+
+Для этого pilot допустим только один automation-класс:
+
+- узкий `request-pack preflight helper`
+
+Его цель:
+
+- быстро проверить draft `V3 request pack` перед отправкой во внешний чат;
+- поймать пропущенные обязательные поля;
+- поймать неполные `allowed_paths` / `forbidden_paths`;
+- поймать raw GitHub URLs, которые не pinned к commit;
+- поймать drift между `expected_files`, `allowed_paths` и `forbidden_paths`.
+
+Этот helper не должен:
+
+- сам писать request pack вместо человека;
+- генерировать ZIP package;
+- импортировать package;
+- писать repo files по умолчанию;
+- обновлять repo-level docs;
+- подменять human approval;
+- открывать `Stage 6`.
+
+Этот helper допустим только по отдельному human decision. Для текущего pilot это узкое исключение, а не расширение первого proof до scripts/product code.
 
 ## Stop rules
 
 Нужно остановиться и вернуть вопрос человеку, если:
 
 - scope хочет выйти за `workflow_docs`;
-- появляется желание добавить scripts, validators, codegen или auto-apply;
+- появляется желание добавить automation шире, чем узкий `request-pack preflight helper`;
 - proof требует repo-level writes;
-- кто-то пытается считать package import-stage результатом;
+- кто-то пытается считать package import-stage результатом или accepted результатом без package-only review;
+- возникает попытка импортировать package без package-only review;
 - возникает попытка открыть `Stage 6` без принятого `Stage 5`;
+- возникает попытка трактовать успешный pilot как разрешение на repo-level promotion;
 - становится неясно, должен ли skill жить глобально или repo-local;
 - для безопасного решения не хватает важной информации.
 
@@ -214,7 +364,7 @@ Returned package считать годным только если:
 - canonical route везде остаётся `Planner -> Orc`;
 - human gates были явными;
 - итоговый skill materialized только после отдельного human signal;
-- skill v1 остаётся узким и не выходит за `workflow_docs`;
+- skill version 1 остаётся узким и не выходит за `workflow_docs`;
 - собран один реальный `V3 request pack`;
 - по нему получен один реальный годный внешний `V3 artifact package`;
 - package проходит package-only review;
@@ -226,6 +376,5 @@ Returned package считать годным только если:
 Следующий безопасный шаг зависит от выбора человека:
 
 - либо уточнять и усиливать локальный `plan_full`;
-- либо готовить `V1` вопрос для critique/refinement;
-- либо готовить `V3` request на внешний draft planning docs;
+- либо готовить `V3 request` на внешний draft planning docs;
 - но не переходить к skill execution без отдельного разрешения.

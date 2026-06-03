@@ -1,22 +1,21 @@
 # V3 Request Pack Skill Pilot Journal
 
-Слаг: `v3_request_pack_skill_pilot`  
-Владелец: `Orc`  
-Статус: `active`  
-Начат: `2026-06-02`
+Slug: `v3_request_pack_skill_pilot`  
+Owner: `Orc`  
+Status: `active`  
+Started: `2026-06-02`
 
 ## Назначение
 
-Этот файл фиксирует только фактические действия по подпроекту.
+Этот файл хранит только фактические действия по подпроекту.
 
 ## Entries
 
 ### J-20260602-001 — создан стартовый minimal docs set
 
-- Этап жизненного цикла: `Stage 5 pilot`
+- Этап: `Stage 5 pilot`
 - Роль: `Orc`
-- Маршрут выполнения: `docs-only no-tool update`
-- Ссылка на сессию: `not available`
+- Маршрут: `docs-only no-tool update`
 - Созданные файлы:
   - `v3_request_pack_skill_pilot_readme.md`
   - `v3_request_pack_skill_pilot_decisions.md`
@@ -25,48 +24,66 @@
   - `v3_request_pack_skill_pilot_navigation.md`
 - Изменённые файлы:
   - `none`
-- Подтверждение:
-  - Создан минимальный стартовый docs set без `battle_plan`, `status`, skill files, request files, proof artifacts, scripts и repo-level docs.
-  - Содержимое стартовых docs выровнено по accepted boundaries из `plan_full`.
 - Проверка:
-  - Прочитаны `v3_request_pack_skill_pilot_plan_full.md`, template guide, шаблоны `plan_index` / `navigation` / `journal` / `readme` / `decisions`, а также `codex_role_orc.md`.
-  - Проверено, что стартовый набор ограничен ровно пятью новыми файлами.
-- Вердикт человека: `pending`
+  - прочитаны `plan_full`, templates guide, templates и `codex_role_orc.md`
+  - проверено, что создано ровно пять стартовых файлов
+- Вердикт человека: `accepted`
 - Баги и сложности:
   - `not found`
-- Следующий шаг:
-  - Human review стартового docs set.
 
 Decision mirror: reflected in `v3_request_pack_skill_pilot_decisions.md`
 
-### J-20260602-002 — создан battle plan в docs-only границах
+### J-20260602-002 — создан и затем принят battle plan
 
-- Этап жизненного цикла: `Stage 5 pilot`
+- Этап: `Stage 5 pilot`
 - Роль: `Orc`
-- Маршрут выполнения: `docs-only update`
-- Ссылка на сессию: `not available`
+- Маршрут: `docs-only update`
 - Созданные файлы:
   - `v3_request_pack_skill_pilot_battle_plan.md`
 - Изменённые файлы:
   - `v3_request_pack_skill_pilot_readme.md`
   - `v3_request_pack_skill_pilot_navigation.md`
   - `v3_request_pack_skill_pilot_journal.md`
-- Подтверждение:
-  - Создан battle plan как сжатый operational-конспект по `plan_full`.
-  - Battle plan не открыл `status`, `V3 request`, proof, import, `Stage 6`, repo-level promotion или skill materialization.
-  - Навигационные docs обновлены так, чтобы canonical file list оставался фактическим.
 - Проверка:
-  - Повторно прочитаны `plan_full`, `plan_index` и `journal`.
-  - Проверено, что новый battle plan остаётся внутри docs-only слоя и не требует дополнительных project files.
+  - battle plan остался внутри docs-only границ
+  - `Stage 6`, import и repo-level promotion не открыты
+- Вердикт человека: `accepted`
+- Баги и сложности:
+  - `not found`
+
+### J-20260602-003 — подготовлен V3 request draft на repo-local skill_draft
+
+- Этап: `Stage 5 pilot`
+- Роль: `Orc`
+- Маршрут: `docs-only update`
+- Созданные файлы:
+  - `.ai/v3/requests/V3-20260602-114035-v3-request-pack-skill-draft_request.md`
+  - `.ai/v3/requests/V3-20260602-114035-v3-request-pack-skill-draft_prompt.md`
+  - `.ai/v3/requests/V3-20260602-114035-v3-request-pack-skill-draft_send_note.md`
+- Изменённые файлы:
+  - `v3_request_pack_skill_pilot_readme.md`
+  - `v3_request_pack_skill_pilot_navigation.md`
+  - `v3_request_pack_skill_pilot_battle_plan.md`
+  - `v3_request_pack_skill_pilot_journal.md`
+- Подтверждение:
+  - battle plan gate уже был закрыт человеком
+  - по отдельному human decision подготовлен V3 request draft
+  - request target остаётся repo-local `skill_draft`, а не global skill install
+  - `request != package != import != accepted result` сохранено
+- Проверка:
+  - прочитаны `create_v3_request_prompt.md`, `v3_request_template.md`, `v3_request_contract.md`, `v3_artifact_package_contract.md`, `v3_scope_policy.md`
+  - проверено, что scope = `docs_only`
+  - проверено, что expected files markdown-only и project-relative
+  - проверено, что prompt не обещает import и не target-ит `C:\Users\andre\.codex\skills\...`
 - Вердикт человека: `pending`
 - Баги и сложности:
   - `not found`
 - Следующий шаг:
-  - Human review battle plan.
+  - human sends prepared prompt to external chat and returns package for package-only review
 
 ## Bugs and difficulties
 
-Текущий статус:
+Current status:
 
 ```text
 not found
@@ -74,7 +91,7 @@ not found
 
 ## Open follow-ups
 
-- Дождаться human review battle plan.
+- дождаться external package или ZIP-ready representation
 
 ## Maintenance rule
 

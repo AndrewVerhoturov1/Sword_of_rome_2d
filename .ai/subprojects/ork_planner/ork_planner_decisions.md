@@ -171,6 +171,20 @@ Human approval — отдельный gate evidence. Агент может ре�
 - Consequence: package может быть review/import candidate, но не считается принятым до local review and human verdict.
 - Human approval: `pending`.
 
+### D-20260602-010 — Универсальный стартовый минимум документов для нового подпроекта
+
+- Status: `accepted`
+- Source journal entry: `J-20260602-003`
+- Decision: в начале работы над новым подпроектом Орк должен создавать минимальный стартовый набор документов:
+  - `*_readme.md`
+  - `*_decisions.md`
+  - `*_plan_index.md`
+  - `*_journal.md`
+  - `*_navigation.md`
+- Consequence: этот набор считается базовым стартовым минимумом для новых подпроектов, пока человек явно не утвердит другое правило для конкретного пилота.
+- Boundary: это правило не означает автоматическое создание полного doc-set и не делает `battle_plan` обязательным первым артефактом.
+- Human approval: recorded by direct user instruction.
+
 ## Superseded or corrected decisions
 
 ### S-20260601-001 — `ork_planner_decisions.md` как log tool-route choices
