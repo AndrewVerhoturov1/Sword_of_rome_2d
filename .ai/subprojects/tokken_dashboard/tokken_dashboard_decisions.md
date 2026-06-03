@@ -59,6 +59,18 @@ Decision layer: `subproject-level accepted decisions`
 - Boundary: это решение не запрещает следующий локальный тест, но требует нового временного включения и нового cleanup.
 - Human approval: `recorded`
 
+### D-20260603-005 - Raw OTel file capture можно использовать как parser baseline только после privacy check
+
+- Status: `accepted`
+- Source: `J-20260603-004`
+- Decision: для следующего parser/dashboard исследования рабочим локальным входом считать файл [codex-otel.json](C:/Users/andre/.codex/tmp/otel-file-smoke-20260603-214412/codex-otel.json), созданный через OpenTelemetry Collector `file` exporter на `localhost`.
+- Reason: этот файл реально содержит `logs`, `traces`, `metrics` и token usage поля, поэтому он достаточен для разработки локального parser.
+- Confirmed token fields: `input_token_count`, `output_token_count`, `cached_token_count`, `reasoning_token_count`, `tool_token_count`, `codex.turn.token_usage.*`, `gen_ai.usage.*`, `codex.usage.*`, `token_type`.
+- Privacy rule: перед dashboard или долговременным хранением удалять минимум `user.email`, `user.account_id`, `conversation.id`, `prompt`, `prompt_length`.
+- Consequence: raw-файл можно читать локальным parser-ом, но нельзя публиковать, коммитить или показывать в dashboard без redaction.
+- Boundary: `log_user_prompt = false` остается обязательным, но не считается достаточной защитой.
+- Human approval: `recorded`
+
 ## Superseded or corrected decisions
 
 ### S-20260603-001 - Гипотеза про 127.0.0.1 как normal baseline отменена

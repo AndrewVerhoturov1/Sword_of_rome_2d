@@ -8,6 +8,41 @@ Do not record every tiny typo. Record issues that may help future debugging.
 
 ## Entries
 
+### BUG-20260603-001 - Codex OTel raw file contains sensitive fields despite `log_user_prompt = false`
+
+Status: open
+
+Area:
+Codex OTel local telemetry, `tokken_dashboard`, privacy/redaction
+
+Symptoms:
+Local OpenTelemetry Collector `file` exporter successfully writes Codex `logs`, `traces`, and `metrics` to [codex-otel.json](C:/Users/andre/.codex/tmp/otel-file-smoke-20260603-214412/codex-otel.json), but raw output includes sensitive identity/session fields.
+
+Observed recurrence:
+- `J-20260603-004`: raw OTel file contained `user.email`, `user.account_id`, `conversation.id`, `prompt`, and `prompt_length`.
+
+Cause:
+`log_user_prompt = false` reduces prompt logging but does not delete all sensitive telemetry attributes from Codex OTel payloads. Identity/session metadata and prompt-related fields can still appear in exported raw telemetry.
+
+Current mitigation:
+- keep OTel endpoint local-only through `localhost`;
+- disable telemetry after each smoke-test;
+- treat raw OTel files as local-only evidence;
+- before any parser/dashboard storage or display, delete at least `user.email`, `user.account_id`, `conversation.id`, `prompt`, and `prompt_length`.
+
+Verification:
+- local Collector file exporter produced `logs`, `traces`, `metrics`;
+- raw-file search confirmed token fields and sensitive fields;
+- temporary `[otel]` block was removed after test;
+- backup [config.toml.bak-otel-file-smoke-20260603-214412](C:/Users/andre/.codex/config.toml.bak-otel-file-smoke-20260603-214412) exists.
+
+Human check:
+suggested - do not publish raw OTel files; use only local parser/redaction experiments.
+
+Related files:
+- [tokken_dashboard_journal.md](D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/tokken_dashboard_journal.md)
+- [tokken_dashboard_decisions.md](D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/tokken_dashboard_decisions.md)
+
 ### BUG-20260530-007 - Kilo Notebook V3 leaves tester prompt in staging and does not return clickable prompt link
 
 Status: open

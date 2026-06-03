@@ -126,6 +126,20 @@ Collector and config evidence used by smoke-test:
 - [run-localhost-separate-cli-exec.log](C:/Users/andre/.codex/tmp/otel-collector-smoke-20260603-210917/run-localhost-separate-cli-exec.log)
 - [run-localhost-common-exporter-appserver.log](C:/Users/andre/.codex/tmp/otel-collector-smoke-20260603-210917/run-localhost-common-exporter-appserver.log)
 
+Collector file exporter evidence:
+
+- [collector-file-config.yaml](C:/Users/andre/.codex/tmp/otel-file-smoke-20260603-214412/collector-file-config.yaml)
+- [codex-otel.json](C:/Users/andre/.codex/tmp/otel-file-smoke-20260603-214412/codex-otel.json)
+- [collector.stderr.log](C:/Users/andre/.codex/tmp/otel-file-smoke-20260603-214412/collector.stderr.log)
+- [config.toml.bak-otel-file-smoke-20260603-214412](C:/Users/andre/.codex/config.toml.bak-otel-file-smoke-20260603-214412)
+
+Important privacy finding:
+
+```text
+Raw OTel file contains token fields and sensitive fields. Treat codex-otel.json as local-only evidence.
+Delete user.email, user.account_id, conversation.id, prompt, prompt_length before dashboard.
+```
+
 ## Non-canonical / deprecated files
 
 Не использовать как active baseline:
@@ -145,6 +159,7 @@ Collector and config evidence used by smoke-test:
 | Проверить factual history | `journal` |
 | Продолжить безопасную диагностику | `navigation` -> `decisions` -> `journal` -> local evidence files |
 | Понять, почему `127.0.0.1` нельзя брать как baseline | `journal` -> `decisions` |
+| Строить parser/dashboard по raw OTel | `decisions` -> `journal` -> [codex-otel.json](C:/Users/andre/.codex/tmp/otel-file-smoke-20260603-214412/codex-otel.json) |
 
 ## Maintenance rule
 

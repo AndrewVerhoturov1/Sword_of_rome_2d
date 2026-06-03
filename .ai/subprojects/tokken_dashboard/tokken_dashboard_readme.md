@@ -26,6 +26,13 @@ Active route: `Planner -> Orc`
 
 Уже подтверждено, что Codex читает `config.toml`, умеет включать OTel и реально отправляет локальные `logs`, `traces` и `metrics`, если endpoint задан через `localhost` и принимает их локальный OpenTelemetry Collector.
 
+Также подтвержден локальный raw capture в файл через Collector `file` exporter:
+
+- создан [codex-otel.json](C:/Users/andre/.codex/tmp/otel-file-smoke-20260603-214412/codex-otel.json);
+- в файле есть `logs`, `traces`, `metrics`;
+- найдены token usage поля;
+- найдены чувствительные поля `user.email`, `user.account_id`, `conversation.id`, `prompt`, `prompt_length`.
+
 Еще не принято:
 
 - постоянное локальное хранилище сырых событий;
@@ -61,7 +68,7 @@ Active route: `Planner -> Orc`
 ## Current safe next step
 
 ```text
-Сделать отдельный локальный capture pipeline для raw OTel в файл и до включения постоянного режима решить, какие поля нужно маскировать.
+Сделать локальный parser для codex-otel.json и redaction слой, который удаляет user.email, user.account_id, conversation.id, prompt и prompt_length до любого dashboard.
 ```
 
 ## Role warning
@@ -80,6 +87,9 @@ Active route: `Planner -> Orc`
 - [collector.stderr.log](C:/Users/andre/.codex/tmp/otel-collector-smoke-20260603-210917/collector.stderr.log)
 - [collector-config.yaml](C:/Users/andre/.codex/tmp/otel-collector-smoke-20260603-210917/collector-config.yaml)
 - [config.toml.bak-otel-collector-smoke-20260603-211206](C:/Users/andre/.codex/config.toml.bak-otel-collector-smoke-20260603-211206)
+- [collector-file-config.yaml](C:/Users/andre/.codex/tmp/otel-file-smoke-20260603-214412/collector-file-config.yaml)
+- [codex-otel.json](C:/Users/andre/.codex/tmp/otel-file-smoke-20260603-214412/codex-otel.json)
+- [config.toml.bak-otel-file-smoke-20260603-214412](C:/Users/andre/.codex/config.toml.bak-otel-file-smoke-20260603-214412)
 
 ## Human check
 

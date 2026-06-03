@@ -114,6 +114,50 @@ Decision mirror:
 - Следующий шаг:
   - получить human verdict по docset или расширить подпроект до следующего execution этапа.
 
+### J-20260603-004 - Collector file exporter подтвердил raw OTel capture в локальный файл
+
+- Этап жизненного цикла: `Stage 0 - local raw OTel file capture confirmed`
+- Роль: `Orc`
+- Маршрут выполнения: `direct`
+- Ссылка на сессию: `not available`
+- Созданные файлы:
+  - [collector-file-config.yaml](C:/Users/andre/.codex/tmp/otel-file-smoke-20260603-214412/collector-file-config.yaml)
+  - [codex-otel.json](C:/Users/andre/.codex/tmp/otel-file-smoke-20260603-214412/codex-otel.json)
+  - [collector.stderr.log](C:/Users/andre/.codex/tmp/otel-file-smoke-20260603-214412/collector.stderr.log)
+  - [config.toml.bak-otel-file-smoke-20260603-214412](C:/Users/andre/.codex/config.toml.bak-otel-file-smoke-20260603-214412)
+- Измененные файлы:
+  - [config.toml](C:/Users/andre/.codex/config.toml) был временно изменен и затем возвращен в исходное состояние.
+- Подтверждение:
+  - использован локальный `otelcol v0.153.0` с `otlp` receiver и `file` exporter;
+  - Codex endpoint-ы были только через `localhost`: `/v1/logs`, `/v1/traces`, `/v1/metrics`;
+  - `log_user_prompt = false` был включен в временном `[otel]` блоке;
+  - создан локальный raw-файл [codex-otel.json](C:/Users/andre/.codex/tmp/otel-file-smoke-20260603-214412/codex-otel.json) размером `152576` байт;
+  - Collector получил `logs`, `traces` и `metrics`;
+  - итоговый подсчет в файле: `resourceLogs=7`, `logRecords=19`, `resourceSpans=5`, `spans=80`, `resourceMetrics=1`, `metrics=26`.
+- Token fields:
+  - найдены `input_token_count`, `output_token_count`, `cached_token_count`, `reasoning_token_count`, `tool_token_count`;
+  - найдены `codex.turn.token_usage.input_tokens`, `codex.turn.token_usage.cached_input_tokens`, `codex.turn.token_usage.non_cached_input_tokens`, `codex.turn.token_usage.output_tokens`, `codex.turn.token_usage.reasoning_output_tokens`, `codex.turn.token_usage.total_tokens`;
+  - найдены `gen_ai.usage.input_tokens`, `gen_ai.usage.output_tokens`, `gen_ai.usage.cache_read.input_tokens`;
+  - найдены `codex.usage.total_tokens`, `codex.usage.reasoning_output_tokens`, `token_type`.
+- Privacy fields:
+  - `user.email` найден;
+  - `user.account_id` найден;
+  - `conversation.id` найден;
+  - `prompt` и `prompt_length` тоже найдены, поэтому считаются чувствительными для parser/dashboard pipeline.
+- Проверка cleanup:
+  - временный `[otel]` блок удален из [config.toml](C:/Users/andre/.codex/config.toml);
+  - SHA256 текущего [config.toml](C:/Users/andre/.codex/config.toml) совпал с backup [config.toml.bak-otel-file-smoke-20260603-214412](C:/Users/andre/.codex/config.toml.bak-otel-file-smoke-20260603-214412);
+  - Collector остановлен;
+  - порты `4317` и `4318` освобождены;
+  - `git status --short` был чистым до документирования результата.
+- Вердикт человека: `not applicable`
+- Баги и сложности:
+  - `log_user_prompt = false` не является достаточным privacy-фильтром: raw telemetry все равно содержит чувствительные поля;
+  - во время `codex exec` обычный Codex runtime пытался обращаться к внешним MCP/analytics endpoint из существующего config; OTel наружу не отправлялся, но для полностью изолированного будущего теста нужен временный config с отключенными внешними MCP/analytics.
+- Следующий шаг:
+  - строить parser можно на локальном raw-файле;
+  - dashboard разрешать только после redaction слоя, который удаляет минимум `user.email`, `user.account_id`, `conversation.id`, `prompt`, `prompt_length`.
+
 ## Bugs and difficulties
 
 Текущий статус:
