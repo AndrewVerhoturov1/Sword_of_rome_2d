@@ -5,6 +5,19 @@ Owner: `Orc`
 Status: `active`  
 Started: `2026-06-03`
 
+## Quick Navigation
+
+- [Purpose](#purpose)
+- [Entries](#entries)
+- [J-20260603-001](#j-20260603-001)
+- [J-20260603-002](#j-20260603-002)
+- [J-20260603-003](#j-20260603-003)
+- [J-20260603-004](#j-20260603-004)
+- [Bugs And Difficulties](#bugs-and-difficulties)
+- [Open Follow-ups](#open-follow-ups)
+
+<a id="purpose"></a>
+
 ## Назначение
 
 Этот файл фиксирует фактические действия и результаты по локальной OTel-проверке для `tokken_dashboard`.
@@ -17,11 +30,13 @@ Started: `2026-06-03`
 
 Для долгоживущих правил и решений есть:
 
-```text
-tokken_dashboard_decisions.md
-```
+- [tokken_dashboard_decisions.md](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/tokken_dashboard_decisions.md#accepted-decisions)
+
+<a id="entries"></a>
 
 ## Записи
+
+<a id="j-20260603-001"></a>
 
 ### J-20260603-001 - Первый локальный probe подтвердил проблему baseline
 
@@ -29,6 +44,7 @@ tokken_dashboard_decisions.md
 - Роль: `Orc`
 - Маршрут выполнения: `direct`
 - Ссылка на сессию: `not available`
+- Related decisions: [S-20260603-001](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/tokken_dashboard_decisions.md#s-20260603-001), [R-20260603-001](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/tokken_dashboard_decisions.md#r-20260603-001)
 - Созданные файлы:
   - [otel_probe.py](C:/Users/andre/.codex/tmp/otel-smoke-20260603-205139/otel_probe.py)
 - Измененные файлы:
@@ -49,12 +65,15 @@ tokken_dashboard_decisions.md
 - Следующий шаг:
   - проверить не probe, а настоящий локальный OpenTelemetry Collector.
 
+<a id="j-20260603-002"></a>
+
 ### J-20260603-002 - Локальный OpenTelemetry Collector подтвердил рабочий путь через localhost
 
 - Этап жизненного цикла: `Stage 0 - local OTel baseline captured`
 - Роль: `Orc`
 - Маршрут выполнения: `direct`
 - Ссылка на сессию: `not available`
+- Related decisions: [D-20260603-002](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/tokken_dashboard_decisions.md#d-20260603-002), [D-20260603-003](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/tokken_dashboard_decisions.md#d-20260603-003), [D-20260603-004](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/tokken_dashboard_decisions.md#d-20260603-004), [S-20260603-001](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/tokken_dashboard_decisions.md#s-20260603-001), [R-20260603-002](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/tokken_dashboard_decisions.md#r-20260603-002)
 - Созданные файлы:
   - [collector-config.yaml](C:/Users/andre/.codex/tmp/otel-collector-smoke-20260603-210917/collector-config.yaml)
   - [collector.stderr.log](C:/Users/andre/.codex/tmp/otel-collector-smoke-20260603-210917/collector.stderr.log)
@@ -82,23 +101,20 @@ tokken_dashboard_decisions.md
 - Следующий шаг:
   - если нужен следующий этап, делать только локальный raw capture с маскировкой чувствительных полей.
 
-Decision mirror:
+<a id="j-20260603-003"></a>
 
-```text
-Рабочая практика и запреты из этого результата отражены в tokken_dashboard_decisions.md.
-```
-
-### J-20260603-003 - Создан базовый docset подпроекта tokken_dashboard
+### J-20260603-003 - Создан базовый docset подпроекта `tokken_dashboard`
 
 - Этап жизненного цикла: `Stage 0 - local OTel baseline documented`
 - Роль: `Orc`
 - Маршрут выполнения: `direct`
 - Ссылка на сессию: `not available`
+- Related decisions: [W-20260603-001](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/tokken_dashboard_decisions.md#w-20260603-001), [W-20260603-002](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/tokken_dashboard_decisions.md#w-20260603-002)
 - Созданные файлы:
-  - [tokken_dashboard_readme.md](D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/tokken_dashboard_readme.md)
-  - [tokken_dashboard_navigation.md](D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/tokken_dashboard_navigation.md)
-  - [tokken_dashboard_journal.md](D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/tokken_dashboard_journal.md)
-  - [tokken_dashboard_decisions.md](D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/tokken_dashboard_decisions.md)
+  - [tokken_dashboard_readme.md](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/tokken_dashboard_readme.md)
+  - [tokken_dashboard_navigation.md](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/tokken_dashboard_navigation.md)
+  - [tokken_dashboard_journal.md](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/tokken_dashboard_journal.md)
+  - [tokken_dashboard_decisions.md](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/tokken_dashboard_decisions.md)
 - Измененные файлы:
   - `none`
 - Подтверждение:
@@ -114,12 +130,15 @@ Decision mirror:
 - Следующий шаг:
   - получить human verdict по docset или расширить подпроект до следующего execution этапа.
 
-### J-20260603-004 - Collector file exporter подтвердил raw OTel capture в локальный файл
+<a id="j-20260603-004"></a>
+
+### J-20260603-004 - Collector `file` exporter подтвердил raw OTel capture в локальный файл
 
 - Этап жизненного цикла: `Stage 0 - local raw OTel file capture confirmed`
 - Роль: `Orc`
 - Маршрут выполнения: `direct`
 - Ссылка на сессию: `not available`
+- Related decisions: [D-20260603-003](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/tokken_dashboard_decisions.md#d-20260603-003), [D-20260603-004](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/tokken_dashboard_decisions.md#d-20260603-004), [D-20260603-005](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/tokken_dashboard_decisions.md#d-20260603-005)
 - Созданные файлы:
   - [collector-file-config.yaml](C:/Users/andre/.codex/tmp/otel-file-smoke-20260603-214412/collector-file-config.yaml)
   - [codex-otel.json](C:/Users/andre/.codex/tmp/otel-file-smoke-20260603-214412/codex-otel.json)
@@ -158,6 +177,8 @@ Decision mirror:
   - строить parser можно на локальном raw-файле;
   - dashboard разрешать только после redaction слоя, который удаляет минимум `user.email`, `user.account_id`, `conversation.id`, `prompt`, `prompt_length`.
 
+<a id="bugs-and-difficulties"></a>
+
 ## Bugs and difficulties
 
 Текущий статус:
@@ -170,6 +191,8 @@ found and fixed partly
 
 - `127.0.0.1` нельзя считать рабочим baseline для Codex OTel только потому, что ручной POST доходит;
 - raw telemetry нельзя включать надолго без решения по чувствительным полям.
+
+<a id="open-follow-ups"></a>
 
 ## Open follow-ups
 

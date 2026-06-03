@@ -178,6 +178,14 @@
 - [`ideas/subproject_single_execution_chat_documentation_system_v2.md`](../ideas/subproject_single_execution_chat_documentation_system_v2.md) — accepted replacement design source.
 - [`.ai/plans/implementation/planner_orc_documentation_migration_plan.md`](plans/implementation/planner_orc_documentation_migration_plan.md) — migration plan (draft_for_import).
 
+### Active subproject docs
+
+- [`subprojects/tokken_dashboard/tokken_dashboard_readme.md`](subprojects/tokken_dashboard/tokken_dashboard_readme.md) — human-first вход в локальный OTel подпроект.
+- [`subprojects/tokken_dashboard/tokken_dashboard_navigation.md`](subprojects/tokken_dashboard/tokken_dashboard_navigation.md) — карта чтения и связи между doc-слоями подпроекта.
+- [`subprojects/tokken_dashboard/tokken_dashboard_decisions.md`](subprojects/tokken_dashboard/tokken_dashboard_decisions.md) — canonical решения, baseline, запреты и waivers по локальному OTel пути.
+- [`subprojects/tokken_dashboard/tokken_dashboard_journal.md`](subprojects/tokken_dashboard/tokken_dashboard_journal.md) — factual журнал smoke-test и raw file capture.
+- `C:\Users\andre\.codex\tmp\...` OTel evidence files не являются repo canon и не публикуются.
+
 ## Legacy / Historical Workflow Experiments
 
 > **Legacy/history only.** Следующие артефакты относятся к закрытой `B1/BOS/block-orchestration` системе. Не использовать как активный маршрут или шаблон.
