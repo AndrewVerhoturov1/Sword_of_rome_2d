@@ -16,6 +16,7 @@ Started: `2026-06-03`
 - [J-20260603-005](#j-20260603-005)
 - [J-20260604-001](#j-20260604-001)
 - [J-20260604-002](#j-20260604-002)
+- [J-20260604-003](#j-20260604-003)
 - [Bugs And Difficulties](#bugs-and-difficulties)
 - [Open Follow-ups](#open-follow-ups)
 
@@ -303,6 +304,47 @@ Started: `2026-06-03`
   - OTel не дает точный per-tool token accounting, поэтому inspector не делает выводов вида "этот tool съел X tokens".
 - Следующий шаг:
   - если диагностику продолжать, делать `MCP inventory / schema size report`: количество tools на MCP server, размеры descriptions/schemas и rough token estimate schema payload.
+
+<a id="j-20260604-003"></a>
+
+### J-20260604-003 - MCP Schema Inventory создал read-only отчет по config metadata
+
+- Этап жизненного цикла: `Stage 1 - MCP schema inventory complete`
+- Роль: `Orc`
+- Маршрут выполнения: `direct`
+- Ссылка на сессию: `not available`
+- Related decisions: [D-20260604-003](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/tokken_dashboard_decisions.md#d-20260604-003)
+- Созданные файлы:
+  - [mcp_schema_inventory.py](/D:/Codex+Kilocode/projects/sword-of-rome-web/scripts/mcp_schema_inventory.py)
+  - [test_mcp_schema_inventory.py](/D:/Codex+Kilocode/projects/sword-of-rome-web/tests/test_mcp_schema_inventory.py)
+- Локальные output artifacts:
+  - [mcp_schema_inventory.jsonl](/D:/Codex+Kilocode/projects/sword-of-rome-web/_local/codex-token-debugger/ab-turn-cost-20260604-otab02/compare/mcp_schema_inventory/mcp_schema_inventory.jsonl)
+  - [mcp_schema_inventory_summary.json](/D:/Codex+Kilocode/projects/sword-of-rome-web/_local/codex-token-debugger/ab-turn-cost-20260604-otab02/compare/mcp_schema_inventory/mcp_schema_inventory_summary.json)
+  - [mcp_schema_inventory_report.md](/D:/Codex+Kilocode/projects/sword-of-rome-web/_local/codex-token-debugger/ab-turn-cost-20260604-otab02/compare/mcp_schema_inventory/mcp_schema_inventory_report.md)
+  - [mcp_schema_inventory_warnings.jsonl](/D:/Codex+Kilocode/projects/sword-of-rome-web/_local/codex-token-debugger/ab-turn-cost-20260604-otab02/compare/mcp_schema_inventory/mcp_schema_inventory_warnings.jsonl)
+  - [config.mcp_sections.sanitized.toml](/D:/Codex+Kilocode/projects/sword-of-rome-web/_local/codex-token-debugger/ab-turn-cost-20260604-otab02/compare/mcp_schema_inventory/config.mcp_sections.sanitized.toml)
+- Подтверждение:
+  - script читает live [config.toml](C:/Users/andre/.codex/config.toml) только read-only;
+  - `config.toml` не менялся;
+  - новые OTel-прогоны не запускались;
+  - реальные tool calls не выполнялись;
+  - найдено `13` current MCP servers и `2` minimal MCP servers из [compare_summary.json](/D:/Codex+Kilocode/projects/sword-of-rome-web/_local/codex-token-debugger/ab-turn-cost-20260604-otab02/compare/compare_summary.json);
+  - в current config metadata найдено `15` tool override names, но настоящие JSON schemas безопасно получить не удалось;
+  - `schema_available_server_count = 0`;
+  - все `13` current servers получили warning `schema_unavailable`;
+  - rough schema token estimate для current config равен `0`, потому что настоящие schemas недоступны, а tool override names не считаются schema payload.
+- Проверка:
+  - `python -m unittest tests.test_mcp_schema_inventory`
+  - `python scripts\mcp_schema_inventory.py --config C:\Users\andre\.codex\config.toml --compare-summary _local\codex-token-debugger\ab-turn-cost-20260604-otab02\compare\compare_summary.json --activity-summary _local\codex-token-debugger\ab-turn-cost-20260604-otab02\compare\tool_mcp_activity\tool_mcp_activity_summary.json --output-dir _local\codex-token-debugger\ab-turn-cost-20260604-otab02\compare\mcp_schema_inventory`
+  - privacy grep по output artifacts не нашел secret values, cookies, access tokens, auth headers или реальные email values; env key names сохранены только как names.
+- Вердикт человека: `pending`
+- Баги и сложности:
+  - безопасный read-only путь не дал настоящие tool schemas;
+  - поэтому этот отчет не может объяснить `+10.1k` через schema size и не ранжирует servers по настоящему schema token payload;
+  - следующий сильный диагностический шаг - MCP group attribution experiment, если человек разрешит новые controlled A/B micro-runs.
+- Следующий шаг:
+  - не делать dashboard;
+  - если продолжать диагностику, спланировать группы MCP servers и измерить token delta по группам.
 
 <a id="bugs-and-difficulties"></a>
 

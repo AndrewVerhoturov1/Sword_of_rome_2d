@@ -69,6 +69,8 @@
 - [`scripts/validate_external_chat_package.py`](../scripts/validate_external_chat_package.py) — валидация external chat package.
 - [`scripts/external_chat_publish.py`](../scripts/external_chat_publish.py) — публикация artifacts для External Web Chat.
 
+ - [`scripts/mcp_schema_inventory.py`](../scripts/mcp_schema_inventory.py) — read-only inventory MCP servers и rough schema/context size estimate по sanitized config metadata.
+
 ### Table Sandbox (First Product Code)
 
 - [`table-sandbox/`](../table-sandbox/) — первый product-code блок: Phaser-based renderer, runtime action/event pipeline, game state, React debug panel.

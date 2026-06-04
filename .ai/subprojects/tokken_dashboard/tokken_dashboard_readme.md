@@ -4,7 +4,7 @@ Slug: `tokken_dashboard`
 Owner: `Orc`  
 Audience: human first  
 Status: `draft`  
-Lifecycle stage: `Stage 1 - tool/MCP activity inspector working`
+Lifecycle stage: `Stage 1 - MCP schema inventory complete`
 Active route: `Planner -> Orc`
 
 ## Quick Navigation
@@ -59,6 +59,7 @@ Active route: `Planner -> Orc`
 - parser уже показал видимые причины дорогого хода: `high_input_low_output`, `many_mcp_servers`, `tool_or_mcp_activity_near_expensive_turn`, `prompt_metadata_present`.
 - подготовлен и разобран A/B experiment package для сравнения `current config` vs `minimal/no MCP config` по схеме `A1 -> A2 -> A3` и `B1 -> B2 -> B3`: [_local/codex-token-debugger/ab-turn-cost-20260604-otab02](/D:/Codex+Kilocode/projects/sword-of-rome-web/_local/codex-token-debugger/ab-turn-cost-20260604-otab02).
 - построен Tool/MCP Activity Inspector по sanitized A/B outputs: [tool_mcp_activity_report.md](/D:/Codex+Kilocode/projects/sword-of-rome-web/_local/codex-token-debugger/ab-turn-cost-20260604-otab02/compare/tool_mcp_activity/tool_mcp_activity_report.md).
+- построен MCP Schema Inventory read-only по config metadata: [mcp_schema_inventory_report.md](/D:/Codex+Kilocode/projects/sword-of-rome-web/_local/codex-token-debugger/ab-turn-cost-20260604-otab02/compare/mcp_schema_inventory/mcp_schema_inventory_report.md). Настоящие tool schemas безопасно получить не удалось, поэтому `schema_available_server_count = 0`.
 
 Главные рабочие правила вынесены в:
 
@@ -69,6 +70,7 @@ Active route: `Planner -> Orc`
 - [D-20260603-007](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/tokken_dashboard_decisions.md#d-20260603-007)
 - [D-20260604-001](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/tokken_dashboard_decisions.md#d-20260604-001)
 - [D-20260604-002](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/tokken_dashboard_decisions.md#d-20260604-002)
+- [D-20260604-003](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/tokken_dashboard_decisions.md#d-20260604-003)
 
 Еще не принято:
 
@@ -111,7 +113,7 @@ Active route: `Planner -> Orc`
 ## Current safe next step
 
 ```text
-Следующий безопасный шаг: MCP inventory / schema size report. Нужно измерить, сколько tools дает каждый MCP server, какой размер у tool descriptions/schemas, и какие servers дают самый тяжелый schema/context payload. Dashboard все еще не делать.
+Следующий безопасный шаг: MCP group attribution experiment. Schema inventory показал, что настоящие tool schemas недоступны безопасно через текущий read-only путь, поэтому +10k overhead лучше проверять controlled A/B micro-runs по группам MCP servers. Dashboard все еще не делать.
 ```
 
 <a id="role-warning"></a>
@@ -138,6 +140,7 @@ Active route: `Planner -> Orc`
 - [_local/codex-token-debugger/smoke-20260603-r2](/D:/Codex+Kilocode/projects/sword-of-rome-web/_local/codex-token-debugger/smoke-20260603-r2)
 - [_local/codex-token-debugger/ab-turn-cost-20260604-otab02](/D:/Codex+Kilocode/projects/sword-of-rome-web/_local/codex-token-debugger/ab-turn-cost-20260604-otab02)
 - [_local/codex-token-debugger/ab-turn-cost-20260604-otab02/compare/tool_mcp_activity](/D:/Codex+Kilocode/projects/sword-of-rome-web/_local/codex-token-debugger/ab-turn-cost-20260604-otab02/compare/tool_mcp_activity)
+- [_local/codex-token-debugger/ab-turn-cost-20260604-otab02/compare/mcp_schema_inventory](/D:/Codex+Kilocode/projects/sword-of-rome-web/_local/codex-token-debugger/ab-turn-cost-20260604-otab02/compare/mcp_schema_inventory)
 
 <a id="human-check"></a>
 

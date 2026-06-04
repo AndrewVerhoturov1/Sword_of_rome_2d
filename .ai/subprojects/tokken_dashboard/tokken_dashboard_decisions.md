@@ -11,6 +11,7 @@ Decision layer: `subproject-level accepted decisions`
 - [Purpose](#purpose)
 - [Accepted Decisions](#accepted-decisions)
 - [D-20260604-002](#d-20260604-002)
+- [D-20260604-003](#d-20260604-003)
 - [Corrected Decisions](#corrected-decisions)
 - [Rejected Options](#rejected-options)
 - [Waivers](#waivers)
@@ -143,6 +144,18 @@ Decision layer: `subproject-level accepted decisions`
 - Reason: текущий A/B результат уже показывает token deltas по turn, но нужен отдельный forensic слой, который объясняет, какая Tool/MCP активность была рядом с дорогими ходами.
 - Consequence: inspector может показывать activity, counts, spans, metrics, proximity и current-vs-minimal различия, но не должен утверждать точные токены конкретного tool или MCP server.
 - Boundary: не запускать новые OTel-прогоны, не менять Codex config, не читать raw OTel без необходимости, не делать dashboard, не выводить приватные значения.
+- Human approval: `recorded`
+
+<a id="d-20260604-003"></a>
+
+### D-20260604-003 - MCP Schema Inventory работает read-only и честно фиксирует `schema_unavailable`
+
+- Status: `accepted`
+- Source: `user instruction on 2026-06-04`
+- Decision: `MCP Inventory / Schema Size Report` должен использовать только read-only config metadata, sanitized compare outputs и готовый Tool/MCP activity summary. Нельзя менять `config.toml`, перезапускать Codex, запускать новые OTel-прогоны, выполнять реальные tool calls, публиковать raw config или сохранять secret values.
+- Reason: A/B compare уже показал стабильный `+10.1k` input-token overhead у current config, а сам safe tool-call добавил только около `+200`. Следующий полезный вопрос - может ли статический MCP/tool schema payload объяснить этот постоянный overhead.
+- Consequence: если настоящие tool schemas недоступны безопасно, отчет должен писать `schema_unavailable`, а не имитировать точный schema/token size. В этом случае config/tool-count inventory является слабым сигналом, а следующий сильный шаг - MCP group attribution через контролируемые A/B micro-runs.
+- Boundary: rough token estimate = `ceil(chars / 4)`. Это не официальный tokenizer OpenAI, не billing и не per-server token accounting.
 - Human approval: `recorded`
 
 <a id="corrected-decisions"></a>
