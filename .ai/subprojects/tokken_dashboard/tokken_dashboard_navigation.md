@@ -47,13 +47,13 @@ Navigation не заменяет:
 ## Current lifecycle stage
 
 ```text
-Stage 1 - MCP schema inventory complete
+Stage 1 - tool environment + instruction inventory working
 ```
 
 Gate state:
 
 ```text
-Smoke-test подтвержден локально. Forensics parser работает. Tool/MCP Activity Inspector и MCP Schema Inventory разобрали sanitized A/B outputs/config metadata. Dashboard этап еще не утвержден человеком.
+Smoke-test подтвержден локально. Forensics parser работает. Tool/MCP Activity Inspector, MCP Schema Inventory, Effective MCP Inventory и Tool Environment Inventory разобрали sanitized A/B outputs/config metadata. Dashboard этап еще не утвержден человеком.
 ```
 
 Stage warning:
@@ -165,6 +165,9 @@ Collector file exporter evidence:
 - [_local/codex-token-debugger/ab-turn-cost-20260604-otab02/compare/compare_report.md](/D:/Codex+Kilocode/projects/sword-of-rome-web/_local/codex-token-debugger/ab-turn-cost-20260604-otab02/compare/compare_report.md)
 - [_local/codex-token-debugger/ab-turn-cost-20260604-otab02/compare/tool_mcp_activity/tool_mcp_activity_report.md](/D:/Codex+Kilocode/projects/sword-of-rome-web/_local/codex-token-debugger/ab-turn-cost-20260604-otab02/compare/tool_mcp_activity/tool_mcp_activity_report.md)
 - [_local/codex-token-debugger/ab-turn-cost-20260604-otab02/compare/mcp_schema_inventory/mcp_schema_inventory_report.md](/D:/Codex+Kilocode/projects/sword-of-rome-web/_local/codex-token-debugger/ab-turn-cost-20260604-otab02/compare/mcp_schema_inventory/mcp_schema_inventory_report.md)
+- [_local/codex-token-debugger/ab-turn-cost-20260604-otab02/compare/mcp_schema_inventory/effective_mcp_inventory_report.md](/D:/Codex+Kilocode/projects/sword-of-rome-web/_local/codex-token-debugger/ab-turn-cost-20260604-otab02/compare/mcp_schema_inventory/effective_mcp_inventory_report.md)
+- [_local/codex-token-debugger/tool-environment-inventory-20260604-080502/reports/tool_environment_inventory_report.md](/D:/Codex+Kilocode/projects/sword-of-rome-web/_local/codex-token-debugger/tool-environment-inventory-20260604-080502/reports/tool_environment_inventory_report.md)
+- [_local/codex-token-debugger/tool-environment-inventory-20260604-080635/reports/tool_environment_inventory_report.md](/D:/Codex+Kilocode/projects/sword-of-rome-web/_local/codex-token-debugger/tool-environment-inventory-20260604-080635/reports/tool_environment_inventory_report.md)
 - [config.current-with-otel.toml](C:/Users/andre/.codex/tmp/otel-ab-turn-cost-20260604-otab02/config.current-with-otel.toml)
 - [config.minimal-no-mcp-with-otel.toml](C:/Users/andre/.codex/tmp/otel-ab-turn-cost-20260604-otab02/config.minimal-no-mcp-with-otel.toml)
 - [collector-A-current-config.yaml](C:/Users/andre/.codex/tmp/otel-ab-turn-cost-20260604-otab02/collector-A-current-config.yaml)
@@ -206,6 +209,10 @@ Keep prompt_length as diagnostic metadata. Keep prompt only when empty or alread
 | Продолжить A/B turn-cost experiment | [D-20260604-001](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/tokken_dashboard_decisions.md#d-20260604-001) -> [J-20260604-001](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/tokken_dashboard_journal.md#j-20260604-001) -> [runbook.md](/D:/Codex+Kilocode/projects/sword-of-rome-web/_local/codex-token-debugger/ab-turn-cost-20260604-otab02/runbook.md) |
 | Понять Tool/MCP activity в A/B results | [D-20260604-002](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/tokken_dashboard_decisions.md#d-20260604-002) -> [J-20260604-002](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/tokken_dashboard_journal.md#j-20260604-002) -> [tool_mcp_activity_report.md](/D:/Codex+Kilocode/projects/sword-of-rome-web/_local/codex-token-debugger/ab-turn-cost-20260604-otab02/compare/tool_mcp_activity/tool_mcp_activity_report.md) |
 | Понять MCP schema inventory и ограничения schema size estimate | [D-20260604-003](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/tokken_dashboard_decisions.md#d-20260604-003) -> [J-20260604-003](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/tokken_dashboard_journal.md#j-20260604-003) -> [mcp_schema_inventory_report.md](/D:/Codex+Kilocode/projects/sword-of-rome-web/_local/codex-token-debugger/ab-turn-cost-20260604-otab02/compare/mcp_schema_inventory/mcp_schema_inventory_report.md) |
+| Проверить effective enabled MCP baseline перед group attribution | [D-20260604-004](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/tokken_dashboard_decisions.md#d-20260604-004) -> [J-20260604-004](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/tokken_dashboard_journal.md#j-20260604-004) -> [effective_mcp_inventory_report.md](/D:/Codex+Kilocode/projects/sword-of-rome-web/_local/codex-token-debugger/ab-turn-cost-20260604-otab02/compare/mcp_schema_inventory/effective_mcp_inventory_report.md) |
+| Отделить MCP servers от plugins и runtime/internal layers | [D-20260604-005](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/tokken_dashboard_decisions.md#d-20260604-005) -> [J-20260604-005](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/tokken_dashboard_journal.md#j-20260604-005) -> [tool_environment_inventory_report.md](/D:/Codex+Kilocode/projects/sword-of-rome-web/_local/codex-token-debugger/tool-environment-inventory-20260604-080502/reports/tool_environment_inventory_report.md) |
+
+| РџСЂРѕРІРµСЂРёС‚СЊ, РЅРµ Р»РµР¶РёС‚ Р»Рё overhead РІ skills/instructions/context | [D-20260604-006](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/tokken_dashboard_decisions.md#d-20260604-006) -> [J-20260604-006](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/tokken_dashboard_journal.md#j-20260604-006) -> [tool_environment_inventory_report.md](/D:/Codex+Kilocode/projects/sword-of-rome-web/_local/codex-token-debugger/tool-environment-inventory-20260604-080635/reports/tool_environment_inventory_report.md) |
 
 <a id="maintenance-rule"></a>
 

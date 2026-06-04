@@ -12,6 +12,9 @@ Decision layer: `subproject-level accepted decisions`
 - [Accepted Decisions](#accepted-decisions)
 - [D-20260604-002](#d-20260604-002)
 - [D-20260604-003](#d-20260604-003)
+- [D-20260604-004](#d-20260604-004)
+- [D-20260604-005](#d-20260604-005)
+- [D-20260604-006](#d-20260604-006)
 - [Corrected Decisions](#corrected-decisions)
 - [Rejected Options](#rejected-options)
 - [Waivers](#waivers)
@@ -156,6 +159,42 @@ Decision layer: `subproject-level accepted decisions`
 - Reason: A/B compare уже показал стабильный `+10.1k` input-token overhead у current config, а сам safe tool-call добавил только около `+200`. Следующий полезный вопрос - может ли статический MCP/tool schema payload объяснить этот постоянный overhead.
 - Consequence: если настоящие tool schemas недоступны безопасно, отчет должен писать `schema_unavailable`, а не имитировать точный schema/token size. В этом случае config/tool-count inventory является слабым сигналом, а следующий сильный шаг - MCP group attribution через контролируемые A/B micro-runs.
 - Boundary: rough token estimate = `ceil(chars / 4)`. Это не официальный tokenizer OpenAI, не billing и не per-server token accounting.
+- Human approval: `recorded`
+
+<a id="d-20260604-004"></a>
+
+### D-20260604-004 - Effective MCP inventory нужен перед group attribution
+
+- Status: `accepted`
+- Source: `user instruction on 2026-06-04`
+- Decision: перед следующим `MCP group attribution experiment` нужно явно различать `configured MCP servers`, `effective enabled MCP servers`, `explicit disabled sections` и `telemetry observed MCP servers`. Для этого `mcp_schema_inventory.py` должен выпускать отдельный `Effective MCP Inventory` audit поверх read-only [config.toml](C:/Users/andre/.codex/config.toml) и старого [compare_summary.json](/D:/Codex+Kilocode/projects/sword-of-rome-web/_local/codex-token-debugger/ab-turn-cost-20260604-otab02/compare/compare_summary.json).
+- Reason: старый compare видел `13` observed current MCP servers, но текущий config snapshot содержит несколько `enabled = false` sections. Без этого разделения легко спутать старый observed baseline с текущим effective baseline и неверно спланировать следующий experiment.
+- Consequence: новый audit обязан хранить `config_present`, `enabled_raw`, `effective_enabled`, `enabled_source`, observed flags по current/minimal telemetry и `mismatch_flags`. Если mismatch есть, следующий безопасный шаг = сначала tiny confirmation run от текущего effective config, потом уже group attribution.
+- Boundary: это read-only hardening. Нельзя менять live config, запускать новый OTel, запускать Codex, запускать MCP servers, делать dashboard или broad refactor.
+- Human approval: `recorded`
+
+<a id="d-20260604-005"></a>
+
+### D-20260604-005 - Tool environment не равен только MCP servers
+
+- Status: `accepted`
+- Source: `user instruction on 2026-06-04`
+- Decision: дальнейшая диагностика token overhead должна вести отдельный учет трех слоев: `MCP servers`, `plugins` и `runtime/internal tools`. Нельзя считать, что tool environment полностью описывается только `[mcp_servers.*]`.
+- Reason: physical MCP removal уже уменьшил observed MCP inventory с `13` до `3`, но selected first-turn input tokens не снизились. Значит high input cost объясняется не только пользовательскими MCP sections.
+- Consequence: read-only inventory и следующие тесты должны явно показывать enabled plugins, runtime/internal candidates вроде `codex_apps` и `node_repl`, и только потом предлагать следующий A/B шаг.
+- Boundary: это не разрешение сразу делать новый token run. Сначала допустим read-only inventory; следующий run только как отдельный явно выбранный шаг.
+- Human approval: `recorded`
+
+<a id="d-20260604-006"></a>
+
+### D-20260604-006 - High input cost may include skills, instructions and auto-loaded context
+
+- Status: `accepted`
+- Source: `user instruction on 2026-06-04`
+- Decision: read-only inventory РґРѕР»Р¶РµРЅ С‡РµСЃС‚РЅРѕ С‡РµСЃС‚С‚СЊ `skills`, `AGENTS.md`, repo instruction files, `.ai/**/*.md` Рё РїРѕС…РѕР¶РёРµ auto-loaded context candidates, Р° РЅРµ СЃРІРѕРґРёС‚СЊ high input cost С‚РѕР»СЊРєРѕ Рє MCP/plugins/runtime tools.
+- Reason: physical MCP removal already reduced observed MCP inventory `13 -> 3`, РЅРѕ selected first-turn input tokens РЅРµ СѓРїР°Р»Рё. Р—РЅР°С‡РёС‚ overhead РјРѕР¶РµС‚ РїСЂРёС…РѕРґРёС‚СЊ РёР· auto-loaded instruction/context layers.
+- Consequence: `tool_environment_inventory_summary.json` РѕР±СЏР·Р°РЅ С…СЂР°РЅРёС‚СЊ Р±Р»РѕРє `skills_and_instructions` СЃ metadata only: configured skill candidates, repo instruction files, global instruction candidates, largest files, likely auto-loaded candidates Рё warnings. Report РѕР±СЏР·Р°РЅ РґР°РІР°С‚СЊ РєРѕСЂРѕС‚РєРёР№ РІС‹РІРѕРґ, РјРѕРіСѓС‚ Р»Рё large instructions explain part of input overhead.
+- Boundary: СЌС‚Рѕ РЅРµ РѕР·РЅР°С‡Р°РµС‚ РіР»СѓР±РѕРєРёР№ docs audit, РЅРµ СЂР°Р·СЂРµС€Р°РµС‚ РЅРѕРІС‹Р№ OTel, Collector, Codex run РёР»Рё dashboard.
 - Human approval: `recorded`
 
 <a id="corrected-decisions"></a>

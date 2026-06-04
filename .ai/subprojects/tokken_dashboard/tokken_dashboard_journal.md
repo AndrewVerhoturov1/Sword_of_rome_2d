@@ -17,6 +17,9 @@ Started: `2026-06-03`
 - [J-20260604-001](#j-20260604-001)
 - [J-20260604-002](#j-20260604-002)
 - [J-20260604-003](#j-20260604-003)
+- [J-20260604-004](#j-20260604-004)
+- [J-20260604-005](#j-20260604-005)
+- [J-20260604-006](#j-20260604-006)
 - [Bugs And Difficulties](#bugs-and-difficulties)
 - [Open Follow-ups](#open-follow-ups)
 
@@ -345,6 +348,113 @@ Started: `2026-06-03`
 - Следующий шаг:
   - не делать dashboard;
   - если продолжать диагностику, спланировать группы MCP servers и измерить token delta по группам.
+
+<a id="j-20260604-004"></a>
+
+### J-20260604-004 - Effective MCP Inventory отделил configured, effective enabled и observed MCP servers
+
+- Этап жизненного цикла: `Stage 1 - effective MCP inventory hardened`
+- Роль: `Orc`
+- Маршрут выполнения: `direct`
+- Ссылка на сессию: `not available`
+- Related decisions: [D-20260604-004](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/tokken_dashboard_decisions.md#d-20260604-004)
+- Измененные файлы:
+  - [mcp_schema_inventory.py](/D:/Codex+Kilocode/projects/sword-of-rome-web/scripts/mcp_schema_inventory.py)
+  - [test_mcp_schema_inventory.py](/D:/Codex+Kilocode/projects/sword-of-rome-web/tests/test_mcp_schema_inventory.py)
+- Локальные output artifacts:
+  - [effective_mcp_inventory_summary.json](/D:/Codex+Kilocode/projects/sword-of-rome-web/_local/codex-token-debugger/ab-turn-cost-20260604-otab02/compare/mcp_schema_inventory/effective_mcp_inventory_summary.json)
+  - [effective_mcp_inventory_report.md](/D:/Codex+Kilocode/projects/sword-of-rome-web/_local/codex-token-debugger/ab-turn-cost-20260604-otab02/compare/mcp_schema_inventory/effective_mcp_inventory_report.md)
+- Подтверждение:
+  - script по-прежнему читает live [config.toml](C:/Users/andre/.codex/config.toml) только read-only;
+  - raw OTel не читался;
+  - новые OTel/Collector/Codex run не запускались;
+  - current snapshot содержит `12` configured MCP sections;
+  - effective enabled по config semantics = `6`;
+  - explicit disabled = `6`;
+  - old current telemetry observed = `13`;
+  - old minimal telemetry observed = `2`;
+  - mismatch count = `7`;
+  - mismatch есть у `codex_apps`, `figma`, `google_workspace`, `obsidian`, `obsidian_tasks`, `paper`, `semgrep`.
+- Проверка:
+  - `python -m unittest tests.test_mcp_schema_inventory tests.test_tool_mcp_activity_inspector tests.test_codex_otel_compare tests.test_codex_token_debugger tests.test_codex_otel_ab_experiment`
+  - `python scripts\mcp_schema_inventory.py --config C:\Users\andre\.codex\config.toml --compare-summary _local\codex-token-debugger\ab-turn-cost-20260604-otab02\compare\compare_summary.json --activity-summary _local\codex-token-debugger\ab-turn-cost-20260604-otab02\compare\tool_mcp_activity\tool_mcp_activity_summary.json --output-dir _local\codex-token-debugger\ab-turn-cost-20260604-otab02\compare\mcp_schema_inventory`
+  - `git diff --check`
+- Вердикт человека: `pending`
+- Баги и сложности:
+  - old telemetry и current config snapshot расходятся, поэтому старый `+10.1k` overhead нельзя автоматически считать overhead именно текущего effective config;
+  - следующий безопасный шаг теперь сужен: сначала tiny confirmation run от текущего effective baseline, потом MCP group attribution.
+- Следующий шаг:
+  - не делать dashboard;
+  - перед group attribution сделать confirmation run для current effective config.
+
+<a id="j-20260604-005"></a>
+
+### J-20260604-005 - Tool Environment Inventory отделил MCP, plugins и runtime/internal layers
+
+- Этап жизненного цикла: `Stage 1 - tool environment inventory working`
+- Роль: `Orc`
+- Маршрут выполнения: `direct`
+- Ссылка на сессию: `not available`
+- Related decisions: [D-20260604-005](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/tokken_dashboard_decisions.md#d-20260604-005)
+- Измененные файлы:
+  - [mcp_schema_inventory.py](/D:/Codex+Kilocode/projects/sword-of-rome-web/scripts/mcp_schema_inventory.py)
+  - [test_mcp_schema_inventory.py](/D:/Codex+Kilocode/projects/sword-of-rome-web/tests/test_mcp_schema_inventory.py)
+- Локальные output artifacts:
+  - [tool_environment_inventory_report.md](/D:/Codex+Kilocode/projects/sword-of-rome-web/_local/codex-token-debugger/tool-environment-inventory-20260604-080502/reports/tool_environment_inventory_report.md)
+  - [tool_environment_inventory_summary.json](/D:/Codex+Kilocode/projects/sword-of-rome-web/_local/codex-token-debugger/tool-environment-inventory-20260604-080502/reports/tool_environment_inventory_summary.json)
+  - [config_tool_environment_sanitized.toml](/D:/Codex+Kilocode/projects/sword-of-rome-web/_local/codex-token-debugger/tool-environment-inventory-20260604-080502/configs/config_tool_environment_sanitized.toml)
+- Подтверждение:
+  - physical MCP removal reduced observed MCP inventory from `13` to `3`;
+  - selected first-turn input tokens did not go down: `21177` -> `21698`;
+  - current live config still has enabled plugins, including `github@openai-curated`, `superpowers@openai-curated`, `vercel@openai-curated`, `netlify@openai-curated`, `browser@openai-bundled`;
+  - current MCP sections visible in config are `playwright` and `node_repl`;
+  - runtime/internal candidates remain `codex_apps` and `node_repl`.
+- Проверка:
+  - `python -m unittest tests.test_mcp_schema_inventory tests.test_tool_mcp_activity_inspector tests.test_codex_otel_compare tests.test_codex_token_debugger tests.test_codex_otel_ab_experiment`
+  - `git diff --check`
+  - privacy grep по new local outputs не нашел real email, secret values или query string.
+- Вердикт человека: `pending`
+- Баги и сложности:
+  - inventory не доказывает точный token вклад конкретного plugin или runtime layer;
+  - следующий сильный тест теперь логично отделять plugins от runtime/internal слоя.
+- Следующий шаг:
+  - не делать dashboard;
+  - если продолжать диагностику, следующим маленьким run должен быть `no-plugin/no-extra-tools`, потому что plugins сейчас включены.
+
+<a id="j-20260604-006"></a>
+
+### J-20260604-006 - Tool Environment Inventory added skills and auto-loaded instruction candidates
+
+- Р­С‚Р°Рї Р¶РёР·РЅРµРЅРЅРѕРіРѕ С†РёРєР»Р°: `Stage 1 - tool environment + instruction inventory working`
+- Р РѕР»СЊ: `Orc`
+- РњР°СЂС€СЂСѓС‚ РІС‹РїРѕР»РЅРµРЅРёСЏ: `direct`
+- РЎСЃС‹Р»РєР° РЅР° СЃРµСЃСЃРёСЋ: `not available`
+- Related decisions: [D-20260604-005](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/tokken_dashboard_decisions.md#d-20260604-005), [D-20260604-006](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/tokken_dashboard_decisions.md#d-20260604-006)
+- РР·РјРµРЅРµРЅРЅС‹Рµ С„Р°Р№Р»С‹:
+  - [mcp_schema_inventory.py](/D:/Codex+Kilocode/projects/sword-of-rome-web/scripts/mcp_schema_inventory.py)
+  - [test_mcp_schema_inventory.py](/D:/Codex+Kilocode/projects/sword-of-rome-web/tests/test_mcp_schema_inventory.py)
+- Р›РѕРєР°Р»СЊРЅС‹Рµ output artifacts:
+  - [tool_environment_inventory_report.md](/D:/Codex+Kilocode/projects/sword-of-rome-web/_local/codex-token-debugger/tool-environment-inventory-20260604-080635/reports/tool_environment_inventory_report.md)
+  - [tool_environment_inventory_summary.json](/D:/Codex+Kilocode/projects/sword-of-rome-web/_local/codex-token-debugger/tool-environment-inventory-20260604-080635/reports/tool_environment_inventory_summary.json)
+  - [config_tool_environment_sanitized.toml](/D:/Codex+Kilocode/projects/sword-of-rome-web/_local/codex-token-debugger/tool-environment-inventory-20260604-080635/configs/config_tool_environment_sanitized.toml)
+- РџРѕРґС‚РІРµСЂР¶РґРµРЅРёРµ:
+  - live config still has `2` MCP sections, `6` plugins, `5` enabled plugins;
+  - `skills.config` in live config contains `11` configured skill candidates and they are currently disabled;
+  - root [AGENTS.md](/D:/Codex+Kilocode/projects/sword-of-rome-web/AGENTS.md) is large: about `58.7 KB / 14.7k tokens`;
+  - repo inventory found `410` markdown instruction candidates including `.ai/**/*.md`;
+  - report now separates MCP/plugins/runtime from skills/instructions/auto-loaded context layer.
+- РџСЂРѕРІРµСЂРєР°:
+  - `python -m unittest tests.test_mcp_schema_inventory tests.test_tool_mcp_activity_inspector tests.test_codex_otel_compare tests.test_codex_token_debugger tests.test_codex_otel_ab_experiment`
+  - `python scripts\\mcp_schema_inventory.py --mode tool-environment --config C:\\Users\\andre\\.codex\\config.toml --output-dir _local\\codex-token-debugger\\tool-environment-inventory-20260604-080635 --before-after-summary _local\\codex-token-debugger\\after-4-mcp-ui-compare-20260604-062149\\compare\\before_vs_after_4_mcp_summary.json --playwright-summary _local\\codex-token-debugger\\playwright-only-confirmation-20260604-072040\\reports\\playwright_only_confirmation_summary.json --effective-summary _local\\codex-token-debugger\\ab-turn-cost-20260604-otab02\\compare\\mcp_schema_inventory\\effective_mcp_inventory_summary.json --before-after-report _local\\codex-token-debugger\\after-4-mcp-ui-compare-20260604-062149\\compare\\before_vs_after_4_mcp_report.md --playwright-report _local\\codex-token-debugger\\playwright-only-confirmation-20260604-072040\\reports\\playwright_only_confirmation_report.md --effective-report _local\\codex-token-debugger\\ab-turn-cost-20260604-otab02\\compare\\mcp_schema_inventory\\effective_mcp_inventory_report.md`
+  - privacy grep РїРѕ new local outputs РЅРµ РЅР°С€РµР» real email, token values РёЛЃ URL query strings.
+- Р’РµСЂРґРёРєС‚ С‡РµР»РѕРІРµРєР°: `pending`
+- Р‘Р°РіРё Рё СЃР»РѕР¶РЅРѕСЃС‚Рё:
+  - inventory still does not prove exact prompt composition;
+  - `likely_auto_loaded` is best-effort classification, not hard runtime truth;
+  - current result only says this layer is large enough to remain a plausible part of high input cost.
+- РЎР»РµРґСѓСЋС‰РёР№ С€Р°Рі:
+  - РЅРµ РґРµР»Р°С‚СЊ dashboard;
+  - РµСЃР»Рё РїСЂРѕРґРѕР»Р¶Р°С‚СЊ РґРёР°РіРЅРѕСЃС‚РёРєСѓ, following smallest run should still isolate plugins before broader runtime conclusions.
 
 <a id="bugs-and-difficulties"></a>
 
