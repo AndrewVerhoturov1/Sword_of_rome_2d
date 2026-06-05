@@ -3,7 +3,7 @@
 Slug: `tokken_dashboard`  
 Owner: `Orc`  
 Status: `active`  
-Last updated: `2026-06-04`
+Last updated: `2026-06-05`
 Decision layer: `subproject-level accepted decisions`
 
 ## Quick Navigation
@@ -15,6 +15,10 @@ Decision layer: `subproject-level accepted decisions`
 - [D-20260604-004](#d-20260604-004)
 - [D-20260604-005](#d-20260604-005)
 - [D-20260604-006](#d-20260604-006)
+- [D-20260604-007](#d-20260604-007)
+- [D-20260604-008](#d-20260604-008)
+- [D-20260604-009](#d-20260604-009)
+- [D-20260605-001](#d-20260605-001)
 - [Corrected Decisions](#corrected-decisions)
 - [Rejected Options](#rejected-options)
 - [Waivers](#waivers)
@@ -195,6 +199,59 @@ Decision layer: `subproject-level accepted decisions`
 - Reason: physical MCP removal already reduced observed MCP inventory `13 -> 3`, РЅРѕ selected first-turn input tokens РЅРµ СѓРїР°Р»Рё. Р—РЅР°С‡РёС‚ overhead РјРѕР¶РµС‚ РїСЂРёС…РѕРґРёС‚СЊ РёР· auto-loaded instruction/context layers.
 - Consequence: `tool_environment_inventory_summary.json` РѕР±СЏР·Р°РЅ С…СЂР°РЅРёС‚СЊ Р±Р»РѕРє `skills_and_instructions` СЃ metadata only: configured skill candidates, repo instruction files, global instruction candidates, largest files, likely auto-loaded candidates Рё warnings. Report РѕР±СЏР·Р°РЅ РґР°РІР°С‚СЊ РєРѕСЂРѕС‚РєРёР№ РІС‹РІРѕРґ, РјРѕРіСѓС‚ Р»Рё large instructions explain part of input overhead.
 - Boundary: СЌС‚Рѕ РЅРµ РѕР·РЅР°С‡Р°РµС‚ РіР»СѓР±РѕРєРёР№ docs audit, РЅРµ СЂР°Р·СЂРµС€Р°РµС‚ РЅРѕРІС‹Р№ OTel, Collector, Codex run РёР»Рё dashboard.
+- Human approval: `recorded`
+
+<a id="d-20260604-007"></a>
+
+### D-20260604-007 - Lean minimal runtime is the current working token baseline
+
+- Status: `accepted`
+- Source: `user instruction on 2026-06-04`
+- Decision: for further token diagnostics, use the `lean minimal` runtime as the current working baseline when comparing models and reasoning levels.
+- Reason: the lean minimal confirmation run reduced observed runtime inventory to `codex_apps` and `node_repl` and produced `18813` input tokens, which is lower than the earlier `20827` and `21698` lean/playwright-only baselines.
+- Consequence: later model and reasoning comparisons should be interpreted relative to this lean baseline, not relative to the earlier `13 MCP` environment.
+- Boundary: this does not mean internal Codex Desktop or system prompt overhead disappeared; it only means the runtime was narrowed to the smallest confirmed local working state so far.
+- Human approval: `recorded`
+
+<a id="d-20260604-008"></a>
+
+### D-20260604-008 - Model-switch OTel tests must be captured sequentially, not in parallel
+
+- Status: `accepted`
+- Source: `user instruction on 2026-06-04`
+- Decision: when a test changes model or reasoning effort inside or across threads, capture the modes sequentially: finish one mode, flush collector, save raw, then run the next mode.
+- Reason: the parallel attempt made it harder to map OTel events to exact turns. The sequential rerun produced separate raw files for `A` and `B` and allowed clean recovery of `A1..A4` and `B1..B4`.
+- Consequence: the sequential package becomes the canonical evidence for model-switch comparison, and the earlier parallel package is treated as non-canonical diagnostic scratch output.
+- Boundary: this rule is specific to turn-level OTel diagnostics. It does not ban parallelism in unrelated engineering tasks.
+- Human approval: `recorded`
+
+<a id="d-20260604-009"></a>
+
+### D-20260604-009 - Future token comparisons must use cache-adjusted metrics and estimated cost, not raw input alone
+
+- Status: `accepted`
+- Source: `user summary on 2026-06-04`
+- Decision: future `tokken_dashboard` reports and comparisons must treat `input_tokens` as only one layer. Canonical comparison fields now include `cached_tokens`, `non_cached_input_tokens`, `cached_ratio`, `output_tokens`, `reasoning_tokens`, `tool_tokens`, model metadata, reasoning effort, environment-layer snapshot, and estimated token cost in USD.
+- Pricing rule: estimated cost must be parameterized by per-model pricing table with `input price per 1M`, `cached input price per 1M`, and `output price per 1M`. Do not hardcode prices as permanent truth because pricing can change.
+- First-turn rule: diagnostics must separate `first turn`, `second turn`, and later repeated turns because cache materially changes real cost and raw input alone is misleading.
+- Model-switch rule: if model changes inside one thread, reports must mark the switch point and compare both `input delta` and `cached delta` after the switch. Do not compare mixed-model threads as if they were one stable baseline.
+- Environment rule: each report must snapshot MCP, plugins, skills, global user instructions, repo context, and runtime/internal layers separately, because token overhead is multi-layered.
+- Working hypothesis: current evidence suggests broad user MCP inventory and repo context are not the main source of high first-turn cost; the remaining overhead is more likely spread across plugins, global instructions, and internal Codex runtime/system preamble.
+- Consequence: future baselines must be re-read through cache-adjusted and cost-adjusted metrics. A run is a real improvement when `non_cached_input_tokens` and/or `estimated_total_cost_usd` go down, or when `cached_ratio` rises without raising real total cost.
+- Boundary: this decision updates the interpretation contract for future reports. It does not itself change parser code, telemetry config, or past raw evidence files.
+- Human approval: `recorded`
+
+<a id="d-20260605-001"></a>
+
+### D-20260605-001 - Universal context-cost prompt scaffolds must be stored as reusable subproject templates
+
+- Status: `accepted`
+- Source: `user instruction on 2026-06-05`
+- Decision: reusable prompt scaffolds for future Token Debugger context-cost experiments must be stored inside the `tokken_dashboard` subproject as stable markdown templates with anchors, instead of remaining only in ad hoc external files like `Downloads`.
+- Template adopted: [tokken_dashboard_universal_context_cost_test_prompts_single_branch.md](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/tokken_dashboard_universal_context_cost_test_prompts_single_branch.md)
+- Reason: the user wants one canonical place for future context-cost test scaffolds. Keeping the template inside the subproject makes it easier to reuse, reference from journal/decisions, and compare later runs against the same prompt structure.
+- Consequence: future prompt-only test scaffolds should be saved in the subproject first, then referenced from reports and test runbooks. If a scaffold becomes canonical, link it from `readme` and `navigation`.
+- Boundary: this decision stores a reusable prompt template only. It does not create a new OTel run, does not change parser logic, and does not make the template itself a raw evidence artifact.
 - Human approval: `recorded`
 
 <a id="corrected-decisions"></a>

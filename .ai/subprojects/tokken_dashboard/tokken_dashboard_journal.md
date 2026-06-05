@@ -20,6 +20,10 @@ Started: `2026-06-03`
 - [J-20260604-004](#j-20260604-004)
 - [J-20260604-005](#j-20260604-005)
 - [J-20260604-006](#j-20260604-006)
+- [J-20260604-007](#j-20260604-007)
+- [J-20260604-008](#j-20260604-008)
+- [J-20260604-009](#j-20260604-009)
+- [J-20260605-001](#j-20260605-001)
 - [Bugs And Difficulties](#bugs-and-difficulties)
 - [Open Follow-ups](#open-follow-ups)
 
@@ -455,6 +459,119 @@ Started: `2026-06-03`
 - РЎР»РµРґСѓСЋС‰РёР№ С€Р°Рі:
   - РЅРµ РґРµР»Р°С‚СЊ dashboard;
   - РµСЃР»Рё РїСЂРѕРґРѕР»Р¶Р°С‚СЊ РґРёР°РіРЅРѕСЃС‚РёРєСѓ, following smallest run should still isolate plugins before broader runtime conclusions.
+
+<a id="j-20260604-007"></a>
+
+### J-20260604-007 - Lean minimal confirmation established the current working low-overhead runtime baseline
+
+- Этап жизненного цикла: `Stage 1 - lean minimal baseline confirmed`
+- Роль: `Orc`
+- Маршрут выполнения: `direct`
+- Ссылка на сессию: `not available`
+- Related decisions: [D-20260604-007](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/tokken_dashboard_decisions.md#d-20260604-007)
+- Локальные output artifacts:
+  - [lean_minimal_confirmation_report.md](/D:/Codex+Kilocode/projects/sword-of-rome-web/_local/codex-token-debugger/lean-minimal-confirmation-20260604-225228/reports/lean_minimal_confirmation_report.md)
+  - [lean_minimal_confirmation_summary.json](/D:/Codex+Kilocode/projects/sword-of-rome-web/_local/codex-token-debugger/lean-minimal-confirmation-20260604-225228/reports/lean_minimal_confirmation_summary.json)
+- Подтверждение:
+  - lean minimal run дал `18813` input tokens;
+  - observed runtime inventory сузился до `codex_apps` и `node_repl`;
+  - это оказалось дешевле предыдущего no-plugins/no-user-instructions результата `20827` и playwright-only repo run `21698`;
+  - значит `playwright` и связанный tool layer реально давали заметный overhead, но большой остаток стоимости все еще остается в internal runtime/system layer.
+- Проверка:
+  - локальный OTel confirmation run;
+  - review summary/report files в `_local/codex-token-debugger/lean-minimal-confirmation-20260604-225228/`.
+- Вердикт человека: `pending`
+- Баги и сложности:
+  - markdown report сначала страдал от проблем с русской кодировкой в Windows;
+  - итоговый report пришлось отдельно переписать в `UTF-8 with BOM`.
+- Следующий шаг:
+  - использовать lean minimal как рабочую baseline-среду для сравнений моделей и reasoning levels.
+
+<a id="j-20260604-008"></a>
+
+### J-20260604-008 - Sequential model-switch compare replaced the parallel attempt
+
+- Этап жизненного цикла: `Stage 1 - sequential model switch comparison captured`
+- Роль: `Orc`
+- Маршрут выполнения: `direct`
+- Ссылка на сессию: `not available`
+- Related decisions: [D-20260604-007](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/tokken_dashboard_decisions.md#d-20260604-007), [D-20260604-008](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/tokken_dashboard_decisions.md#d-20260604-008)
+- Локальные output artifacts:
+  - [model_switch_sequential_report.md](/D:/Codex+Kilocode/projects/sword-of-rome-web/_local/codex-token-debugger/model-switch-sequential-20260604-232818/reports/model_switch_sequential_report.md)
+  - [model_switch_sequential_summary.json](/D:/Codex+Kilocode/projects/sword-of-rome-web/_local/codex-token-debugger/model-switch-sequential-20260604-232818/reports/model_switch_sequential_summary.json)
+  - [codex-token-debugger-tests-from-lean-minimal-20260604.zip](/D:/Codex+Kilocode/projects/sword-of-rome-web/_local/codex-token-debugger/bundles/codex-token-debugger-tests-from-lean-minimal-20260604.zip)
+- Подтверждение:
+  - режим `A` снят как `gpt-5.4-mini/low -> gpt-5.5/high` в одном чате;
+  - режим `B` снят как четыре последовательных хода на `gpt-5.5/high`;
+  - `A1=16618`, `A2=16696`, `A3=21361`, `A4=21440`;
+  - `B1=18355`, `B2=18433`, `B3=18512`, `B4=18591`;
+  - switch `A2 -> A3` дал jump `+4665` input tokens, тогда как в `B` рост между соседними ходами остался маленьким, около `+78/+79`.
+- Проверка:
+  - раздельный capture raw для `A` и `B`;
+  - выделение target completions по `conversation.id` и окнам времени;
+  - итоговый compare report сохранен в `_local`.
+- Вердикт человека: `pending`
+- Баги и сложности:
+  - параллельный запуск оказался неканоничным для такой диагностики и был отброшен;
+  - при копировании raw по длинным путям `PowerShell Copy-Item` сбоил, поэтому raw фиксировался через прямой `System.IO.File.Copy`.
+- Следующий шаг:
+  - если продолжать серию, новые model/reasoning tests снимать только последовательно.
+
+<a id="j-20260604-009"></a>
+
+### J-20260604-009 - Token Debugger reporting rules were tightened to cache-adjusted and cost-aware comparisons
+
+- Этап жизненного цикла: `Stage 1 - reporting contract tightened`
+- Роль: `Orc`
+- Маршрут выполнения: `direct`
+- Ссылка на сессию: `not available`
+- Related decisions: [D-20260604-007](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/tokken_dashboard_decisions.md#d-20260604-007), [D-20260604-008](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/tokken_dashboard_decisions.md#d-20260604-008), [D-20260604-009](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/tokken_dashboard_decisions.md#d-20260604-009)
+- Подтверждение:
+  - для следующих сравнений больше недостаточно смотреть только на `input_tokens`;
+  - canonical fields теперь включают `cached_tokens`, `non_cached_input_tokens`, `cached_ratio`, `output_tokens`, `reasoning_tokens`, `tool_tokens`;
+  - future reports должны хранить model metadata, reasoning effort, environment-layer snapshot и estimated USD cost по parameterized pricing table;
+  - first-turn, second-turn и repeated-turn comparisons теперь считаются разными диагностическими случаями;
+  - mixed-model threads требуют отдельной пометки про switch point и cache/input deltas после switch;
+  - сохранены рабочие ориентиры для сверки: `21177/13`, `19024/13`, `21698/3`, `21738/3`, `20827/3`, lean minimal `18813/2`, lean model comparison around `18.3k`, `17.0k`, `16.6k`.
+- Проверка:
+  - rules summary прочитан из user-provided note и перенесен в `decisions`, `journal`, `navigation`, `readme`;
+  - код parser-а и raw artifacts в этом шаге не менялись.
+- Вердикт человека: `pending`
+- Баги и сложности:
+  - rules note пришел во вложении с битой Windows-кодировкой, поэтому перенос делался по смыслу, а не verbatim-copy;
+  - старые markdown-файлы уже частично содержат mojibake, поэтому новую запись безопаснее было добавить как отдельный anchor-block, не переписывая старые разделы.
+- Следующий шаг:
+  - при следующем runtime test or compare report уже считать canonical метриками `non_cached_input_tokens`, `cached_ratio` и `estimated_total_cost_usd`, а headline `input_tokens` использовать только вместе с cache context.
+
+<a id="bugs-and-difficulties"></a>
+
+<a id="j-20260605-001"></a>
+
+### J-20260605-001 - Universal single-branch context-cost prompt scaffold was copied into the subproject
+
+- Stage: `Stage 1 - reusable test scaffold documented`
+- Role: `Orc`
+- Execution route: `direct`
+- Session link: `not available`
+- Related decisions: [D-20260605-001](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/tokken_dashboard_decisions.md#d-20260605-001)
+- Created files:
+  - [tokken_dashboard_universal_context_cost_test_prompts_single_branch.md](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/tokken_dashboard_universal_context_cost_test_prompts_single_branch.md)
+- Source file:
+  - [universal_context_cost_test_prompts_single_branch.md](C:/Users/andre/Downloads/universal_context_cost_test_prompts_single_branch.md)
+- Confirmed:
+  - the imported source file decoded correctly as UTF-8;
+  - the scaffold contains one large shared fixture plus `A1 -> A4` prompt steps;
+  - the subproject copy now has stable anchors and can be referenced as the canonical reusable prompt template for future context-cost tests.
+- Verification:
+  - source bytes were checked against UTF-8 decoding;
+  - local subproject file created with anchors and preserved prompt structure;
+  - `readme` and `navigation` linked to the new template.
+- Human verdict: `pending`
+- Bugs and difficulties:
+  - the first shell read of the Downloads file showed mojibake because PowerShell rendered UTF-8 badly in console output;
+  - the actual source bytes were valid UTF-8, so the template itself was recovered cleanly before saving into the subproject.
+- Next step:
+  - reuse this scaffold for later model/context-cost runs instead of rebuilding the same prompt chain from scratch.
 
 <a id="bugs-and-difficulties"></a>
 

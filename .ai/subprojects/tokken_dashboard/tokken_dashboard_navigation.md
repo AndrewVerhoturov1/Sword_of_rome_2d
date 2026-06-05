@@ -3,7 +3,7 @@
 Slug: `tokken_dashboard`  
 Owner: `Orc`  
 Status: `draft`  
-Last updated: `2026-06-04`
+Last updated: `2026-06-05`
 
 ## Quick Navigation
 
@@ -12,6 +12,7 @@ Last updated: `2026-06-04`
 - [Start Here](#start-here)
 - [Existing Documents](#existing-documents)
 - [Planned Documents](#planned-documents)
+- [Reusable Test Templates](#reusable-test-templates)
 - [Template Layer](#template-layer)
 - [Local Evidence Files](#local-evidence-files)
 - [Non-canonical Baseline](#non-canonical-baseline)
@@ -117,6 +118,20 @@ Planner -> Orc
 
 <a id="template-layer"></a>
 
+<a id="reusable-test-templates"></a>
+
+## Reusable test templates
+
+- [tokken_dashboard_universal_context_cost_test_prompts_single_branch.md](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/tokken_dashboard_universal_context_cost_test_prompts_single_branch.md)
+
+Rule:
+
+```text
+Canonical reusable prompt scaffolds for Token Debugger context-cost experiments should live inside the subproject and be linked from navigation, not left only in ad hoc external folders.
+```
+
+<a id="template-layer"></a>
+
 ## Reusable template layer
 
 Template path:
@@ -213,6 +228,18 @@ Keep prompt_length as diagnostic metadata. Keep prompt only when empty or alread
 | Отделить MCP servers от plugins и runtime/internal layers | [D-20260604-005](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/tokken_dashboard_decisions.md#d-20260604-005) -> [J-20260604-005](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/tokken_dashboard_journal.md#j-20260604-005) -> [tool_environment_inventory_report.md](/D:/Codex+Kilocode/projects/sword-of-rome-web/_local/codex-token-debugger/tool-environment-inventory-20260604-080502/reports/tool_environment_inventory_report.md) |
 
 | РџСЂРѕРІРµСЂРёС‚СЊ, РЅРµ Р»РµР¶РёС‚ Р»Рё overhead РІ skills/instructions/context | [D-20260604-006](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/tokken_dashboard_decisions.md#d-20260604-006) -> [J-20260604-006](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/tokken_dashboard_journal.md#j-20260604-006) -> [tool_environment_inventory_report.md](/D:/Codex+Kilocode/projects/sword-of-rome-web/_local/codex-token-debugger/tool-environment-inventory-20260604-080635/reports/tool_environment_inventory_report.md) |
+
+| Lean minimal baseline for current token diagnostics | [D-20260604-007](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/tokken_dashboard_decisions.md#d-20260604-007) -> [J-20260604-007](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/tokken_dashboard_journal.md#j-20260604-007) -> [lean_minimal_confirmation_report.md](/D:/Codex+Kilocode/projects/sword-of-rome-web/_local/codex-token-debugger/lean-minimal-confirmation-20260604-225228/reports/lean_minimal_confirmation_report.md) |
+| Sequential model-switch compare after rejecting the parallel attempt | [D-20260604-008](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/tokken_dashboard_decisions.md#d-20260604-008) -> [J-20260604-008](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/tokken_dashboard_journal.md#j-20260604-008) -> [model_switch_sequential_report.md](/D:/Codex+Kilocode/projects/sword-of-rome-web/_local/codex-token-debugger/model-switch-sequential-20260604-232818/reports/model_switch_sequential_report.md) |
+| Перейти от raw input к cache-adjusted и cost-aware token comparisons | [D-20260604-009](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/tokken_dashboard_decisions.md#d-20260604-009) -> [J-20260604-009](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/tokken_dashboard_journal.md#j-20260604-009) -> [tokken_dashboard_decisions.md](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/tokken_dashboard_decisions.md#d-20260604-009) |
+| Local bundle of test artifacts starting from lean minimal | [J-20260604-008](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/tokken_dashboard_journal.md#j-20260604-008) -> [codex-token-debugger-tests-from-lean-minimal-20260604.zip](/D:/Codex+Kilocode/projects/sword-of-rome-web/_local/codex-token-debugger/bundles/codex-token-debugger-tests-from-lean-minimal-20260604.zip) |
+
+Additional route:
+
+- Open the canonical reusable scaffold for future single-branch context-cost tests:
+  [D-20260605-001](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/tokken_dashboard_decisions.md#d-20260605-001) ->
+  [J-20260605-001](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/tokken_dashboard_journal.md#j-20260605-001) ->
+  [tokken_dashboard_universal_context_cost_test_prompts_single_branch.md](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/tokken_dashboard_universal_context_cost_test_prompts_single_branch.md#purpose)
 
 <a id="maintenance-rule"></a>
 

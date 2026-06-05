@@ -14,6 +14,7 @@ Active route: `Planner -> Orc`
 - [Current Status](#current-status)
 - [Read First](#read-first)
 - [Existing Documents](#existing-documents)
+- [Reusable Template](#reusable-template)
 - [Missing Pieces](#missing-pieces)
 - [Safe Next Step](#safe-next-step)
 - [Role Warning](#role-warning)
@@ -75,6 +76,9 @@ Active route: `Planner -> Orc`
 - [D-20260604-003](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/tokken_dashboard_decisions.md#d-20260604-003)
 - [D-20260604-004](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/tokken_dashboard_decisions.md#d-20260604-004)
 - [D-20260604-005](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/tokken_dashboard_decisions.md#d-20260604-005)
+- [D-20260604-006](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/tokken_dashboard_decisions.md#d-20260604-006)
+- [D-20260604-007](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/tokken_dashboard_decisions.md#d-20260604-007)
+- [D-20260604-008](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/tokken_dashboard_decisions.md#d-20260604-008)
 
 Еще не принято:
 
@@ -83,6 +87,13 @@ Active route: `Planner -> Orc`
 
 - РїРѕСЃС‚СЂРѕРµРЅ extended Tool Environment Inventory with skills/instructions metadata: [tool_environment_inventory_report.md](/D:/Codex+Kilocode/projects/sword-of-rome-web/_local/codex-token-debugger/tool-environment-inventory-20260604-080635/reports/tool_environment_inventory_report.md). Inventory now also tracks `skills.config`, root `AGENTS.md`, root `README.md`, `.ai/**/*.md` and likely auto-loaded context candidates.
 - [D-20260604-006](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/tokken_dashboard_decisions.md#d-20260604-006)
+
+Новые локальные контрольные артефакты этой серии:
+
+- lean minimal baseline: [lean_minimal_confirmation_report.md](/D:/Codex+Kilocode/projects/sword-of-rome-web/_local/codex-token-debugger/lean-minimal-confirmation-20260604-225228/reports/lean_minimal_confirmation_report.md)
+- sequential model switch compare: [model_switch_sequential_report.md](/D:/Codex+Kilocode/projects/sword-of-rome-web/_local/codex-token-debugger/model-switch-sequential-20260604-232818/reports/model_switch_sequential_report.md)
+- local bundle of recent test packages: [codex-token-debugger-tests-from-lean-minimal-20260604.zip](/D:/Codex+Kilocode/projects/sword-of-rome-web/_local/codex-token-debugger/bundles/codex-token-debugger-tests-from-lean-minimal-20260604.zip)
+- future comparisons must use cache-adjusted and cost-aware reporting, not raw `input_tokens` alone: [D-20260604-009](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/tokken_dashboard_decisions.md#d-20260604-009)
 
 <a id="read-first"></a>
 
@@ -103,6 +114,12 @@ Active route: `Planner -> Orc`
 - [tokken_dashboard_navigation.md](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/tokken_dashboard_navigation.md#purpose) - карта подпроекта.
 - [tokken_dashboard_journal.md](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/tokken_dashboard_journal.md#entries) - фактический журнал проверки.
 - [tokken_dashboard_decisions.md](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/tokken_dashboard_decisions.md#accepted-decisions) - важные решения и правила по OTel baseline.
+
+<a id="reusable-template"></a>
+
+## Reusable template
+
+- [tokken_dashboard_universal_context_cost_test_prompts_single_branch.md](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/tokken_dashboard_universal_context_cost_test_prompts_single_branch.md#purpose) - canonical single-branch context-cost prompt scaffold for future tests.
 
 <a id="missing-pieces"></a>
 
