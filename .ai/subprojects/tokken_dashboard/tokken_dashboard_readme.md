@@ -168,6 +168,28 @@ Active route: `Planner -> Orc`
 
 <a id="human-check"></a>
 
+<a id="codex-token-monitor-server-v1"></a>
+
+## Codex Token Monitor Server v1
+
+`Codex Token Monitor Server v1` is the local browser UI layer for browsing normalized token-cost artifacts.
+
+It provides:
+
+- local web server on `127.0.0.1:8765` (stdlib-only, no extra dependencies);
+- session discovery by run-folder identity in `_local/codex-token-debugger/`;
+- compact dark UI with resizable split, collapsible left panel, step cards, archive/unarchive and shutdown;
+- refresh integrated with `Token Cost Normalizer v1` as subprocess;
+- archive state persisted in `_local/codex-token-monitor/archive_state.json`.
+
+Start with [start_codex_token_monitor.bat](/D:/Codex+Kilocode/projects/sword-of-rome-web/start_codex_token_monitor.bat).
+
+Monitor MVP is a local utility over normalized local artifacts, not a new OTel experiment. It does not manage collector lifecycle, does not modify live Codex config, and does not run new OTel captures.
+
+Prompt/answer texts are currently unavailable in normalized artifacts — UI shows `not available` explicitly.
+
+See [D-20260605-003](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/tokken_dashboard_decisions.md#d-20260605-003) and [J-20260605-003](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/tokken_dashboard_journal.md#j-20260605-003).
+
 <a id="token-cost-normalizer-v1"></a>
 
 ## Token Cost Normalizer v1

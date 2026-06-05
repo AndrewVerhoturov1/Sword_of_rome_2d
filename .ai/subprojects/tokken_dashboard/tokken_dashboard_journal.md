@@ -607,6 +607,40 @@ Started: `2026-06-03`
   - the draft markdown still contains mojibake in some Russian explanatory sections, but code/config/test extraction remained usable.
 - Human verdict: `pending`
 
+<a id="j-20260605-003"></a>
+
+### J-20260605-003 - Codex Token Monitor Server v1 реализован, перепроверен и принят
+
+- Этап жизненного цикла: `Stage 1 — token monitor MVP materialized`
+- Роль: `Kilo Handoff Runner`
+- Маршрут выполнения: `Handoff 0046`
+- Ссылка на сессию: `2026-06-05_codex_token_monitor_server_v1`
+- Related decisions: [D-20260605-003](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/tokken_dashboard_decisions.md#d-20260605-003), [D-20260605-002](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/tokken_dashboard_decisions.md#d-20260605-002)
+- Созданные файлы:
+  - [codex_token_monitor_server.py](/D:/Codex+Kilocode/projects/sword-of-rome-web/scripts/codex_token_monitor_server.py)
+  - [static/codex-token-monitor/index.html](/D:/Codex+Kilocode/projects/sword-of-rome-web/static/codex-token-monitor/index.html)
+  - [static/codex-token-monitor/styles.css](/D:/Codex+Kilocode/projects/sword-of-rome-web/static/codex-token-monitor/styles.css)
+  - [static/codex-token-monitor/app.js](/D:/Codex+Kilocode/projects/sword-of-rome-web/static/codex-token-monitor/app.js)
+  - [codex_token_monitor_projects.json](/D:/Codex+Kilocode/projects/sword-of-rome-web/config/codex_token_monitor_projects.json)
+  - [start_codex_token_monitor.bat](/D:/Codex+Kilocode/projects/sword-of-rome-web/start_codex_token_monitor.bat)
+  - [test_codex_token_monitor_server.py](/D:/Codex+Kilocode/projects/sword-of-rome-web/tests/test_codex_token_monitor_server.py)
+- Подтверждение:
+  - реализован stdlib-only monitor server на `ThreadingHTTPServer` с API: `/api/status`, `/api/projects`, `/api/sessions`, `/api/session`, `/api/refresh`, `/api/archive`, `/api/unarchive`, `/api/shutdown`;
+  - discovery сессий по run-папкам в `_local/codex-token-debugger/`, prefer normalized `token_cost_dashboard_data.json`;
+  - static UI materialized как три файла, сохраняет compact dark layout prototype, работает только через API без demo data;
+  - archive state хранится в `_local/codex-token-monitor/archive_state.json`;
+  - refresh integrated с существующим `codex_token_cost_normalizer.py` как subprocess;
+  - prompt/answer всегда возвращают `available=false` (тексты недоступны в normalized artifacts).
+- Проверка:
+  - `python -m unittest tests.test_codex_token_monitor_server tests.test_codex_token_cost_normalizer tests.test_mcp_schema_inventory tests.test_tool_mcp_activity_inspector tests.test_codex_otel_compare tests.test_codex_token_debugger tests.test_codex_otel_ab_experiment` — 36 tests OK;
+  - `git diff --check` — clean.
+- Вердикт человека: `accepted after Codex review + local browser verification`
+- Баги и сложности:
+  - prompt/answer тексты недоступны в текущих normalized artifacts — это ожидаемое ограничение, а не баг;
+  - monitor server не управляет OTel collector lifecycle — это best-effort status field в MVP.
+- Следующий шаг:
+  - использовать monitor как локальный слой просмотра нормализованных token-cost artifacts без новых OTel запусков.
+
 ## Bugs and difficulties
 
 Текущий статус:

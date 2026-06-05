@@ -255,6 +255,22 @@ Additional route:
 
 Purpose: cache-adjusted token and estimated-cost normalization over sanitized parser outputs.
 
+<a id="codex-token-monitor-server-v1"></a>
+
+## Codex Token Monitor Server v1
+
+- Implementation plan: [codex_token_monitor_server_v1_implementation_plan.md](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/drafts/codex_token_monitor_server_v1_implementation_plan.md)
+- Live server: [codex_token_monitor_server.py](/D:/Codex+Kilocode/projects/sword-of-rome-web/scripts/codex_token_monitor_server.py)
+- Static UI: [static/codex-token-monitor/](/D:/Codex+Kilocode/projects/sword-of-rome-web/static/codex-token-monitor/)
+- Project config: [codex_token_monitor_projects.json](/D:/Codex+Kilocode/projects/sword-of-rome-web/config/codex_token_monitor_projects.json)
+- Startup: [start_codex_token_monitor.bat](/D:/Codex+Kilocode/projects/sword-of-rome-web/start_codex_token_monitor.bat)
+- Live test: [test_codex_token_monitor_server.py](/D:/Codex+Kilocode/projects/sword-of-rome-web/tests/test_codex_token_monitor_server.py)
+- Archive state: `_local/codex-token-monitor/archive_state.json`
+
+Purpose: local browser UI over normalized token-cost artifacts. Session discovery by run-folder identity, step cards, archive/unarchive, refresh via existing normalizer.
+
+Route: Open the monitor: [D-20260605-003](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/tokken_dashboard_decisions.md#d-20260605-003) -> [J-20260605-003](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/tokken_dashboard_journal.md#j-20260605-003) -> [start_codex_token_monitor.bat](/D:/Codex+Kilocode/projects/sword-of-rome-web/start_codex_token_monitor.bat)
+
 ## Maintenance rule
 
 - Обновлять `decisions`, когда временная находка становится рабочим правилом, запретом или waiver.

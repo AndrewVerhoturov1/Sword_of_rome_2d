@@ -356,6 +356,18 @@ Decision layer: `subproject-level accepted decisions`
 - Boundary: pricing remains config-driven in `config/token_pricing.json`; unknown models must remain `pricing_unknown` with null estimated cost fields.
 - Human approval: `pending local review`
 
+<a id="d-20260605-003"></a>
+
+### D-20260605-003 - Codex Token Monitor Server v1 is a local utility over normalized artifacts, not a new OTel experiment
+
+- Status: `accepted`
+- Source: `Handoff 0046 — Codex Token Monitor Server v1 implementation`
+- Decision: `scripts/codex_token_monitor_server.py` is the canonical local layer for browsing normalized token-cost artifacts through a compact web UI. It is a static local utility, not a new telemetry collector, live config modifier, or dashboard redesign.
+- Reason: existing normalized data from `Token Cost Normalizer v1` and local `_local/codex-token-debugger/` run-folders already contain enough information for human review. A local browser UI with session discovery, step cards, archive state, and refresh integration is the next practical layer.
+- Consequence: monitor server must stay stdlib-only, use existing normalizer as subprocess, discover sessions by run-folder identity, and not modify live Codex config. UI must adopt the accepted compact prototype layout but consume only real API data.
+- Boundary: this decision does not authorize new OTel runs, collector management, live config changes, or dashboard redesign outside the prototype-bound MVP.
+- Human approval: `accepted after local review`
+
 ## Maintenance rule
 
 - Не превращать этот файл в журнал команд.

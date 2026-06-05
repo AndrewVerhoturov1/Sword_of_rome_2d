@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "default_project_id": "sword-of-rome-web",
+  "projects": [
+    {
+      "id": "sword-of-rome-web",
+      "name": "Sword of Rome Web",
+      "path": "D:/Codex+Kilocode/projects/sword-of-rome-web",
+      "runs_dir": "_local/codex-token-debugger"
+    }
+  ]
+}
