@@ -575,6 +575,38 @@ Started: `2026-06-03`
 
 <a id="bugs-and-difficulties"></a>
 
+<a id="j-20260605-002"></a>
+
+### J-20260605-002 - Token Cost Normalizer v1 materialized and smoke-tested
+
+- Stage: `Stage 1 - cache-adjusted cost normalization`
+- Role: `Orc`
+- Execution route: `direct`
+- Source package: `V3-20260605-141503-token-cost-normalizer-v1`
+- Related decisions:
+  - [D-20260604-009](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/tokken_dashboard_decisions.md#d-20260604-009)
+  - [D-20260605-002](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/tokken_dashboard_decisions.md#d-20260605-002)
+- Created files:
+  - [codex_token_cost_normalizer.py](/D:/Codex+Kilocode/projects/sword-of-rome-web/scripts/codex_token_cost_normalizer.py)
+  - [token_pricing.json](/D:/Codex+Kilocode/projects/sword-of-rome-web/config/token_pricing.json)
+  - [test_codex_token_cost_normalizer.py](/D:/Codex+Kilocode/projects/sword-of-rome-web/tests/test_codex_token_cost_normalizer.py)
+- Updated files:
+  - [token_cost_normalizer_v1_implementation_pack.md](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/drafts/token_cost_normalizer_v1_implementation_pack.md)
+- Verification:
+  - `python -m unittest tests.test_codex_token_cost_normalizer`
+  - `python -m unittest tests.test_codex_token_cost_normalizer tests.test_mcp_schema_inventory tests.test_tool_mcp_activity_inspector tests.test_codex_otel_compare tests.test_codex_token_debugger tests.test_codex_otel_ab_experiment`
+  - `python scripts/codex_token_cost_normalizer.py --input-dir _local/codex-token-debugger/playwright-only-confirmation-20260604-072040 --out-dir _local/codex-token-debugger/playwright-only-confirmation-20260604-072040/token-cost-normalized --pricing config/token_pricing.json`
+  - `git diff --check`
+- Result:
+  - added cache-adjusted normalization over sanitized parser outputs;
+  - cost formulas now split non-cached input, cached input and output cost;
+  - unknown model pricing stays explicit instead of being invented;
+  - real smoke-run produced `token_cost_turns.jsonl`, `token_cost_sessions.json`, `token_cost_summary.json`, `token_cost_report.md` and `token_cost_dashboard_data.json`.
+- Bugs and difficulties:
+  - V3 draft test had a Python 3.14 compatibility bug around `importlib` + `dataclass`; fixed in both live test and implementation pack by registering the module in `sys.modules` before `exec_module`;
+  - the draft markdown still contains mojibake in some Russian explanatory sections, but code/config/test extraction remained usable.
+- Human verdict: `pending`
+
 ## Bugs and difficulties
 
 Текущий статус:

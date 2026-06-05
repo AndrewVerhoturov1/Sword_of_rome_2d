@@ -168,6 +168,31 @@ Active route: `Planner -> Orc`
 
 <a id="human-check"></a>
 
+<a id="token-cost-normalizer-v1"></a>
+
+## Token Cost Normalizer v1
+
+`Token Cost Normalizer v1` is the next local layer after the sanitized Codex token parser and comparison tools.
+
+It reads parsed artifacts such as:
+
+- `parsed/token_usage.jsonl`
+- `parsed/session_summary.json`
+- `parsed/sessions.jsonl`
+- optional nearby compare/confirmation summary JSON files
+
+It writes cache-adjusted cost artifacts:
+
+- `token_cost_turns.jsonl`
+- `token_cost_sessions.json`
+- `token_cost_summary.json`
+- `token_cost_report.md`
+- `token_cost_dashboard_data.json`
+
+Important interpretation rule: future token comparisons must not use raw `input_tokens` alone. They must check `cached_tokens`, `non_cached_input_tokens`, `cached_ratio`, output/reasoning/tool tokens, model/reasoning switches and estimated cost from `config/token_pricing.json`.
+
+Unknown model pricing is intentionally left unknown. The normalizer must not invent prices.
+
 ## Human check
 
 1. Открой [tokken_dashboard_decisions.md](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/tokken_dashboard_decisions.md#accepted-decisions).

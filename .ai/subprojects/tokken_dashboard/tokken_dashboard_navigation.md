@@ -243,6 +243,18 @@ Additional route:
 
 <a id="maintenance-rule"></a>
 
+<a id="token-cost-normalizer-v1"></a>
+
+## Token Cost Normalizer v1
+
+- Draft implementation pack: [token_cost_normalizer_v1_implementation_pack.md](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/drafts/token_cost_normalizer_v1_implementation_pack.md)
+- Live script: [codex_token_cost_normalizer.py](/D:/Codex+Kilocode/projects/sword-of-rome-web/scripts/codex_token_cost_normalizer.py)
+- Live pricing config: [token_pricing.json](/D:/Codex+Kilocode/projects/sword-of-rome-web/config/token_pricing.json)
+- Live test: [test_codex_token_cost_normalizer.py](/D:/Codex+Kilocode/projects/sword-of-rome-web/tests/test_codex_token_cost_normalizer.py)
+- Example smoke-run output: [_local/codex-token-debugger/playwright-only-confirmation-20260604-072040/token-cost-normalized](/D:/Codex+Kilocode/projects/sword-of-rome-web/_local/codex-token-debugger/playwright-only-confirmation-20260604-072040/token-cost-normalized)
+
+Purpose: cache-adjusted token and estimated-cost normalization over sanitized parser outputs.
+
 ## Maintenance rule
 
 - Обновлять `decisions`, когда временная находка становится рабочим правилом, запретом или waiver.

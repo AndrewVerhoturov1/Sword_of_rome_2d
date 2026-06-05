@@ -344,6 +344,18 @@ Decision layer: `subproject-level accepted decisions`
 
 <a id="maintenance-rule"></a>
 
+<a id="d-20260605-002"></a>
+
+### D-20260605-002 - Token Cost Normalizer v1 is the canonical cache-adjusted cost layer
+
+- Status: `accepted`
+- Source: `V3-20260605-141503-token-cost-normalizer-v1 local apply/run`
+- Decision: `scripts/codex_token_cost_normalizer.py` is the canonical local layer for converting sanitized parser outputs into cache-adjusted token cost artifacts.
+- Reason: reports based only on raw `input_tokens` are misleading when cached input, model pricing, output tokens, reasoning tokens and model/reasoning switches matter.
+- Consequence: future dashboard/report work should consume `token_cost_turns.jsonl`, `token_cost_sessions.json`, `token_cost_summary.json` and `token_cost_dashboard_data.json` instead of re-implementing cost formulas ad hoc.
+- Boundary: pricing remains config-driven in `config/token_pricing.json`; unknown models must remain `pricing_unknown` with null estimated cost fields.
+- Human approval: `pending local review`
+
 ## Maintenance rule
 
 - Не превращать этот файл в журнал команд.
