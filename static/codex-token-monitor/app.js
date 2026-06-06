@@ -1058,8 +1058,22 @@ function buildAuditSummaryRu(result, findings) {
 
   parts.push(`<b>${statusText}.</b>`);
 
+  // Evidence basis — most important truth signal
+  if (r.evidence_basis === "verified_against_source_evidence") {
+    parts.push("Аудит проверен по исходным данным (raw rollout/OTel).");
+  } else if (r.evidence_basis === "detail_looked_plausible") {
+    parts.push("Деталь внутренне непротиворечива, но исходные данные недоступны — статусы понижены.");
+  } else if (r.evidence_basis === "not_verified") {
+    parts.push("Аудит не смог проверить ключевые свойства — нет ни исходных данных, ни внутренних маркеров.");
+  }
+
+  // Audit scope
+  if (r.audit_scope === "selected_steps") {
+    parts.push(`Проверены только выбранные шаги (${r.audited_steps_count || "?"} из ${r.total_steps_in_session || "?"}) — это не полная проверка сессии.`);
+  }
+
   if (r.usage_confirmation === "all_confirmed") {
-    parts.push("Использование токенов подтверждено для всех шагов.");
+    parts.push("Использование токенов подтверждено для всех проверенных шагов.");
   } else if (r.usage_confirmation === "partial") {
     const missingSteps = findings.filter(f => f.id === "step_usage_missing" || f.id === "step_usage_missing_unclear").length;
     parts.push(`Использование токенов подтверждено не для всех шагов (${missingSteps} шаг(ов) без подтверждённых данных).`);
@@ -1130,7 +1144,9 @@ function renderAuditPanel() {
   }
 
   const collapseId = "audit-body";
-  const scopeLabel = r.step_indices ? ` (шаги: ${(r.step_indices || []).join(", ")})` : " (вся сессия)";
+  const scopeLabel = r.audit_scope === "selected_steps"
+    ? ` (выбранные шаги: ${r.audited_steps_count || "?"} из ${r.total_steps_in_session || "?"})`
+    : " (вся сессия)";
 
   panel.innerHTML = `
     <div class="audit-result">
@@ -1142,6 +1158,8 @@ function renderAuditPanel() {
       </div>
       <div id="${collapseId}">
         <div class="audit-meta">
+          <div class="cmini"><span>Evidence</span><b>${r.evidence_basis || "—"}</b></div>
+          <div class="cmini"><span>Scope</span><b>${r.audit_scope || "—"}</b></div>
           <div class="cmini"><span>Usage</span><b>${r.usage_confirmation || "—"}</b></div>
           <div class="cmini"><span>Step attr.</span><b>${r.step_attribution_confidence || "—"}</b></div>
           <div class="cmini"><span>Cost conf.</span><b>${r.cost_confidence || "—"}</b></div>

@@ -1477,13 +1477,14 @@ class MonitorHandler(SimpleHTTPRequestHandler):
             self._error(404, f"session not found: {session_id}")
             return
 
-        # Filter steps if step_indices provided
-        step_indices = body.get("step_indices")
-        if isinstance(step_indices, list) and step_indices:
-            all_steps = detail.get("steps", [])
-            if isinstance(all_steps, list):
-                idx_set = set(int(i) for i in step_indices)
-                detail["steps"] = [s for s in all_steps if s.get("step_index") in idx_set]
+        # Extract selected step indices BEFORE audit (do NOT mutate detail)
+        selected_step_indices = None
+        step_indices_raw = body.get("step_indices")
+        if isinstance(step_indices_raw, list) and step_indices_raw:
+            selected_step_indices = [int(i) for i in step_indices_raw]
+
+        # Extract upstream evidence flag
+        upstream_evidence = bool(body.get("upstream_evidence", False))
 
         # Load and run audit module
         audit_path = SCRIPTS_DIR / "codex_token_monitor_audit.py"
@@ -1506,6 +1507,8 @@ class MonitorHandler(SimpleHTTPRequestHandler):
             source_kind=kind,
             source_id=source["id"],
             session_id=session_id,
+            selected_step_indices=selected_step_indices,
+            upstream_evidence_available=upstream_evidence,
         )
 
         # Generate artifacts
@@ -1516,6 +1519,11 @@ class MonitorHandler(SimpleHTTPRequestHandler):
 
         self._ok({
             "audit_status": result["audit_status"],
+            "evidence_basis": result.get("evidence_basis", audit_mod.EVIDENCE_NOT_VERIFIED),
+            "audit_scope": result.get("audit_scope", "full_session"),
+            "upstream_evidence_available": result.get("upstream_evidence_available", False),
+            "total_steps_in_session": result.get("total_steps_in_session", 0),
+            "audited_steps_count": result.get("audited_steps_count", 0),
             "usage_confirmation": result["usage_confirmation"],
             "step_attribution_confidence": result["step_attribution_confidence"],
             "cost_confidence": result["cost_confidence"],

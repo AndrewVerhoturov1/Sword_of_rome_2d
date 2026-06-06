@@ -48,7 +48,7 @@ Navigation не заменяет:
 ## Current lifecycle stage
 
 ```text
-Stage 1 - hybrid monitor baseline accepted; audit implementation pending; honesty hardening deferred
+Stage 1 - hybrid monitor baseline accepted; audit feature exists; audit truth-fix pending; honesty hardening deferred
 ```
 
 Gate state:
@@ -305,19 +305,19 @@ Keep v1 as the archive viewer. Build v2 as a hybrid monitor with two explicit so
 Focused next route:
 
 ```text
-Do not reopen the source split. The next execution slice is Codex Token Monitor Audit: keep the hybrid baseline, verify source/session/step/usage/export truth, and emit audit statuses/artifacts before any wider honesty-hardening pass.
+Do not reopen the source split. The next execution slice is a narrow Codex Token Monitor Audit correction run: keep the hybrid baseline, fix the audit truth gap against upstream evidence, and add regression tests before any wider honesty-hardening pass.
 ```
 
 New safe reading route:
 
 ```text
-Read D-20260606-001 -> D-20260607-001 -> D-20260607-002 -> J-20260607-002 -> V1-20260607-014953 notebook entry -> BUG-20260607-001 before implementing the audit layer.
+Read D-20260606-001 -> D-20260607-001 -> D-20260607-002 -> D-20260607-003 -> J-20260607-002 -> J-20260607-003 -> V1-20260607-014953 notebook entry -> BUG-20260607-001 -> BUG-20260607-003 before implementing the audit correction layer.
 ```
 
 Additional planning route:
 
 ```text
-If task is "implement Audit", use the notebook entry V1-20260607-014953 as planning baseline, then local repo files as source of truth for exact file placement, API shape and tests.
+If task is "fix Audit truth gap", use the notebook entry V1-20260607-014953 as planning baseline, then local repo files and forensic thread `019e9d2a-17d7-7210-ba5e-bd42e6ce6e5f` as source of truth for exact file placement, API shape and regression tests.
 ```
 
 ## Maintenance rule
