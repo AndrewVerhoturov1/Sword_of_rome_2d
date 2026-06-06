@@ -1,10 +1,17 @@
 {
-  "version": 1,
-  "default_project_id": "sword-of-rome-web",
-  "projects": [
+  "version": 2,
+  "default_source_id": "codex_live_threads",
+  "sources": [
     {
-      "id": "sword-of-rome-web",
-      "name": "Sword of Rome Web",
+      "id": "codex_live_threads",
+      "name": "Реальные чаты Codex",
+      "kind": "live",
+      "codex_dir": "C:/Users/andre/.codex"
+    },
+    {
+      "id": "token_debugger_archive",
+      "name": "Архив тестов OTel",
+      "kind": "archive",
       "path": "D:/Codex+Kilocode/projects/sword-of-rome-web",
       "runs_dir": "_local/codex-token-debugger"
     }

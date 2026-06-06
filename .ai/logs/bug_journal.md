@@ -8,6 +8,321 @@ Do not record every tiny typo. Record issues that may help future debugging.
 
 ## Entries
 
+### BUG-20260606-009 - Monitor defaulted to empty live chat and showed infinite loading instead of honest no-steps state
+
+Status: fixed
+
+Area:
+`static/codex-token-monitor/app.js`
+
+Symptoms:
+- после открытия монитора мог автоматически выбраться самый свежий live-чат без распарсенных шагов;
+- справа висело `Загрузка шагов...`, хотя запрос уже завершился и шагов для этой сессии просто не было;
+- пользователю казалось, что чат не открывается вообще.
+
+Observed recurrence:
+- повторилось на `http://127.0.0.1:8765/` после фикса списка сессий, когда вверху live-ленты были чаты со `step_count = null`.
+
+Cause:
+- стартовый выбор брал просто первую сессию из списка, даже если у неё не было шагов;
+- UI не отличал состояние `detail ещё грузится` от состояния `detail загружен, но steps пусты`.
+
+Fix:
+- добавлен `preferredSessionId(...)`, который по умолчанию предпочитает сессию с `step_count > 0`;
+- для смены фильтров и клика по карточке добавлен явный loading-state;
+- пустой detail теперь показывает честный текст `Для этой сессии шаги пока не найдены`, а не бесконечную загрузку.
+
+Verification:
+- `python -m unittest tests.test_codex_token_monitor_server`
+- browser smoke на `http://127.0.0.1:8765/` показал много live-сессий вместо одной;
+- API для первой видимой пустой сессии вернул `steps = 0`, что подтвердило именно UX-проблему, а не зависший запрос.
+
+Human check:
+required - обновить монитор и убедиться, что по умолчанию открывается чат со шагами, а для пустого чата справа честно написано, что шаги не найдены.
+
+Related files:
+- [app.js](D:/Codex+Kilocode/projects/sword-of-rome-web/static/codex-token-monitor/app.js)
+- [test_codex_token_monitor_server.py](D:/Codex+Kilocode/projects/sword-of-rome-web/tests/test_codex_token_monitor_server.py)
+
+### BUG-20260606-008 - Session list render crashed because step timeline code leaked into renderSessions
+
+Status: fixed
+
+Area:
+`static/codex-token-monitor/app.js`
+
+Symptoms:
+- в левой колонке мог показываться только один чат, хотя API возвращал много сессий;
+- при клике по единственной карточке справа оставалось `Выберите сессию слева` или шаги не открывались;
+- источник и фильтры выглядели живыми, но detail не догружался.
+
+Observed recurrence:
+- повторилось на live monitor `http://127.0.0.1:8765/` после добавления timeline-событий сжатия контекста.
+
+Cause:
+- в `renderSessions()` случайно остался кусок кода из `renderSteps()`;
+- список сессий пытался читать `timelineByStep` и `idx`, которых в этом scope нет;
+- после первого `root.appendChild(el)` происходил `ReferenceError`, и рендер обрывался на первой карточке.
+
+Fix:
+- удалён stray timeline-render block из `renderSessions()`;
+- добавлен frontend contract test, чтобы `renderSessions()` больше не зависел от step timeline state.
+
+Verification:
+- `python -m unittest tests.test_codex_token_monitor_server`
+- `node --check static/codex-token-monitor/app.js`
+- live API smoke показывал много сессий, а после refresh UI снова мог открыть detail выбранного чата.
+
+Human check:
+required - обновить монитор, убедиться что слева виден не один чат, а список, и что клик по карточке реально открывает шаги справа.
+
+Related files:
+- [app.js](D:/Codex+Kilocode/projects/sword-of-rome-web/static/codex-token-monitor/app.js)
+- [test_codex_token_monitor_server.py](D:/Codex+Kilocode/projects/sword-of-rome-web/tests/test_codex_token_monitor_server.py)
+
+### BUG-20260606-007 - Live step lost valid last_token_usage because step closed after compaction cycle
+
+Status: fixed
+
+Area:
+`scripts/codex_token_monitor_server.py`, `static/codex-token-monitor/app.js`
+
+Symptoms:
+- some real live chat steps showed `no confirmed last_token_usage for this step` even though rollout contained valid `last_token_usage` during the same visible turn;
+- after context compaction the monitor did not show where compaction happened;
+- user could not see whether the missing usage came from true interruption or from monitor mis-grouping.
+
+Observed recurrence:
+- repeated on live thread `019e8e29-ed90-71d3-86b0-90bb7a3c4d00`, especially around visible `Step 4`.
+
+Cause:
+- live step stayed open until the next visible user message;
+- rollout could emit `task_complete`, then a separate compaction mini-cycle with zero `last_token_usage`, then `context_compacted`, and only after that another user prompt;
+- the zero compaction-cycle usage overwrote the real request usage of the previous visible step.
+
+Fix:
+- visible live step now finalizes on `task_complete`, not only on the next visible user prompt;
+- `context_compacted` is exposed as a dedicated timeline event after the previous visible step;
+- previous step gets a badge `контекст сжат после этого хода`;
+- compaction event includes available task/turn identifiers from rollout.
+
+Verification:
+- `python -m unittest tests.test_codex_token_monitor_server`
+- live rollout inspection around visible `Step 4` showed valid `last_token_usage`, then `task_complete`, then separate `context_compacted` cycle with zero usage.
+
+Human check:
+required - open the same live chat and verify:
+- the previously missing step now has token/cost data if rollout had valid `last_token_usage`;
+- after a compaction point there is a separate `Сжатие контекста` event in the timeline;
+- the previous step shows badge `контекст сжат после этого хода`.
+
+Related files:
+- [codex_token_monitor_server.py](D:/Codex+Kilocode/projects/sword-of-rome-web/scripts/codex_token_monitor_server.py)
+- [app.js](D:/Codex+Kilocode/projects/sword-of-rome-web/static/codex-token-monitor/app.js)
+- [styles.css](D:/Codex+Kilocode/projects/sword-of-rome-web/static/codex-token-monitor/styles.css)
+- [test_codex_token_monitor_server.py](D:/Codex+Kilocode/projects/sword-of-rome-web/tests/test_codex_token_monitor_server.py)
+
+### BUG-20260606-006 - Live monitor used session totals instead of request usage for visible step cost
+
+Status: fixed
+
+Area:
+`scripts/codex_token_monitor_server.py`
+
+Symptoms:
+- a very short live message such as `все хорошо` could show millions of input tokens on a single visible step;
+- step cost looked like cost of a huge hidden chain, not cost of the concrete user-visible request;
+- the session summary looked plausible, but per-step live numbers were wildly inflated.
+
+Observed recurrence:
+- reproduced on the live thread `019e8e29-ed90-71d3-86b0-90bb7a3c4d00` in Codex Token Monitor.
+
+Cause:
+- live step builder was reading `event_msg.payload.info.total_token_usage` for the step;
+- `total_token_usage` is cumulative for the whole thread/session state, not request-local usage for one request cycle;
+- after hiding synthetic internal prompts, the delta between visible steps could still absorb a large hidden execution tail and make a short human message look absurdly expensive.
+
+Fix:
+- live step builder now prefers `event_msg.payload.info.last_token_usage` for visible step usage;
+- if confirmed `last_token_usage` is absent, the step stays unavailable instead of reusing cumulative totals;
+- tests now cover the realistic case where `total_token_usage` is huge but `last_token_usage` for the concrete step is small.
+
+Verification:
+- `python -m unittest tests.test_codex_token_monitor_server`
+- live rollout inspection showed:
+  - `total_token_usage` around millions on late turns;
+  - `last_token_usage` around the actual request-sized numbers for the concrete step.
+
+Human check:
+required - reopen the same live chat in the monitor and confirm that a short message no longer shows multi-million input tokens for the visible step. If the step has no confirmed `last_token_usage`, it should show `—` instead of a fake giant number.
+
+Related files:
+- [codex_token_monitor_server.py](D:/Codex+Kilocode/projects/sword-of-rome-web/scripts/codex_token_monitor_server.py)
+- [test_codex_token_monitor_server.py](D:/Codex+Kilocode/projects/sword-of-rome-web/tests/test_codex_token_monitor_server.py)
+
+### BUG-20260606-005 - Live monitor mixed technical synthetic turns with real user chat steps
+
+Status: fixed
+
+Area:
+`scripts/codex_token_monitor_server.py`
+
+Symptoms:
+- live chat steps included internal prompts like `PLEASE IMPLEMENT THIS PLAN:` and `<turn_aborted>` as if they were normal user messages;
+- this made the visible step list look wrong even when token deltas themselves were technically derived from real rollout checkpoints;
+- user-facing step numbering no longer matched the human chat history.
+
+Observed recurrence:
+- repeated on the live thread `019e8e29-ed90-71d3-86b0-90bb7a3c4d00` in Codex Token Monitor.
+
+Cause:
+- live step builder treated every `response_item role=user` as a visible chat step;
+- Codex rollout stores some internal workflow/control prompts with the same low-level `user` role.
+
+Fix:
+- added `_is_internal_live_user_prompt(...)` classification for synthetic/internal live prompts;
+- excluded internal prompts from both:
+  - live detail step builder;
+  - fast rollout summary step counter used by session cards.
+
+Verification:
+- `python -m unittest tests.test_codex_token_monitor_server`
+- direct real-chat smoke on `019e8e29-ed90-71d3-86b0-90bb7a3c4d00`:
+  - visible first steps became:
+    - `Задача: проверить...`
+    - `Продолжай`
+    - `Я оборвал тебя, продолжи`
+  - synthetic `PLEASE IMPLEMENT THIS PLAN:` and `<turn_aborted>` no longer appeared as ordinary live steps.
+
+Human check:
+required - open the same live chat in the monitor and confirm that technical control prompts no longer appear as separate steps in the default view.
+
+Related files:
+- [codex_token_monitor_server.py](D:/Codex+Kilocode/projects/sword-of-rome-web/scripts/codex_token_monitor_server.py)
+- [test_codex_token_monitor_server.py](D:/Codex+Kilocode/projects/sword-of-rome-web/tests/test_codex_token_monitor_server.py)
+
+### BUG-20260606-004 - Live Token Monitor showed cumulative totals as if they were per-step tokens
+
+Status: fixed
+
+Area:
+`scripts/codex_token_monitor_server.py`, `static/codex-token-monitor/app.js`
+
+Symptoms:
+- in live chat mode a late step could show huge `Input / Cached / Output` values that matched the whole accumulated conversation, not the concrete step;
+- step cost could stay empty or meaningless because live step usage was taken from cumulative `token_count` totals;
+- unavailable live per-step usage looked like zeros in detailed token and cost boxes.
+
+Observed recurrence:
+- repeated in monitor checks on `127.0.0.1:8765` after opening long live Codex chats with many previous turns.
+
+Cause:
+- rollout `token_count` events store cumulative totals for the thread, not direct per-step deltas;
+- monitor attached the latest cumulative totals to the current step without subtracting the previous finalized step totals;
+- frontend rendered unavailable live step usage as numeric zero-like fields instead of explicit absence.
+
+Fix:
+- live step builder now stores the last cumulative totals for each step and computes a delta against the previous finalized step;
+- confirmed per-step delta now gets its own token counts and per-step price from `config/token_pricing.json`;
+- if per-step delta cannot be trusted, frontend shows `—` and a warning instead of raw cumulative totals or fake zeros.
+
+Verification:
+- `python -m unittest tests.test_codex_token_monitor_server`
+- direct live fixture check:
+  - step 1 delta = `1200 / 1000 / 200`;
+  - step 2 delta = `600 / 400 / 200`;
+  - both steps have non-null per-step cost.
+
+Human check:
+required - open a long live chat in the monitor and confirm that a late step no longer shows giant accumulated totals from the whole conversation, but only the cost and tokens of that specific step.
+
+Related files:
+- [codex_token_monitor_server.py](D:/Codex+Kilocode/projects/sword-of-rome-web/scripts/codex_token_monitor_server.py)
+- [app.js](D:/Codex+Kilocode/projects/sword-of-rome-web/static/codex-token-monitor/app.js)
+- [test_codex_token_monitor_server.py](D:/Codex+Kilocode/projects/sword-of-rome-web/tests/test_codex_token_monitor_server.py)
+
+### BUG-20260606-003 - Token Monitor lost session detail after filter changes and had no project/workdir navigation
+
+Status: fixed
+
+Area:
+`static/codex-token-monitor/app.js`, `static/codex-token-monitor/index.html`
+
+Symptoms:
+- right pane could stay on `Выберите сессию` or `Нет данных по шагам` even when session cards were visible on the left;
+- live/archive source list had no separate project or workdir filter, so the user could not narrow chats to a repo like `sword-of-rome-web`;
+- step count badge in session cards could render `null` instead of `—`.
+
+Observed recurrence:
+- repeated during live monitor manual checks on `127.0.0.1:8765` after adding hybrid sources and date sorting.
+
+Cause:
+- frontend changed `currentSessionId` during filtered list rendering, but did not always reload session detail for the new active card;
+- monitor had only `sourceSelect`, but no UI filter built from `session.workdir`;
+- card badge used raw `s.step_count` instead of the already-sanitized display value.
+
+Fix:
+- added `applySessionFilters()` to reload detail whenever the active card changes after filtering;
+- added `workdirFilter` built from normalized `session.workdir` values, with human labels based on folder names;
+- source path display and `Path` copy action now respect the selected workdir filter;
+- session badge uses display-safe `stepText`.
+
+Verification:
+- `python -m unittest tests.test_codex_token_monitor_server`
+- browser smoke on `http://127.0.0.1:8765/`:
+  - `workdirFilter` appeared;
+  - selecting `D:\\Codex+Kilocode\\projects\\sword-of-rome-web` reduced the list to `2/386`;
+  - the right pane stayed on the selected session and showed live steps.
+
+Human check:
+required - refresh the monitor page, choose `sword-of-rome-web` in the new project/workdir filter, and confirm that the session list narrows and the right pane still shows steps.
+
+Related files:
+- [app.js](D:/Codex+Kilocode/projects/sword-of-rome-web/static/codex-token-monitor/app.js)
+- [index.html](D:/Codex+Kilocode/projects/sword-of-rome-web/static/codex-token-monitor/index.html)
+- [test_codex_token_monitor_server.py](D:/Codex+Kilocode/projects/sword-of-rome-web/tests/test_codex_token_monitor_server.py)
+
+### BUG-20260606-002 - Token Monitor live chats mixed composed prompt with real history and scanned rollout archive too slowly
+
+Status: fixed
+
+Area:
+`codex_token_monitor_server.py`, live chat adapter, monitor UI summary semantics
+
+Symptoms:
+- live session list could hang or take minutes on real `C:\Users\andre\.codex` data;
+- first visible live step could be internal composed prompt with `AGENTS.md`, not real user message;
+- top summary cards in UI could show zeros because they were summed from ambiguous per-step usage instead of `session.summary`.
+
+Observed recurrence:
+- `0047` review cycle: repeated on real local `.codex` state during multiple verifier passes.
+
+Cause:
+- `discover_live_sessions()` scanned every rollout file for every thread (`N_threads × N_files`);
+- `_build_live_steps()` kept composed/system prompt as ordinary `Step 1`;
+- frontend header used `totals(s.steps)` even when live step usage was intentionally marked `available = false`.
+
+Fix:
+- added cached rollout summary index with one-pass scan of `sessions/**/rollout-*.jsonl`;
+- live list now reads `step_count` and token totals from cached rollout summaries;
+- composed/system prompt is filtered out of normal live steps, so first visible step is real user message;
+- header metrics now use `session.summary` via frontend helper instead of ambiguous per-step sums.
+
+Verification:
+- `python -m unittest tests.test_codex_token_monitor_server`
+- direct smoke on real `.codex` profile:
+  - `discover_live_sessions()` returned `386` sessions in about `16s`;
+  - `build_live_session_detail()` returned non-zero totals;
+  - first step kind became `user_message`, not `system_composed`.
+
+Human check:
+suggested - open the monitor, switch to live chats, and confirm that the first visible step is the real chat message and top totals are non-zero.
+
+Related files:
+- [codex_token_monitor_server.py](D:/Codex+Kilocode/projects/sword-of-rome-web/scripts/codex_token_monitor_server.py)
+- [app.js](D:/Codex+Kilocode/projects/sword-of-rome-web/static/codex-token-monitor/app.js)
+- [test_codex_token_monitor_server.py](D:/Codex+Kilocode/projects/sword-of-rome-web/tests/test_codex_token_monitor_server.py)
+
 ### BUG-20260603-001 - Codex OTel raw file contains sensitive fields despite `log_user_prompt = false`
 
 Status: open

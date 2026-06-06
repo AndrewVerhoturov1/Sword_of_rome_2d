@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Codex Token Monitor v1</title>
+    <title>Codex Token Monitor v2</title>
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -22,15 +22,20 @@
       </div>
 
       <div class="controls" id="controlsWrap">
-        <label class="muted xsmall">Проект / рабочая папка</label>
+        <label class="muted xsmall">Источник / рабочая папка</label>
         <div class="project-row">
-          <select id="projectSelect"></select>
-          <button class="ghost" onclick="copyProjectPath()">Path</button>
+          <select id="sourceSelect"></select>
+          <button class="ghost" onclick="copySourcePath()">Path</button>
+        </div>
+        <div class="project-row">
+          <select id="workdirFilter">
+            <option value="">Все проекты / папки</option>
+          </select>
         </div>
 
         <div class="project-info">
           <div class="muted xsmall">Текущая папка</div>
-          <div id="projectPath" class="mono xsmall soft"></div>
+          <div id="sourcePath" class="mono xsmall soft"></div>
         </div>
 
         <div class="statusbar">
@@ -46,6 +51,12 @@
         </div>
 
         <div class="filter-row">
+          <select id="sortFilter">
+            <option value="date_desc">Сначала новые</option>
+            <option value="date_asc">Сначала старые</option>
+            <option value="cost_desc">Сначала дорогие</option>
+            <option value="cost_asc">Сначала дешевые</option>
+          </select>
           <select id="modelFilter">
             <option value="">Все модели</option>
           </select>

@@ -19,6 +19,8 @@ Decision layer: `subproject-level accepted decisions`
 - [D-20260604-008](#d-20260604-008)
 - [D-20260604-009](#d-20260604-009)
 - [D-20260605-001](#d-20260605-001)
+- [D-20260605-004](#d-20260605-004)
+- [D-20260606-001](#d-20260606-001)
 - [Corrected Decisions](#corrected-decisions)
 - [Rejected Options](#rejected-options)
 - [Waivers](#waivers)
@@ -367,6 +369,33 @@ Decision layer: `subproject-level accepted decisions`
 - Consequence: monitor server must stay stdlib-only, use existing normalizer as subprocess, discover sessions by run-folder identity, and not modify live Codex config. UI must adopt the accepted compact prototype layout but consume only real API data.
 - Boundary: this decision does not authorize new OTel runs, collector management, live config changes, or dashboard redesign outside the prototype-bound MVP.
 - Human approval: `accepted after local review`
+
+<a id="d-20260605-004"></a>
+
+### D-20260605-004 - Codex Token Monitor v2 must separate real Codex chats from archival OTel runs
+
+- Status: `accepted`
+- Source: `user feedback on monitor v1 + local Codex review`
+- Decision: the next monitor iteration must become a hybrid viewer with two explicit sources: `Реальные чаты Codex` from `C:/Users/andre/.codex/**` and `Архив тестов OTel` from `_local/codex-token-debugger/**`.
+- Reason: monitor v1 truthfully reflected normalized test-run artifacts, but users naturally read it as a browser of current Codex chats. This caused misleading expectations around chat titles, prompt/answer visibility, model list, reasoning effort, and the absence of the current live thread.
+- Consequence: live chat data must come from local Codex state (`state_5.sqlite`, `session_index.jsonl`, `sessions/**/rollout-*.jsonl`), while archival OTel runs remain available as a separate source with explicit `mixed/noisy/confirmed` semantics.
+- UI rule: the monitor must show which source is active and must not present archive run-folders as if they were ordinary user chats.
+- Boundary: this decision does not authorize live streaming, new OTel capture, collector work, or writes into `C:/Users/andre/.codex/**`; the live-chat adapter is read-only over already stored local Codex artifacts.
+- Human approval: `recorded`
+
+<a id="d-20260606-001"></a>
+
+### D-20260606-001 - Live monitor must prefer request-local step data and rich exports over compact summaries
+
+- Status: `accepted`
+- Source: `user review of the live monitor on 2026-06-06`
+- Decision: in `Реальные чаты Codex` mode, ordinary visible steps must show only request-local token/cost data. If a reliable per-step checkpoint is missing, monitor must show explicit absence instead of cumulative session totals or invented numbers.
+- Decision: copy/export actions in the monitor must prioritize full useful detail over compact summaries. Single-step copy should include prompt, answer, model, reasoning, usage, cost breakdown, environment, warnings, and nearby compaction/timeline context when available.
+- Decision: session-level and multi-step export should default to detailed step-by-step Markdown/JSON, not to short aggregate-only summaries.
+- Reason: user review showed that cumulative totals make short prompts look absurdly expensive, and current copy/export output is too weak to use as a practical forensic tool.
+- Consequence: live cache/cost interpretation must remain conservative; request-local usage stays nullable, and export payloads must preserve uncertainty notes instead of hiding them.
+- Boundary: this decision does not authorize invented pricing, synthetic prompt reconstruction, or writes into `C:/Users/andre/.codex/**`.
+- Human approval: `recorded`
 
 ## Maintenance rule
 

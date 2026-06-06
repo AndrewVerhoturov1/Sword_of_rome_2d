@@ -24,6 +24,9 @@ Started: `2026-06-03`
 - [J-20260604-008](#j-20260604-008)
 - [J-20260604-009](#j-20260604-009)
 - [J-20260605-001](#j-20260605-001)
+- [J-20260605-004](#j-20260605-004)
+- [J-20260605-005](#j-20260605-005)
+- [J-20260606-001](#j-20260606-001)
 - [Bugs And Difficulties](#bugs-and-difficulties)
 - [Open Follow-ups](#open-follow-ups)
 
@@ -653,6 +656,86 @@ found and fixed partly
 
 - `127.0.0.1` нельзя считать рабочим baseline для Codex OTel только потому, что ручной POST доходит;
 - raw telemetry нельзя включать надолго без решения по чувствительным полям.
+
+<a id="j-20260605-004"></a>
+
+### J-20260605-004 - Monitor v1 review defined the next route: real Codex chats plus archive test runs
+
+- Stage: `Stage 1 - monitor semantics clarified`
+- Role: `Orc`
+- Execution route: `direct review + planning`
+- Related decisions:
+  - [D-20260605-003](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/tokken_dashboard_decisions.md#d-20260605-003)
+  - [D-20260605-004](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/tokken_dashboard_decisions.md#d-20260605-004)
+- Confirmed:
+  - monitor v1 is a truthful viewer of normalized run-folder artifacts, but not a browser of current live Codex chats;
+  - the current session list is built from `_local/codex-token-debugger/**`, so titles come from run-folder ids, not human chat titles;
+  - local Codex state already exposes real chat metadata and content candidates in `C:/Users/andre/.codex/state_5.sqlite`, `session_index.jsonl`, and `sessions/**/rollout-*.jsonl`;
+  - next monitor iteration should keep the archive view but add a separate source for real Codex chats.
+- Verification:
+  - inspected [codex_token_monitor_server.py](/D:/Codex+Kilocode/projects/sword-of-rome-web/scripts/codex_token_monitor_server.py), [app.js](/D:/Codex+Kilocode/projects/sword-of-rome-web/static/codex-token-monitor/app.js), and [codex_token_monitor_projects.json](/D:/Codex+Kilocode/projects/sword-of-rome-web/config/codex_token_monitor_projects.json);
+  - inspected archive evidence in [token_cost_dashboard_data.json](/D:/Codex+Kilocode/projects/sword-of-rome-web/_local/codex-token-debugger/playwright-only-confirmation-20260604-072040/token-cost-normalized/token_cost_dashboard_data.json);
+  - inspected local Codex archive/state in `C:/Users/andre/.codex`.
+- Result:
+  - approved next route is a hybrid monitor with `Реальные чаты Codex` as the main source and `Архив тестов OTel` as a separate source.
+- Bugs and difficulties:
+  - monitor v1 produced correct archive facts, but its UX semantics were too easy to misread as live-chat browsing;
+  - old markdown docs still contain mojibake, so the safest update style remains additive anchor blocks.
+- Human verdict: `recorded`
+
+<a id="j-20260605-005"></a>
+
+### J-20260605-005 - Kilo implementation package prepared for the hybrid monitor v2 route
+
+- Stage: `Stage 1 - monitor v2 execution prepared`
+- Role: `Orc`
+- Execution route: `direct planning + Kilo handoff prep`
+- Related decisions:
+  - [D-20260605-003](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/tokken_dashboard_decisions.md#d-20260605-003)
+  - [D-20260605-004](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/tokken_dashboard_decisions.md#d-20260605-004)
+- Created:
+  - [codex_token_monitor_v2_live_threads_implementation_plan.md](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/drafts/codex_token_monitor_v2_live_threads_implementation_plan.md)
+  - [2026-06-05_codex_token_monitor_v2_live_threads.md](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/plans/sessions/2026-06-05_codex_token_monitor_v2_live_threads.md)
+  - [0047_codex_token_monitor_v2_live_threads.md](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/handoffs/0047_codex_token_monitor_v2_live_threads.md)
+- Confirmed scope:
+  - next Kilo run should implement the hybrid monitor, not start a new OTel experiment;
+  - `C:/Users/andre/.codex/**` is a read-only live-chat source;
+  - `_local/codex-token-debugger/**` remains the archive/test source;
+  - prompt/answer stay hidden by default in both source modes.
+- Result:
+  - repo docs now point to the hybrid monitor route as the next executable step;
+  - Kilo task preparation is complete and references the approved plan instead of re-inventing scope in the prompt.
+- Bugs and difficulties:
+- the biggest risk is data-model ambiguity when mapping `token_count` events to per-step usage in live rollout archives;
+- old mojibake in docs still makes additive updates safer than aggressive rewrites.
+- Human verdict: `recorded`
+
+<a id="j-20260606-001"></a>
+
+### J-20260606-001 - Hybrid monitor accepted as working baseline; next slice is live cache semantics plus rich export
+
+- Stage: `Stage 1 - live monitor hardening follow-up`
+- Role: `Orc`
+- Execution route: `direct review + iterative local fixes`
+- Related decisions:
+  - [D-20260605-004](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/tokken_dashboard_decisions.md#d-20260605-004)
+  - [D-20260606-001](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/tokken_dashboard_decisions.md#d-20260606-001)
+- Confirmed:
+  - the monitor now works as a hybrid local viewer with two explicit sources: `Реальные чаты Codex` and `Архив тестов OTel`;
+  - live step view now hides technical synthetic prompts from the ordinary timeline and shows context compaction as a separate event;
+  - some live steps still legitimately have no reliable request-local token checkpoint, so monitor must keep showing explicit uncertainty instead of fake numbers;
+  - user review on a fresh one-word chat showed that cache semantics and copy/export usefulness remain the main open product gaps.
+- Verification:
+  - repeated live checks on `http://127.0.0.1:8765/`;
+  - direct API checks through `GET /api/session?source_id=codex_live_threads&session_id=...`;
+  - local review of [codex_token_monitor_server.py](/D:/Codex+Kilocode/projects/sword-of-rome-web/scripts/codex_token_monitor_server.py) and [app.js](/D:/Codex+Kilocode/projects/sword-of-rome-web/static/codex-token-monitor/app.js).
+- Result:
+  - accepted current baseline: hybrid monitor is usable for local live/archive inspection;
+  - next focused follow-up: verify `cached` semantics on short live chats and redesign copy/export so the monitor can emit maximum useful detail for a step, selected steps, or a whole session.
+- Bugs and difficulties:
+  - live request-local usage is not guaranteed for every visible step because rollout checkpoints do not always line up cleanly with user-visible turn boundaries;
+  - current copy/export flow is still too summary-heavy for forensic usage and needs a dedicated redesign.
+- Human verdict: `recorded`
 
 <a id="open-follow-ups"></a>
 

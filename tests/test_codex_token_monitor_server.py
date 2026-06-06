@@ -1,8 +1,9 @@
-"""Tests for Codex Token Monitor Server v1."""
+"""Tests for Codex Token Monitor Server v2 — source-aware hybrid mode."""
 from __future__ import annotations
 
 import json
 import os
+import sqlite3
 import sys
 import tempfile
 import threading
@@ -44,18 +45,19 @@ class TestProjectConfig(unittest.TestCase):
             ],
         }
         _server_mod.write_json(self.config_path, config)
-        result = _server_mod.load_projects(self.config_path)
-        self.assertEqual(result["default_project_id"], "test-project")
-        self.assertEqual(len(result["projects"]), 1)
+        result = _server_mod.load_config(self.config_path)
+        # v1 config is auto-migrated to v2 format
+        self.assertIn("sources", result)
+        self.assertEqual(len(result["sources"]), 1)
 
     def test_load_missing_config(self):
-        result = _server_mod.load_projects(Path(self.tmpdir) / "nonexistent.json")
-        self.assertEqual(result["projects"], [])
+        result = _server_mod.load_config(Path(self.tmpdir) / "nonexistent.json")
+        self.assertEqual(result["sources"], [])
 
     def test_load_invalid_json(self):
         (self.config_path).write_text("not json", encoding="utf-8")
         with self.assertRaises(json.JSONDecodeError):
-            _server_mod.load_projects(self.config_path)
+            _server_mod.load_config(self.config_path)
 
 
 class TestInvalidPathWarning(unittest.TestCase):
@@ -63,17 +65,17 @@ class TestInvalidPathWarning(unittest.TestCase):
 
     def test_find_project_missing(self):
         projects = {"version": 1, "projects": []}
-        result = _server_mod._find_project(projects, "nonexistent")
+        result = _server_mod.find_source(projects, "nonexistent")
         self.assertIsNone(result)
 
     def test_discover_sessions_invalid_path(self):
         project = {"id": "test", "name": "Test", "path": "/nonexistent/path", "runs_dir": "runs"}
-        sessions = _server_mod.discover_sessions(project)
+        sessions = _server_mod.discover_archive_sessions(project)
         self.assertEqual(sessions, [])
 
     def test_discover_sessions_valid_but_empty(self):
         project = {"id": "test", "name": "Test", "path": str(REPO_ROOT), "runs_dir": "does_not_exist"}
-        sessions = _server_mod.discover_sessions(project)
+        sessions = _server_mod.discover_archive_sessions(project)
         self.assertEqual(sessions, [])
 
 
@@ -110,7 +112,7 @@ class TestDiscovery(unittest.TestCase):
         _server_mod.write_json(normalized_dir / "token_cost_dashboard_data.json", dashboard)
 
         project = {"id": "test", "name": "Test", "path": str(self.tmpdir), "runs_dir": "runs"}
-        sessions = _server_mod.discover_sessions(project)
+        sessions = _server_mod.discover_archive_sessions(project)
         self.assertEqual(len(sessions), 1)
         s = sessions[0]
         self.assertEqual(s["id"], "test-run-001")
@@ -129,12 +131,329 @@ class TestDiscovery(unittest.TestCase):
         )
 
         project = {"id": "test", "name": "Test", "path": str(self.tmpdir), "runs_dir": "runs"}
-        sessions = _server_mod.discover_sessions(project)
+        sessions = _server_mod.discover_archive_sessions(project)
         self.assertEqual(len(sessions), 1)
         s = sessions[0]
         self.assertEqual(s["id"], "parsed-only-run")
         self.assertTrue(s["has_parsed"])
         self.assertFalse(s["has_normalized"])
+
+
+class TestLiveChatFixture(unittest.TestCase):
+    """Tests live Codex chat parsing on a realistic local fixture."""
+
+    def setUp(self):
+        self.tmpdir = tempfile.mkdtemp()
+        self.codex_dir = Path(self.tmpdir) / ".codex"
+        self.codex_dir.mkdir(parents=True)
+        self.thread_id = "thread-live-001"
+        self._write_sqlite()
+        self._write_session_index()
+        self._write_rollout()
+        _server_mod._live_rollout_summary_cache.clear()
+
+    def tearDown(self):
+        _server_mod._live_rollout_summary_cache.clear()
+        import shutil
+        shutil.rmtree(self.tmpdir, ignore_errors=True)
+
+    def _write_sqlite(self):
+        db_path = self.codex_dir / "state_5.sqlite"
+        conn = sqlite3.connect(db_path)
+        conn.execute(
+            """
+            CREATE TABLE threads (
+              id TEXT,
+              title TEXT,
+              model TEXT,
+              reasoning_effort TEXT,
+              cwd TEXT,
+              created_at TEXT,
+              updated_at TEXT
+            )
+            """
+        )
+        conn.execute(
+            """
+            INSERT INTO threads (id, title, model, reasoning_effort, cwd, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                self.thread_id,
+                "Проверить телеметрию локально\n\nдлинный хвост не нужен",
+                "gpt-5.5",
+                "high",
+                "D:/Codex+Kilocode/projects/sword-of-rome-web",
+                "2026-06-06T10:00:00Z",
+                "2026-06-06T10:05:00Z",
+            ),
+        )
+        conn.commit()
+        conn.close()
+
+    def _write_session_index(self):
+        payload = {"thread_id": self.thread_id, "thread_name": "Проверить телеметрию локально"}
+        (self.codex_dir / "session_index.jsonl").write_text(
+            json.dumps(payload, ensure_ascii=False) + "\n",
+            encoding="utf-8",
+        )
+
+    def _write_rollout(self):
+        rollout_dir = self.codex_dir / "sessions" / "2026" / "06" / "06"
+        rollout_dir.mkdir(parents=True)
+        rollout_path = rollout_dir / "rollout-test.jsonl"
+        lines = [
+            {
+                "timestamp": "2026-06-06T10:00:00Z",
+                "type": "session_meta",
+                "payload": {"id": self.thread_id, "cwd": "D:/Codex+Kilocode/projects/sword-of-rome-web"},
+            },
+            {
+                "timestamp": "2026-06-06T10:00:01Z",
+                "type": "turn_context",
+                "payload": {"thread_id": self.thread_id, "model": "gpt-5.5", "reasoning_effort": "high"},
+            },
+            {
+                "timestamp": "2026-06-06T10:00:02Z",
+                "type": "response_item",
+                "payload": {"role": "user", "content": [{"text": "# AGENTS.md instructions\n\n<INSTRUCTIONS>"}]},
+            },
+            {
+                "timestamp": "2026-06-06T10:00:03Z",
+                "type": "response_item",
+                "payload": {"role": "user", "turn_id": "turn-1", "content": [{"text": "Проверить локальную телеметрию"}]},
+            },
+            {
+                "timestamp": "2026-06-06T10:00:04Z",
+                "type": "response_item",
+                "payload": {"role": "assistant", "content": [{"text": "Короткий ответ"}]},
+            },
+            {
+                "timestamp": "2026-06-06T10:00:05Z",
+                "type": "event_msg",
+                "payload": {
+                    "type": "token_count",
+                    "info": {
+                        "last_token_usage": {
+                            "input_tokens": 1200,
+                            "cached_input_tokens": 1000,
+                            "output_tokens": 55,
+                            "reasoning_output_tokens": 7,
+                        },
+                        "total_token_usage": {
+                            "input_tokens": 1200,
+                            "cached_input_tokens": 1000,
+                            "output_tokens": 55,
+                            "reasoning_output_tokens": 7,
+                        }
+                    },
+                },
+            },
+            {
+                "timestamp": "2026-06-06T10:01:01Z",
+                "type": "turn_context",
+                "payload": {"thread_id": self.thread_id, "model": "gpt-5.5", "reasoning_effort": "high"},
+            },
+            {
+                "timestamp": "2026-06-06T10:01:02Z",
+                "type": "response_item",
+                "payload": {"role": "user", "turn_id": "turn-2", "content": [{"text": "Покажи расход именно второго шага"}]},
+            },
+            {
+                "timestamp": "2026-06-06T10:01:03Z",
+                "type": "response_item",
+                "payload": {"role": "assistant", "content": [{"text": "Вот дельта по второму шагу"}]},
+            },
+            {
+                "timestamp": "2026-06-06T10:01:04Z",
+                "type": "event_msg",
+                "payload": {
+                    "type": "token_count",
+                    "info": {
+                        "last_token_usage": {
+                            "input_tokens": 600,
+                            "cached_input_tokens": 400,
+                            "output_tokens": 40,
+                            "reasoning_output_tokens": 4,
+                        },
+                        "total_token_usage": {
+                            "input_tokens": 4_753_172,
+                            "cached_input_tokens": 4_550_912,
+                            "output_tokens": 26_589,
+                            "reasoning_output_tokens": 6_518,
+                        }
+                    },
+                },
+            },
+            {
+                "timestamp": "2026-06-06T10:01:05Z",
+                "type": "event_msg",
+                "payload": {"type": "task_complete", "turn_id": "task-turn-2"},
+            },
+            {
+                "timestamp": "2026-06-06T10:01:06Z",
+                "type": "event_msg",
+                "payload": {"type": "task_started", "turn_id": "compact-turn-1"},
+            },
+            {
+                "timestamp": "2026-06-06T10:01:07Z",
+                "type": "event_msg",
+                "payload": {
+                    "type": "token_count",
+                    "info": {
+                        "last_token_usage": {
+                            "input_tokens": 0,
+                            "cached_input_tokens": 0,
+                            "output_tokens": 0,
+                            "reasoning_output_tokens": 0,
+                        },
+                        "total_token_usage": {
+                            "input_tokens": 8_016_767,
+                            "cached_input_tokens": 7_549_568,
+                            "output_tokens": 32_758,
+                            "reasoning_output_tokens": 11_290,
+                        },
+                    },
+                },
+            },
+            {
+                "timestamp": "2026-06-06T10:01:08Z",
+                "type": "event_msg",
+                "payload": {"type": "context_compacted"},
+            },
+            {
+                "timestamp": "2026-06-06T10:01:09Z",
+                "type": "event_msg",
+                "payload": {"type": "task_complete", "turn_id": "compact-turn-1"},
+            },
+            {
+                "timestamp": "2026-06-06T10:02:01Z",
+                "type": "response_item",
+                "payload": {"role": "user", "turn_id": "turn-internal-1", "content": [{"text": "PLEASE IMPLEMENT THIS PLAN:\n# Internal handoff"}]},
+            },
+            {
+                "timestamp": "2026-06-06T10:02:02Z",
+                "type": "response_item",
+                "payload": {"role": "user", "turn_id": "turn-internal-2", "content": [{"text": "<turn_aborted>\nThe user interrupted the previous turn on purpose."}]},
+            },
+            {
+                "timestamp": "2026-06-06T10:02:03Z",
+                "type": "event_msg",
+                "payload": {"type": "turn_aborted"},
+            },
+        ]
+        rollout_path.write_text(
+            "\n".join(json.dumps(line, ensure_ascii=False) for line in lines) + "\n",
+            encoding="utf-8",
+        )
+
+    def test_discover_live_sessions_uses_rollout_summary(self):
+        source = {"id": "codex_live_threads", "kind": "live", "codex_dir": str(self.codex_dir)}
+        _server_mod._get_live_rollout_summaries(Path(self.codex_dir), allow_build=True)
+        sessions = _server_mod.discover_live_sessions(source)
+        self.assertEqual(len(sessions), 1)
+        session = sessions[0]
+        self.assertEqual(session["title"], "Проверить телеметрию локально")
+        self.assertEqual(session["step_count"], 2)
+        self.assertGreater(session["total_cost_usd"], 0)
+
+    def test_discover_live_sessions_without_warm_cache_still_lists_threads(self):
+        source = {"id": "codex_live_threads", "kind": "live", "codex_dir": str(self.codex_dir)}
+        sessions = _server_mod.discover_live_sessions(source)
+        self.assertEqual(len(sessions), 1)
+        session = sessions[0]
+        self.assertEqual(session["title"], "Проверить телеметрию локально")
+        self.assertIsNone(session["step_count"])
+        self.assertIsNone(session["total_cost_usd"])
+
+    def test_build_live_session_detail_skips_system_prompt_step(self):
+        source = {"id": "codex_live_threads", "kind": "live", "codex_dir": str(self.codex_dir)}
+        detail = _server_mod.build_live_session_detail(source, self.thread_id)
+        self.assertIsNotNone(detail)
+        self.assertEqual(detail["summary"]["turn_count"], 2)
+        self.assertEqual(detail["summary"]["total_input_tokens"], 8_016_767)
+        self.assertEqual(detail["summary"]["total_cached_tokens"], 7_549_568)
+        self.assertEqual(len(detail["steps"]), 2)
+        step = detail["steps"][0]
+        self.assertEqual(step["user_prompt"]["kind"], "user_message")
+        self.assertEqual(step["user_prompt"]["text"], "Проверить локальную телеметрию")
+        self.assertEqual(step["assistant_answer"]["text"], "Короткий ответ")
+        self.assertEqual(step["model"], "gpt-5.5")
+        self.assertEqual(step["reasoning_effort"], "high")
+        self.assertTrue(step["usage"]["available"])
+        self.assertEqual(step["usage"]["input_tokens"], 1200)
+        self.assertEqual(step["usage"]["cached_tokens"], 1000)
+        self.assertEqual(step["usage"]["non_cached_input_tokens"], 200)
+        self.assertGreater(step["usage"]["estimated_total_cost_usd"], 0)
+        step2 = detail["steps"][1]
+        self.assertEqual(step2["user_prompt"]["text"], "Покажи расход именно второго шага")
+        self.assertEqual(step2["assistant_answer"]["text"], "Вот дельта по второму шагу")
+        self.assertTrue(step2["usage"]["available"])
+        self.assertEqual(step2["usage"]["input_tokens"], 600)
+        self.assertEqual(step2["usage"]["cached_tokens"], 400)
+        self.assertEqual(step2["usage"]["non_cached_input_tokens"], 200)
+        self.assertEqual(step2["usage"]["output_tokens"], 40)
+        self.assertEqual(step2["usage"]["reasoning_tokens"], 4)
+        self.assertGreater(step2["usage"]["estimated_total_cost_usd"], 0)
+        self.assertLess(step2["usage"]["input_tokens"], detail["summary"]["total_input_tokens"])
+        self.assertIn("контекст сжат после этого хода", step2.get("post_step_badges", []))
+        self.assertEqual(len(detail.get("timeline_events", [])), 1)
+        event = detail["timeline_events"][0]
+        self.assertEqual(event["event_type"], "context_compacted")
+        self.assertEqual(event["after_step_index"], 2)
+        self.assertEqual(event["compaction_task_id"], "compact-turn-1")
+
+
+class TestFrontendLiveSummaryContract(unittest.TestCase):
+    """Tests that frontend uses session.summary for live/session header totals."""
+
+    def test_render_header_uses_session_metrics_helper(self):
+        app_js = (REPO_ROOT / "static" / "codex-token-monitor" / "app.js").read_text(encoding="utf-8")
+        self.assertIn("function metricsForSession(session)", app_js)
+        self.assertIn("const z = metricsForSession(s);", app_js)
+
+    def test_frontend_has_recent_cutoff_and_sorting(self):
+        app_js = (REPO_ROOT / "static" / "codex-token-monitor" / "app.js").read_text(encoding="utf-8")
+        index_html = (REPO_ROOT / "static" / "codex-token-monitor" / "index.html").read_text(encoding="utf-8")
+        self.assertIn('MIN_VISIBLE_SESSION_DATE_MS = Date.parse("2026-06-04T00:00:00Z")', app_js)
+        self.assertIn('const sortMode = (document.getElementById("sortFilter")?.value || "date_desc")', app_js)
+        self.assertIn('await loadSources();', app_js)
+        self.assertIn('initSources();', app_js)
+        self.assertIn('<select id="sortFilter">', index_html)
+
+    def test_frontend_has_workdir_filter_and_detail_reload_path(self):
+        app_js = (REPO_ROOT / "static" / "codex-token-monitor" / "app.js").read_text(encoding="utf-8")
+        index_html = (REPO_ROOT / "static" / "codex-token-monitor" / "index.html").read_text(encoding="utf-8")
+        self.assertIn('let currentWorkdirFilter = ALL_WORKDIRS_VALUE;', app_js)
+        self.assertIn('let refreshPromise = null;', app_js)
+        self.assertIn('function populateWorkdirFilter()', app_js)
+        self.assertIn('document.getElementById("workdirFilter").addEventListener("change"', app_js)
+        self.assertIn('Загрузка шагов...', app_js)
+        self.assertIn('await loadSessionDetail();', app_js)
+        self.assertIn('<select id="workdirFilter">', index_html)
+
+    def test_frontend_can_render_compaction_timeline(self):
+        app_js = (REPO_ROOT / "static" / "codex-token-monitor" / "app.js").read_text(encoding="utf-8")
+        self.assertIn("function renderTimelineEvent(evt)", app_js)
+        self.assertIn("post_step_badges", app_js)
+        self.assertIn("timeline_events", app_js)
+
+    def test_render_sessions_does_not_depend_on_step_timeline_state(self):
+        app_js = (REPO_ROOT / "static" / "codex-token-monitor" / "app.js").read_text(encoding="utf-8")
+        start = app_js.index("function renderSessions() {")
+        end = app_js.index("function stat(", start)
+        render_sessions = app_js[start:end]
+        self.assertNotIn("timelineByStep", render_sessions)
+        self.assertNotIn("renderTimelineEvent(evt)", render_sessions)
+        self.assertNotIn("Number(idx)", render_sessions)
+
+    def test_frontend_prefers_session_with_steps_and_has_honest_empty_state(self):
+        app_js = (REPO_ROOT / "static" / "codex-token-monitor" / "app.js").read_text(encoding="utf-8")
+        self.assertIn("function preferredSessionId(list)", app_js)
+        self.assertIn('currentSessionId = preferredSessionId(sessionsCache);', app_js)
+        self.assertIn("const preferredId = preferredSessionId(sessionsCache);", app_js)
+        self.assertIn("Для этой сессии шаги пока не найдены", app_js)
+        self.assertIn('sessionDetailLoading = true;', app_js)
 
 
 class TestMissingNormalizedFallback(unittest.TestCase):
@@ -155,7 +474,7 @@ class TestMissingNormalizedFallback(unittest.TestCase):
         (parsed_dir / "token_usage.jsonl").write_text("", encoding="utf-8")
 
         project = {"id": "test", "name": "Test", "path": str(self.tmpdir), "runs_dir": "runs"}
-        detail = _server_mod.build_session_detail(project, "fallback-run")
+        detail = _server_mod.build_archive_session_detail(project, "fallback-run")
         self.assertIsNotNone(detail)
         self.assertEqual(detail["id"], "fallback-run")
         self.assertEqual(detail["model"], "unknown")
@@ -163,7 +482,7 @@ class TestMissingNormalizedFallback(unittest.TestCase):
 
     def test_nonexistent_session(self):
         project = {"id": "test", "name": "Test", "path": str(self.tmpdir), "runs_dir": "runs"}
-        detail = _server_mod.build_session_detail(project, "nonexistent")
+        detail = _server_mod.build_archive_session_detail(project, "nonexistent")
         self.assertIsNone(detail)
 
 
@@ -246,7 +565,7 @@ class TestStatusPayloadShape(unittest.TestCase):
 
     def test_status_shape(self):
         self.assertIsInstance(_server_mod.SCHEMA_VERSION, str)
-        self.assertIn("v1", _server_mod.SCHEMA_VERSION)
+        self.assertIn("v2", _server_mod.SCHEMA_VERSION)
 
 
 class TestAbsentPromptAnswerContract(unittest.TestCase):
@@ -310,7 +629,7 @@ class TestBuildSessionDetail(unittest.TestCase):
             "path": str(REPO_ROOT),
             "runs_dir": "_local/codex-token-debugger",
         }
-        detail = _server_mod.build_session_detail(project, "playwright-only-confirmation-20260604-072040")
+        detail = _server_mod.build_archive_session_detail(project, "playwright-only-confirmation-20260604-072040")
         if detail is None:
             self.skipTest("normalized data not available for this session")
 

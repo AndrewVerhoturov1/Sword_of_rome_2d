@@ -271,6 +271,34 @@ Purpose: local browser UI over normalized token-cost artifacts. Session discover
 
 Route: Open the monitor: [D-20260605-003](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/tokken_dashboard_decisions.md#d-20260605-003) -> [J-20260605-003](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/tokken_dashboard_journal.md#j-20260605-003) -> [start_codex_token_monitor.bat](/D:/Codex+Kilocode/projects/sword-of-rome-web/start_codex_token_monitor.bat)
 
+## Codex Token Monitor v2 planning route
+
+- Decision: [D-20260605-004](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/tokken_dashboard_decisions.md#d-20260605-004)
+- Journal: [J-20260605-004](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/tokken_dashboard_journal.md#j-20260605-004)
+- Implementation plan: [codex_token_monitor_v2_live_threads_implementation_plan.md](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/drafts/codex_token_monitor_v2_live_threads_implementation_plan.md)
+- Session plan: [2026-06-05_codex_token_monitor_v2_live_threads.md](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/plans/sessions/2026-06-05_codex_token_monitor_v2_live_threads.md)
+- Kilo handoff: [0047_codex_token_monitor_v2_live_threads.md](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/handoffs/0047_codex_token_monitor_v2_live_threads.md)
+
+Current approved route:
+
+```text
+Keep v1 as the archive viewer. Build v2 as a hybrid monitor with two explicit sources: real Codex chats from C:/Users/andre/.codex and archival OTel test runs from _local/codex-token-debugger.
+```
+
+## Codex Token Monitor next follow-up
+
+- Decision: [D-20260606-001](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/tokken_dashboard_decisions.md#d-20260606-001)
+- Journal: [J-20260606-001](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/tokken_dashboard_journal.md#j-20260606-001)
+- Current live server: [codex_token_monitor_server.py](/D:/Codex+Kilocode/projects/sword-of-rome-web/scripts/codex_token_monitor_server.py)
+- Current UI: [static/codex-token-monitor/](/D:/Codex+Kilocode/projects/sword-of-rome-web/static/codex-token-monitor/)
+- Current test: [test_codex_token_monitor_server.py](/D:/Codex+Kilocode/projects/sword-of-rome-web/tests/test_codex_token_monitor_server.py)
+
+Focused next route:
+
+```text
+Do not reopen the source split. The next slice is narrower: verify live cached-token semantics on short chats and redesign copy/export so a single step, selected steps, or a whole session can be exported with full prompt/answer/usage/cost/environment detail.
+```
+
 ## Maintenance rule
 
 - Обновлять `decisions`, когда временная находка становится рабочим правилом, запретом или waiver.

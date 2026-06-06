@@ -190,6 +190,43 @@ Prompt/answer texts are currently unavailable in normalized artifacts — UI sho
 
 See [D-20260605-003](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/tokken_dashboard_decisions.md#d-20260605-003) and [J-20260605-003](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/tokken_dashboard_journal.md#j-20260605-003).
 
+<a id="codex-token-monitor-v2-next-step"></a>
+
+## Codex Token Monitor v2 next step
+
+`Codex Token Monitor v1` turned out to be a correct archive viewer, but not a browser of current live Codex chats.
+
+Approved next route:
+
+- keep v1 archive behavior for `_local/codex-token-debugger/**`;
+- add a second explicit source for real Codex chats from `C:/Users/andre/.codex/**`;
+- keep prompt/answer hidden by default, but show real text when it exists in local Codex artifacts;
+- never present archive run-folders as if they were ordinary live chats.
+
+Planning and routing artifacts:
+
+- decision: [D-20260605-004](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/tokken_dashboard_decisions.md#d-20260605-004)
+- journal note: [J-20260605-004](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/tokken_dashboard_journal.md#j-20260605-004)
+- implementation plan: [codex_token_monitor_v2_live_threads_implementation_plan.md](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/drafts/codex_token_monitor_v2_live_threads_implementation_plan.md)
+
+<a id="codex-token-monitor-current-state"></a>
+
+## Codex Token Monitor current state
+
+Current accepted baseline:
+
+- monitor is now a hybrid local viewer with explicit `live` and `archive` sources;
+- live timeline hides obvious technical synthetic prompts from the default user-facing step list;
+- context compaction is visible in the live timeline as its own event;
+- per-step live usage stays conservative: if request-local usage is not confirmed, monitor should show explicit absence rather than cumulative totals.
+
+Current open follow-up:
+
+- verify how `cached_tokens` should be interpreted on very short live chats;
+- redesign `Copy`, `Session`, `Selected JSON`, and `Selected MD` so they export full step detail, not only compact summaries.
+
+See [D-20260606-001](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/tokken_dashboard_decisions.md#d-20260606-001) and [J-20260606-001](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/tokken_dashboard_journal.md#j-20260606-001).
+
 <a id="token-cost-normalizer-v1"></a>
 
 ## Token Cost Normalizer v1
