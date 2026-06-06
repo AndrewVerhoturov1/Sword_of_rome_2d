@@ -1001,6 +1001,100 @@ function copySelectedTable() {
   copyText(buildSessionExportMarkdown(s, selectedSteps(), "Selected steps export"));
 }
 
+// ── Audit ──
+let auditResultCache = null;
+let auditLoading = false;
+
+async function auditSession() {
+  if (!currentSourceId || !currentSessionId) {
+    showToast("Сначала выберите сессию");
+    return;
+  }
+  auditLoading = true;
+  auditResultCache = null;
+  renderAuditPanel();
+  const data = await apiPost("/api/audit_session", {
+    source_id: currentSourceId,
+    session_id: currentSessionId,
+  });
+  auditResultCache = data;
+  auditLoading = false;
+  renderAuditPanel();
+  if (data && data.audit_status) {
+    showToast("Аудит: " + data.audit_status);
+  }
+}
+
+function auditStatusEmoji(status) {
+  return status === "ok" ? "✅" : status === "warning" ? "⚠️" : status === "fail" ? "❌" : "❓";
+}
+
+function renderAuditPanel() {
+  const panel = document.getElementById("auditPanel");
+  if (!panel) return;
+
+  if (!sessionDetailCache) {
+    panel.innerHTML = "";
+    return;
+  }
+
+  if (auditLoading) {
+    panel.innerHTML = `<div class="loading">Запуск аудита...</div>`;
+    return;
+  }
+
+  if (!auditResultCache) {
+    panel.innerHTML = `
+      <div class="audit-placeholder">
+        <button class="ghost" onclick="auditSession()">🔍 Запустить аудит</button>
+      </div>`;
+    return;
+  }
+
+  const r = auditResultCache;
+  const findings = r.findings || [];
+  const failCount = findings.filter(f => f.level === "fail").length;
+  const warnCount = findings.filter(f => f.level === "warning").length;
+  const okCount = findings.filter(f => f.level === "ok").length;
+
+  let findingsHtml = "";
+  if (findings.length === 0) {
+    findingsHtml = `<div class="empty small">Все проверки пройдены</div>`;
+  } else {
+    findingsHtml = `<table class="audit-table"><thead><tr><th>Level</th><th>ID</th><th>Сообщение</th></tr></thead><tbody>`;
+    findings.forEach(f => {
+      findingsHtml += `<tr>
+        <td>${auditStatusEmoji(f.level)} ${f.level}</td>
+        <td class="mono xsmall">${escapeHtml(f.id || "")}</td>
+        <td class="xsmall">${escapeHtml(f.message || "")}</td>
+      </tr>`;
+    });
+    findingsHtml += `</tbody></table>`;
+  }
+
+  panel.innerHTML = `
+    <div class="audit-result">
+      <div class="audit-header">
+        <b>Результат аудита</b>
+        <span class="pill ${r.audit_status === 'ok' ? 'green' : r.audit_status === 'warning' ? 'yellow' : 'red'}">${auditStatusEmoji(r.audit_status)} ${r.audit_status}</span>
+        <button class="ghost xsmall" onclick="auditSession()">🔄 Повторить</button>
+      </div>
+      <div class="audit-meta">
+        <div class="cmini"><span>Usage</span><b>${r.usage_confirmation || "—"}</b></div>
+        <div class="cmini"><span>Step attr.</span><b>${r.step_attribution_confidence || "—"}</b></div>
+        <div class="cmini"><span>Cost conf.</span><b>${r.cost_confidence || "—"}</b></div>
+        <div class="cmini"><span>Fallback</span><b>${r.fallback_used ? "да" : "нет"}</b></div>
+      </div>
+      <div class="audit-counts">
+        <span class="pill green">✅ ${okCount}</span>
+        <span class="pill yellow">⚠️ ${warnCount}</span>
+        <span class="pill red">❌ ${failCount}</span>
+      </div>
+      ${findingsHtml}
+      ${r.report_path ? `<div class="audit-path mono xsmall">Отчёт: ${escapeHtml(r.report_path)}</div>` : ""}
+    </div>`;
+}
+
 // ── Auto refresh ──
 function toggleAutoRefresh() {
   autoRefresh = !autoRefresh;
