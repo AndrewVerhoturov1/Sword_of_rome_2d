@@ -8,6 +8,73 @@ Do not record every tiny typo. Record issues that may help future debugging.
 
 ## Entries
 
+### BUG-20260607-003 - Monitor Audit can self-certify the same mapping it is supposed to verify
+
+Status: closed (fixed in Kilo run 0049)
+
+Fix applied:
+- `_compute_statuses()` теперь принимает `evidence_basis`, `summary` и `audit_scope`
+- cumulative summary basis (`live_total_token_usage_latest`, `last_token_usage`) блокирует `step_confidence=high` и `cost_confidence=per_step_estimated`
+- без upstream evidence сильные статусы запрещены: `step_confidence` не выше `medium`, `cost_confidence` всегда `estimated_from_cumulative`
+- добавлен `evidence_basis` (трёхуровневый: `verified_against_source_evidence` / `detail_looked_plausible` / `not_verified`)
+- добавлен `audit_scope` (full_session / selected_steps)
+- `_is_summary_basis_cumulative()` проверяет usage_basis и step_usage_basis
+- `_safe_int()` обрабатывает `[REDACTED]` строки в числовых полях
+- добавлены 9 regression tests в `TestTruthRegression`
+- forensic thread `019e9d2a` теперь возвращает `warning / medium / estimated_from_cumulative` вместо `ok / high / per_step_estimated`
+
+Verification:
+- `python -m unittest tests.test_codex_token_monitor_audit tests.test_codex_token_monitor_server -v` — 62/62 pass
+- `node --check static/codex-token-monitor/app.js` — OK
+- прямой forensic-thread прогон на `live_session_detail.json` — статусы downgraded
+
+Area:
+`scripts/codex_token_monitor_audit.py`, `scripts/codex_token_monitor_server.py`, audit confidence model
+
+Symptoms:
+- audit table can show strong-looking results such as `ok`, `all_confirmed`, `high`, `per_step_estimated`;
+- these results can appear even on the known forensic live thread where accepted unresolved risk is exactly step attribution and cumulative-vs-request confidence;
+- user sees a working audit panel, but cannot trust that it proved anything beyond internal consistency of the already-built detail payload.
+
+Observed recurrence:
+- reproduced by local direct audit run on forensic live thread `019e9d2a-17d7-7210-ba5e-bd42e6ce6e5f`;
+- reproduced after Kilo run `0048_codex_token_monitor_audit`.
+
+Cause:
+- current audit receives monitor-built `session detail` and mostly validates that object against itself;
+- it does not compare enough fields against upstream source evidence such as raw live rollout semantics or archive-normalized source basis;
+- status derivation is therefore too strong:
+  - `step_attribution_confidence = high` can appear without proving visible-step attribution;
+  - `cost_confidence = per_step_estimated` can appear even when session summary basis is cumulative.
+
+Fix:
+- fixed in Kilo run `0049_codex_token_monitor_audit_truth_fix`;
+- audit now blocks fake verified evidence without explicit `evidence_note`;
+- if upstream evidence is missing or incomplete, audit downgrades to weaker evidence basis and confidence instead of defaulting to strong statuses;
+- regression coverage now includes:
+  - live-like self-certification case;
+  - cumulative summary cost case;
+  - selected-step narrowed-scope case;
+  - verified-path requirement for explicit evidence note.
+
+Verification:
+- `python -m unittest tests.test_codex_token_monitor_audit tests.test_codex_token_monitor_server -v`
+- `node --check static/codex-token-monitor/app.js`
+- direct local replay over [live_session_detail.json](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/public_forensics/live_monitor_audit_019e9d2a/live_session_detail.json) showed:
+  - no upstream evidence -> `warning / detail_looked_plausible / medium / estimated_from_cumulative`
+  - upstream flag without note -> `fail / detail_looked_plausible`
+  - upstream flag with note -> `ok / verified_against_source_evidence`
+- generated audit artifacts retain `evidence_note` and exact `selected_step_indices`
+
+Human check:
+not needed
+
+Related files:
+- [codex_token_monitor_audit.py](D:/Codex+Kilocode/projects/sword-of-rome-web/scripts/codex_token_monitor_audit.py)
+- [codex_token_monitor_server.py](D:/Codex+Kilocode/projects/sword-of-rome-web/scripts/codex_token_monitor_server.py)
+- [0048_codex_token_monitor_audit_report.md](D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/reports/0048_codex_token_monitor_audit_report.md)
+- [0049_codex_token_monitor_audit_truth_fix_report.md](D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/reports/0049_codex_token_monitor_audit_truth_fix_report.md)
+
 ### BUG-20260607-001 - Live monitor may overstate certainty for cached tokens and step attribution
 
 Status: open

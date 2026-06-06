@@ -48,7 +48,7 @@ Navigation не заменяет:
 ## Current lifecycle stage
 
 ```text
-Stage 1 - hybrid monitor baseline accepted; audit implementation pending; honesty hardening deferred
+Stage 1 - hybrid monitor baseline accepted; audit truth-fix accepted; honesty hardening pending
 ```
 
 Gate state:
@@ -305,19 +305,19 @@ Keep v1 as the archive viewer. Build v2 as a hybrid monitor with two explicit so
 Focused next route:
 
 ```text
-Do not reopen the source split. The next execution slice is Codex Token Monitor Audit: keep the hybrid baseline, verify source/session/step/usage/export truth, and emit audit statuses/artifacts before any wider honesty-hardening pass.
+Do not reopen the source split. Current accepted baseline already includes the audit truth layer. The next safe slice is Honesty hardening: explain cached/request/cumulative/estimated semantics more honestly to humans without weakening the technical truth checks.
 ```
 
 New safe reading route:
 
 ```text
-Read D-20260606-001 -> D-20260607-001 -> D-20260607-002 -> J-20260607-002 -> V1-20260607-014953 notebook entry -> BUG-20260607-001 before implementing the audit layer.
+Read D-20260606-001 -> D-20260607-001 -> D-20260607-002 -> D-20260607-003 -> D-20260607-004 -> J-20260607-002 -> J-20260607-003 -> J-20260607-004 -> V1-20260607-014953 notebook entry -> BUG-20260607-001 -> BUG-20260607-003 before touching the next honesty-hardening slice.
 ```
 
 Additional planning route:
 
 ```text
-If task is "implement Audit", use the notebook entry V1-20260607-014953 as planning baseline, then local repo files as source of truth for exact file placement, API shape and tests.
+If task is "Honesty hardening", treat the audit layer as accepted baseline first. Reuse forensic thread `019e9d2a-17d7-7210-ba5e-bd42e6ce6e5f`, the published forensic pack, and accepted audit evidence fields (`evidence_basis`, `evidence_note`, `audit_scope`, `selected_step_indices`) to decide what human-facing wording must be explicit.
 ```
 
 ## Maintenance rule

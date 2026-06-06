@@ -23,6 +23,8 @@ Decision layer: `subproject-level accepted decisions`
 - [D-20260606-001](#d-20260606-001)
 - [D-20260607-001](#d-20260607-001)
 - [D-20260607-002](#d-20260607-002)
+- [D-20260607-003](#d-20260607-003)
+- [D-20260607-004](#d-20260607-004)
 - [Corrected Decisions](#corrected-decisions)
 - [Rejected Options](#rejected-options)
 - [Waivers](#waivers)
@@ -430,6 +432,51 @@ Decision layer: `subproject-level accepted decisions`
 - Decision: the next Kilo implementation run for this slice should target the audit layer first, not reopen source split and not start a broad UI wording pass.
 - Reason: current accepted monitor baseline is technically useful, but the remaining risk is not only wording. We still need an explicit verification layer that can detect when monitor source/mapping/export behavior is wrong or looks more certain than the raw evidence allows.
 - Consequence: implementation planning, tests, docs and handoff scope now center on an audit module, audit endpoint/action, audit JSON/MD artifacts and confidence/status model. Human-facing semantics polish remains out of scope for this run unless needed only to surface audit results.
+- Boundary: this decision does not authorize a new OTel experiment, live Codex config changes, source-split redesign, writes into `C:/Users/andre/.codex/**`, or a full monitor UI rewrite.
+- Human approval: `recorded`
+
+<a id="d-20260607-003"></a>
+
+### D-20260607-003 - Audit must verify monitor claims against upstream evidence and must downgrade confidence when that evidence is missing
+
+- Status: `accepted`
+- Source: `local review of Kilo run 0048 + forensic live thread 019e9d2a on 2026-06-07`
+- Decision: `Codex Token Monitor Audit` is not allowed to mark a session or step as technically verified only because the current monitor already built a plausible `session detail` object. Audit must compare at least part of that object against evidence upstream from the UI/detail mapping.
+- Decision: for live mode, strong statuses must not come only from `confirmation_status` fields already present in step payloads. Audit must verify enough source evidence to distinguish:
+  - `request-level last_token_usage found`;
+  - `cumulative total_token_usage`;
+  - visible-step attribution uncertainty;
+  - cumulative session basis versus visible-step basis.
+- Decision: if upstream evidence is absent, incomplete, or outside the selected audit scope, audit must emit downgraded confidence such as `not_verified`, `warning`, `medium`, or repo-equivalent weaker status. It must not default to `ok`, `high`, or `per_step_estimated`.
+- Decision: mandatory regression tests for this slice must include:
+  - a live-like self-certification case where detail looks fully confirmed but evidence is still insufficient for `high`;
+  - a cumulative summary cost case where visible steps look confirmed but session cost confidence must stay downgraded;
+  - a selected-steps scope case where audit must expose narrowed scope explicitly.
+- Reason: local review showed that run `0048_codex_token_monitor_audit` can self-certify the same mapping it is supposed to verify. On forensic live thread `019e9d2a-17d7-7210-ba5e-bd42e6ce6e5f`, audit returned `ok / all_confirmed / high / per_step_estimated` even though the accepted unresolved risk is exactly step attribution and cumulative-vs-request confidence.
+- Consequence: next Kilo correction slice is not honesty wording. It is audit-truth hardening plus regression tests around self-certification failure modes.
+- Boundary: this decision still does not authorize a new OTel experiment, live Codex config changes, source-split redesign, or writes into `C:/Users/andre/.codex/**`.
+- Human approval: `recorded`
+
+<a id="d-20260607-004"></a>
+
+### D-20260607-004 - Audit truth-fix is accepted; verified evidence now requires explicit evidence note and exported scope/evidence metadata
+
+- Status: `accepted`
+- Source: `Kilo run 0049 + local Codex review + direct forensic replay on 2026-06-07`
+- Decision: the main `Codex Token Monitor Audit` truth-risk is now considered closed for the current slice. Audit is no longer allowed to emit `verified_against_source_evidence` from a boolean-only upstream flag. Verified evidence now requires explicit evidence context such as `evidence_note`.
+- Decision: audit JSON/MD artifacts and API responses must preserve scope/evidence traceability fields, at minimum:
+  - `evidence_basis`
+  - `evidence_note`
+  - `audit_scope`
+  - `selected_step_indices`
+- Decision: when upstream evidence is absent, audit must stay on a weaker path such as `detail_looked_plausible`, `warning`, `medium`, or cumulative-cost confidence, even if the already-built session detail looks internally consistent.
+- Decision: a residual integration gap remains acceptable for now: the ordinary monitor UI/API request path does not yet provide `evidence_note`, so the verified-evidence path is not part of the default user flow. This does not reopen the truth-risk because the unsafe fake-verified path is now blocked.
+- Reason: local review of corrected run `0049_codex_token_monitor_audit_truth_fix` confirmed that the old false-positive case on the forensic live fixture no longer reproduces, while audit artifacts now retain the evidence/scope fields needed for traceability.
+- Consequence: accepted baseline becomes:
+  - hybrid monitor baseline accepted;
+  - audit feature baseline accepted;
+  - audit truth-fix accepted;
+  - later follow-up can move to `Honesty hardening`, with optional explicit verified-flow wiring only if the human workflow really needs source-evidence notes through ordinary UI/API.
 - Boundary: this decision does not authorize a new OTel experiment, live Codex config changes, source-split redesign, writes into `C:/Users/andre/.codex/**`, or a full monitor UI rewrite.
 - Human approval: `recorded`
 

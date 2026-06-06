@@ -31,6 +31,11 @@ LOCAL_MONITOR_DIR = REPO_ROOT / "_local" / "codex-token-monitor"
 
 AuditResult = dict[str, Any]
 
+# Evidence basis levels for audit truth model
+EVIDENCE_VERIFIED = "verified_against_source_evidence"
+EVIDENCE_PLAUSIBLE = "detail_looked_plausible"
+EVIDENCE_NOT_VERIFIED = "not_verified"
+
 
 def run_audit(
     detail: dict[str, Any],
@@ -38,6 +43,9 @@ def run_audit(
     source_kind: str | None = None,
     source_id: str | None = None,
     session_id: str | None = None,
+    selected_step_indices: list[int] | None = None,
+    upstream_evidence_available: bool = False,
+    evidence_note: str = "",
 ) -> AuditResult:
     """Run full audit over a session detail dict from the monitor server.
 
@@ -47,11 +55,17 @@ def run_audit(
         source_kind: expected source kind (live/archive), taken from detail if absent
         source_id: source identifier, taken from detail if absent
         session_id: session identifier, taken from detail if absent
+        selected_step_indices: if provided, audit only these step indices
+            (narrowed scope — must be exposed honestly)
+        upstream_evidence_available: True if audit has access to upstream
+            source evidence (raw rollout, raw OTel, etc.) beyond the detail
+            object itself. False means audit can only check internal
+            consistency of the already-built detail.
 
     Returns:
         AuditResult with findings, audit_status, usage_confirmation,
         step_attribution_confidence, cost_confidence, fallback_used,
-        and per-step findings.
+        audit_scope, evidence_basis, and per-step findings.
     """
     findings: list[dict[str, str]] = []
     step_findings: list[dict[str, Any]] = []
@@ -75,7 +89,26 @@ def run_audit(
     if not isinstance(summary, dict):
         summary = {}
 
-    for step in steps:
+    # Determine audit scope
+    # selected_step_indices are step_index values (e.g., 1,2,3), NOT array offsets
+    if selected_step_indices is not None:
+        # Build lookup: step_index → position in steps array
+        step_index_map: dict[int, int] = {}
+        for pos, step in enumerate(steps):
+            si = step.get("step_index")
+            if isinstance(si, int):
+                step_index_map[si] = pos
+        effective_indices = [
+            step_index_map[si] for si in selected_step_indices
+            if si in step_index_map
+        ]
+        audit_scope = "selected_steps"
+    else:
+        effective_indices = list(range(len(steps)))
+        audit_scope = "full_session"
+
+    for i in effective_indices:
+        step = steps[i]
         sf = _audit_step(step, source_kind, summary)
         step_findings.append(sf)
         findings.extend(sf.get("findings", []))
@@ -86,9 +119,14 @@ def run_audit(
     # ── 5. Export/artifact check ──
     _check_export_honesty(findings, detail, source_kind)
 
-    # ── 6. Compute aggregate statuses ──
+    # ── 6. Determine evidence basis ──
+    evidence_basis = _determine_evidence_basis(
+        upstream_evidence_available, source_kind, summary, findings, evidence_note
+    )
+
+    # ── 7. Compute aggregate statuses ──
     audit_status, usage_confirmation, step_confidence, cost_confidence, fallback_used = _compute_statuses(
-        findings, step_findings, source_kind
+        findings, step_findings, source_kind, summary, evidence_basis, audit_scope
     )
 
     return {
@@ -97,6 +135,13 @@ def run_audit(
         "step_attribution_confidence": step_confidence,
         "cost_confidence": cost_confidence,
         "fallback_used": fallback_used,
+        "audit_scope": audit_scope,
+        "evidence_basis": evidence_basis,
+        "upstream_evidence_available": upstream_evidence_available,
+        "evidence_note": evidence_note,
+        "selected_step_indices": selected_step_indices,
+        "total_steps_in_session": len(steps),
+        "audited_steps_count": len(step_findings),
         "findings": findings,
         "step_findings": step_findings,
         "source_kind": source_kind,
@@ -327,12 +372,23 @@ def _check_summary_basis(
         })
 
     # Visible step sum vs summary total: detect potential mismatch
+    def _safe_int(val: Any) -> int:
+        """Convert value to int, treating non-numeric as 0."""
+        if isinstance(val, (int, float)):
+            return int(val)
+        if isinstance(val, str):
+            try:
+                return int(float(val))
+            except (ValueError, TypeError):
+                return 0
+        return 0
+
     visible_input_sum = sum(
-        (s.get("usage", {}) or {}).get("input_tokens", 0) or 0
+        _safe_int((s.get("usage", {}) or {}).get("input_tokens", 0))
         for s in steps
         if (s.get("usage", {}) or {}).get("available")
     )
-    summary_input = summary.get("total_input_tokens", 0) or 0
+    summary_input = _safe_int(summary.get("total_input_tokens", 0))
     if summary_input > 0 and visible_input_sum > 0 and source_kind == "live":
         ratio = visible_input_sum / summary_input if summary_input > 0 else 0
         if ratio < 0.5 and visible_input_sum > 0:
@@ -387,17 +443,149 @@ def _check_export_honesty(
         })
 
 
+def _determine_evidence_basis(
+    upstream_evidence_available: bool,
+    source_kind: str,
+    summary: dict[str, Any],
+    findings: list[dict[str, str]],
+    evidence_note: str = "",
+) -> str:
+    """Determine what evidence the audit actually verified against.
+
+    Returns one of:
+    - EVIDENCE_VERIFIED: audit compared detail against upstream source
+    - EVIDENCE_PLAUSIBLE: detail is internally consistent but no upstream check
+    - EVIDENCE_NOT_VERIFIED: audit couldn't verify key properties
+
+    IMPORTANT: upstream_evidence_available is a trust-boundary flag.
+    EVIDENCE_VERIFIED should only be returned when structured evidence
+    (not just a boolean) was actually checked. For now, the flag is
+    accepted but evidence_note documents what was actually verified.
+    Future hardening should replace the boolean with a structured
+    evidence result (checked fields, source paths, comparison results).
+    """
+    if upstream_evidence_available:
+        # Trust boundary: caller asserts upstream evidence exists.
+        # Without evidence_note, we cannot claim EVIDENCE_VERIFIED.
+        if not evidence_note:
+            findings.append({
+                "id": "evidence_basis_unverified_claim",
+                "level": "fail",
+                "message": (
+                    "upstream_evidence_available=True but no evidence_note provided. "
+                    "Evidence basis downgraded to detail_looked_plausible. "
+                    "To reach verified_against_source_evidence, provide evidence_note "
+                    "describing what was actually checked (source paths, fields, comparison results)."
+                ),
+            })
+            return EVIDENCE_PLAUSIBLE
+
+        findings.append({
+            "id": "evidence_basis_note",
+            "level": "ok",
+            "message": f"Upstream evidence claimed with note: {evidence_note}",
+        })
+        return EVIDENCE_VERIFIED
+
+    # Without upstream evidence, check if detail at least has internal
+    # consistency markers (warnings about basis, acknowledged limitations)
+    if source_kind == "live":
+        usage_basis = str(summary.get("usage_basis", ""))
+        has_warnings = bool(summary.get("warnings"))
+        has_basis_ack = "cumulative" in usage_basis.lower() or "total" in usage_basis.lower()
+
+        if has_warnings or has_basis_ack:
+            return EVIDENCE_PLAUSIBLE
+        else:
+            return EVIDENCE_NOT_VERIFIED
+
+    return EVIDENCE_PLAUSIBLE
+
+
+def _is_summary_basis_cumulative(summary: dict[str, Any], source_kind: str) -> bool:
+    """Check if summary cost basis is cumulative rather than per-step.
+
+    Uses explicit enum-like sets, NOT substring matching.
+    Unknown/missing basis in live mode is treated as unsafe (cumulative).
+    """
+    if source_kind != "live":
+        return False
+
+    usage_basis = str(summary.get("usage_basis", "")).strip()
+    step_usage_basis = str(summary.get("step_usage_basis", "")).strip()
+
+    # Explicit cumulative basis markers
+    _CUMULATIVE_BASIS = {
+        "live_total_token_usage_latest",
+        "total_token_usage_fallback",
+        "summary_total_only",
+        "cumulative_total_token_usage",
+        "live_cumulative_total",
+        "session_total",
+        "summary_total",
+    }
+
+    # Request-level basis (not pure visible-step attribution)
+    _REQUEST_LEVEL_BASIS = {
+        "live_last_token_usage",
+        "confirmed_request_usage",
+        "request_level_last_token_usage",
+        "request_level",
+        "last_token_usage",
+    }
+
+    # True per-step basis (only these allow non-cumulative)
+    _PER_STEP_BASIS = {
+        "confirmed_per_step_delta",
+        "per_step_delta",
+        "per_step_normalized",
+        "archive_normalized",
+    }
+
+    if usage_basis in _CUMULATIVE_BASIS:
+        return True
+
+    if step_usage_basis in _REQUEST_LEVEL_BASIS:
+        return True
+
+    # Safe default for live: if basis is unknown or empty, treat as cumulative
+    if not usage_basis and not step_usage_basis:
+        return True
+
+    if usage_basis not in _PER_STEP_BASIS and step_usage_basis not in _PER_STEP_BASIS:
+        # Unknown basis → unsafe default
+        return True
+
+    return False
+
+
 def _compute_statuses(
     findings: list[dict[str, str]],
     step_findings: list[dict[str, Any]],
     source_kind: str,
+    summary: dict[str, Any],
+    evidence_basis: str,
+    audit_scope: str,
 ) -> tuple[str, str, str, str, bool]:
-    """Derive aggregate audit statuses from findings."""
+    """Derive aggregate audit statuses from findings.
+
+    TRUTH RULES (critical — do not weaken without explicit decision):
+    1. Without upstream evidence, strong statuses are blocked.
+    2. Cumulative summary basis blocks per_step_estimated cost confidence.
+    3. Selected-step scope must not imply full-session verification.
+    4. Even if all visible steps carry confirmed_request_usage,
+       if summary basis is cumulative, step attribution is uncertain.
+    """
     levels = [f.get("level", "ok") for f in findings]
 
-    # Overall audit status
+    # Overall audit status — downgrade if evidence is only plausible
     if "fail" in levels:
         audit_status = "fail"
+    elif evidence_basis == EVIDENCE_NOT_VERIFIED:
+        audit_status = "warning"
+    elif evidence_basis == EVIDENCE_PLAUSIBLE and "warning" not in levels:
+        # Detail looks internally consistent but we lack upstream proof
+        audit_status = "warning"
     elif "warning" in levels:
         audit_status = "warning"
     else:
@@ -430,27 +618,43 @@ def _compute_statuses(
         )
     )
     missing_steps = total_steps - confirmed_count
+
+    summary_cumulative = _is_summary_basis_cumulative(summary, source_kind)
+
+    # TRUTH RULE: if summary basis is cumulative, step attribution
+    # cannot be "high" even if all visible steps look confirmed.
+    # The cumulative basis means per-step numbers are request-level
+    # (may include hidden context), not pure visible-step attribution.
     if fallback_steps > 0:
         step_confidence = "low"
+    elif summary_cumulative and evidence_basis != EVIDENCE_VERIFIED:
+        # Cumulative basis + no upstream proof = medium at best
+        step_confidence = "medium"
+    elif summary_cumulative and evidence_basis == EVIDENCE_VERIFIED:
+        # Cumulative basis but upstream evidence verified the mapping
+        step_confidence = "medium"
     elif missing_steps > 0 and source_kind == "live":
         step_confidence = "medium"
     elif missing_steps > 0:
         step_confidence = "low"
     else:
-        step_confidence = "high"
+        # Only reachable for archive with full confirmed steps
+        # AND verified evidence — very rare
+        step_confidence = "medium" if evidence_basis != EVIDENCE_VERIFIED else "high"
 
     # Cost confidence
-    has_cost_finding = any(
-        "cost" in f.get("id", "").lower() for f in findings
-    )
-    cost_present = any(
-        "estimated_total_cost_usd" in str(f.get("message", ""))
-        for f in findings
-    )
-    if source_kind == "live" and usage_confirmation in ("partial", "none_confirmed"):
+    # TRUTH RULE: cumulative summary basis → cost is always
+    # estimated_from_cumulative, never per_step_estimated.
+    if summary_cumulative:
         cost_confidence = "estimated_from_cumulative"
-    elif usage_confirmation == "all_confirmed":
+    elif source_kind == "live" and usage_confirmation in ("partial", "none_confirmed"):
+        cost_confidence = "estimated_from_cumulative"
+    elif usage_confirmation == "all_confirmed" and evidence_basis == EVIDENCE_VERIFIED:
+        # Only when we have upstream proof AND all steps confirmed
         cost_confidence = "per_step_estimated"
+    elif usage_confirmation == "all_confirmed":
+        # All steps confirmed but no upstream evidence
+        cost_confidence = "estimated_from_cumulative"
     else:
         cost_confidence = "estimated_from_cumulative"
 
@@ -486,6 +690,13 @@ def generate_audit_artifacts(
         "step_attribution_confidence": result["step_attribution_confidence"],
         "cost_confidence": result["cost_confidence"],
         "fallback_used": result["fallback_used"],
+        "audit_scope": result.get("audit_scope", "full_session"),
+        "evidence_basis": result.get("evidence_basis", EVIDENCE_NOT_VERIFIED),
+        "evidence_note": result.get("evidence_note", ""),
+        "upstream_evidence_available": result.get("upstream_evidence_available", False),
+        "total_steps_in_session": result.get("total_steps_in_session", 0),
+        "audited_steps_count": result.get("audited_steps_count", 0),
+        "selected_step_indices": result.get("selected_step_indices"),
         "findings": result["findings"],
         "step_findings": [
             {
@@ -521,10 +732,19 @@ def _build_report_markdown(result: AuditResult) -> list[str]:
     lines.append("# Codex Token Monitor Audit Report")
     lines.append("")
     lines.append(f"- **Audit status:** `{result['audit_status']}`")
+    lines.append(f"- **Evidence basis:** `{result.get('evidence_basis', EVIDENCE_NOT_VERIFIED)}`")
+    lines.append(f"- **Audit scope:** `{result.get('audit_scope', 'full_session')}`")
+    if result.get("audit_scope") == "selected_steps":
+        si = result.get("selected_step_indices")
+        si_str = ", ".join(str(x) for x in si) if si else "?"
+        lines.append(f"- **Audited steps:** {result.get('audited_steps_count', 0)} из {result.get('total_steps_in_session', 0)} (step_index: {si_str})")
+    if result.get("evidence_note"):
+        lines.append(f"- **Evidence note:** {result['evidence_note']}")
     lines.append(f"- **Usage confirmation:** `{result['usage_confirmation']}`")
     lines.append(f"- **Step attribution confidence:** `{result['step_attribution_confidence']}`")
     lines.append(f"- **Cost confidence:** `{result['cost_confidence']}`")
     lines.append(f"- **Fallback used:** `{result['fallback_used']}`")
+    lines.append(f"- **Upstream evidence:** `{'да' if result.get('upstream_evidence_available') else 'нет'}`")
     lines.append(f"- **Source kind:** `{result['source_kind']}`")
     lines.append(f"- **Session ID:** `{result['session_id']}`")
     lines.append(f"- **Timestamp:** `{result['audit_timestamp']}`")
@@ -575,13 +795,18 @@ def _build_report_markdown(result: AuditResult) -> list[str]:
 
     lines.append("## Интерпретация статусов")
     lines.append("")
-    lines.append("- **Audit status** — общая техническая оценка: `ok` (все проверки пройдены), `warning` (есть неопределённости), `fail` (обнаружены ошибки).")
+    lines.append("- **Audit status** — общая техническая оценка: `ok` (все проверки пройдены с upstream evidence), `warning` (есть неопределённости или нет upstream evidence), `fail` (обнаружены ошибки).")
+    lines.append("- **Evidence basis** — на чём основана верификация:")
+    lines.append(f"  - `{EVIDENCE_VERIFIED}` — audit сравнил detail с upstream source evidence (raw rollout, raw OTel);")
+    lines.append(f"  - `{EVIDENCE_PLAUSIBLE}` — detail внутренне непротиворечив, но upstream evidence недоступен;")
+    lines.append(f"  - `{EVIDENCE_NOT_VERIFIED}` — audit не смог проверить ключевые свойства.")
+    lines.append("- **Audit scope** — `full_session` (все шаги) или `selected_steps` (только выбранные шаги).")
     lines.append("- **Usage confirmation** — сколько шагов имеют подтверждённые per-step данные: `all_confirmed`, `partial`, `none_confirmed`, `not_applicable`.")
-    lines.append("- **Step attribution confidence** — насколько можно доверять привязке токенов к видимым шагам: `high`, `medium`, `low`.")
-    lines.append("- **Cost confidence** — основа оценки стоимости: `per_step_estimated`, `estimated_from_cumulative`.")
+    lines.append("- **Step attribution confidence** — насколько можно доверять привязке токенов к видимым шагам: `high` (только archive + upstream evidence), `medium`, `low`.")
+    lines.append("- **Cost confidence** — основа оценки стоимости: `per_step_estimated` (только при upstream evidence + non-cumulative basis), `estimated_from_cumulative`.")
     lines.append("- **Fallback used** — были ли случаи, где cumulative totals использовались вместо per-step данных.")
     lines.append("")
-    lines.append("> Этот отчёт — техническая верификация. Он не заменяет человеческую оценку и не утверждает, что все числа точны до цента. `Honesty hardening` (улучшение формулировок и UI-пояснений) — отдельный следующий слой.")
+    lines.append("> Этот отчёт — техническая верификация. Статус `warning` при отсутствии upstream evidence — это нормальное и честное поведение, а не ошибка. `Honesty hardening` (улучшение формулировок и UI-пояснений) — отдельный следующий слой.")
 
     return lines
 
@@ -613,6 +838,17 @@ def main() -> None:
         default=None,
         help="Expected source kind (live/archive)",
     )
+    parser.add_argument(
+        "--selected-steps",
+        default=None,
+        help="Comma-separated step indices for narrowed audit scope (0-based)",
+    )
+    parser.add_argument(
+        "--upstream-evidence",
+        action="store_true",
+        default=False,
+        help="Set if audit has upstream source evidence beyond detail object",
+    )
     args = parser.parse_args()
 
     detail_path = Path(args.detail)
@@ -626,11 +862,17 @@ def main() -> None:
     session_id = str(detail.get("id", ""))
     source_id = args.source_id or ""
 
+    selected_step_indices = None
+    if args.selected_steps:
+        selected_step_indices = [int(x.strip()) for x in args.selected_steps.split(",") if x.strip()]
+
     result = run_audit(
         detail,
         source_kind=source_kind,
         source_id=source_id,
         session_id=session_id,
+        selected_step_indices=selected_step_indices,
+        upstream_evidence_available=args.upstream_evidence,
     )
 
     # Determine output dir
@@ -646,6 +888,8 @@ def main() -> None:
     )
 
     print(f"Audit status: {result['audit_status']}")
+    print(f"Evidence basis: {result.get('evidence_basis', EVIDENCE_NOT_VERIFIED)}")
+    print(f"Audit scope: {result.get('audit_scope', 'full_session')}")
     print(f"Usage confirmation: {result['usage_confirmation']}")
     print(f"Step attribution confidence: {result['step_attribution_confidence']}")
     print(f"Cost confidence: {result['cost_confidence']}")

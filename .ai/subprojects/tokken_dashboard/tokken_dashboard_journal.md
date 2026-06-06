@@ -29,6 +29,8 @@ Started: `2026-06-03`
 - [J-20260606-001](#j-20260606-001)
 - [J-20260607-001](#j-20260607-001)
 - [J-20260607-002](#j-20260607-002)
+- [J-20260607-003](#j-20260607-003)
+- [J-20260607-004](#j-20260607-004)
 - [Bugs And Difficulties](#bugs-and-difficulties)
 - [Open Follow-ups](#open-follow-ups)
 
@@ -812,6 +814,95 @@ found and fixed partly
   - some external readback was partial, therefore local repo review still remains authoritative for exact file placement and endpoint shape.
 - Human verdict: `recorded`
 
+<a id="j-20260607-003"></a>
+
+### J-20260607-003 - Kilo audit run worked as feature baseline, but did not close the main technical truth risk
+
+- Stage: `Stage 1 - audit layer partial acceptance`
+- Role: `Orc`
+- Execution route: `Kilo run review + direct local verification`
+- Related decisions:
+  - [D-20260607-002](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/tokken_dashboard_decisions.md#d-20260607-002)
+  - [D-20260607-003](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/tokken_dashboard_decisions.md#d-20260607-003)
+- Reviewed artifacts:
+  - [0048_codex_token_monitor_audit.md](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/handoffs/0048_codex_token_monitor_audit.md)
+  - [0048_codex_token_monitor_audit_report.md](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/reports/0048_codex_token_monitor_audit_report.md)
+  - [codex_token_monitor_audit.py](/D:/Codex+Kilocode/projects/sword-of-rome-web/scripts/codex_token_monitor_audit.py)
+  - [codex_token_monitor_server.py](/D:/Codex+Kilocode/projects/sword-of-rome-web/scripts/codex_token_monitor_server.py)
+  - [app.js](/D:/Codex+Kilocode/projects/sword-of-rome-web/static/codex-token-monitor/app.js)
+- Confirmed:
+  - Kilo really added a separate audit module, endpoint, UI panel and test file;
+  - runtime audit request works and the audit table is visible in monitor UI;
+  - unit tests passed for implemented status logic.
+- Main open problem:
+  - most important risk is still open: audit can self-certify the same `session detail` mapping it is supposed to verify;
+  - local replay on forensic live thread `019e9d2a-17d7-7210-ba5e-bd42e6ce6e5f` returned:
+    - `audit_status = ok`
+    - `usage_confirmation = all_confirmed`
+    - `step_attribution_confidence = high`
+    - `cost_confidence = per_step_estimated`
+  - these statuses are too strong, because accepted unresolved risk is exactly live step attribution and cumulative-vs-request confidence.
+- Verification:
+  - `python -m unittest tests.test_codex_token_monitor_audit tests.test_codex_token_monitor_server -v`
+  - `node --check static/codex-token-monitor/app.js`
+  - direct local run of audit against forensic live thread `019e9d2a-17d7-7210-ba5e-bd42e6ce6e5f`
+- Result:
+  - partial acceptance only;
+  - audit UI/API baseline accepted;
+  - main truth-risk not accepted;
+  - next safe execution slice = narrow correction run for audit truth gap and regression tests, not honesty hardening.
+- Required tests for next run:
+  - live-like regression where detail looks confirmed but audit still must not claim `high`;
+  - session-cost regression where summary basis is cumulative, so cost confidence must stay downgraded;
+  - selected-steps regression where audit must expose narrowed scope explicitly.
+- Bugs and difficulties:
+  - Kilo report over-claimed closure of audit risk;
+  - current audit tests mostly validate internal consistency of produced detail, not verification against upstream evidence.
+- Human verdict: `recorded`
+
+<a id="j-20260607-004"></a>
+
+### J-20260607-004 - Kilo correction run 0049 closed the main audit truth-risk and established the accepted audit baseline
+
+- Stage: `Stage 1 - audit truth-fix accepted`
+- Role: `Orc`
+- Execution route: `Kilo correction review + direct local verification`
+- Related decisions:
+  - [D-20260607-003](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/tokken_dashboard_decisions.md#d-20260607-003)
+  - [D-20260607-004](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/tokken_dashboard_decisions.md#d-20260607-004)
+- Reviewed artifacts:
+  - [0049_codex_token_monitor_audit_truth_fix.md](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/handoffs/0049_codex_token_monitor_audit_truth_fix.md)
+  - [0049_codex_token_monitor_audit_truth_fix_report.md](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/reports/0049_codex_token_monitor_audit_truth_fix_report.md)
+  - [codex_token_monitor_audit.py](/D:/Codex+Kilocode/projects/sword-of-rome-web/scripts/codex_token_monitor_audit.py)
+  - [codex_token_monitor_server.py](/D:/Codex+Kilocode/projects/sword-of-rome-web/scripts/codex_token_monitor_server.py)
+  - [app.js](/D:/Codex+Kilocode/projects/sword-of-rome-web/static/codex-token-monitor/app.js)
+  - [test_codex_token_monitor_audit.py](/D:/Codex+Kilocode/projects/sword-of-rome-web/tests/test_codex_token_monitor_audit.py)
+- Confirmed:
+  - the old fake-verified path is blocked: `verified_against_source_evidence` now requires explicit `evidence_note`, not just an upstream boolean flag;
+  - forensic live fixture no longer returns the old strong false-positive pattern;
+  - audit JSON/MD artifacts now preserve `evidence_note` and exact selected-step scope metadata;
+  - audit API now returns evidence/scope traceability fields needed for later review.
+- Residual non-blocking gap:
+  - the ordinary monitor UI/API request path still does not send `evidence_note`;
+  - therefore the verified-evidence path is not part of the default user flow yet;
+  - this is accepted as non-blocking because the unsafe fake-verified path is already closed.
+- Verification:
+  - `python -m unittest tests.test_codex_token_monitor_audit tests.test_codex_token_monitor_server -v`
+  - `node --check static/codex-token-monitor/app.js`
+  - direct forensic replay on [live_session_detail.json](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/public_forensics/live_monitor_audit_019e9d2a/live_session_detail.json) in three modes:
+    - no upstream evidence -> `warning / detail_looked_plausible / medium / estimated_from_cumulative`
+    - upstream flag without note -> `fail / detail_looked_plausible`
+    - upstream flag with note -> `ok / verified_against_source_evidence`
+  - generated `monitor_audit_summary.json` and `monitor_audit_report.md` retain evidence/scope fields.
+- Result:
+  - `0049` accepted;
+  - accepted audit baseline now exists as a real truth layer rather than only a UI table;
+  - next safe slice is `Honesty hardening`, with optional later verified-flow wiring if needed.
+- Bugs and difficulties:
+  - the default verified-flow is intentionally still unreachable from the ordinary UI path because `evidence_note` is not provided there;
+  - some older markdown sections still contain mojibake, so updates continue to use additive clean blocks.
+- Human verdict: `recorded`
+
 <a id="open-follow-ups"></a>
 
 ## Open follow-ups
@@ -820,5 +911,5 @@ found and fixed partly
 - Отдельно решить, какие поля маскировать до любого постоянного сбора.
 - Не включать dashboard-этап, пока нет решения по raw capture и privacy.
 - Для live monitor follow-up не трогать source split и не запускать новый OTel; следующий safe execution step теперь такой:
-  - сначала `Codex Token Monitor Audit` как технический verification layer;
+  - сначала correction run для `Codex Token Monitor Audit`, который закроет truth gap между audit и upstream evidence;
   - потом отдельный slice `Honesty hardening` вокруг `cached_tokens`, confidence и human wording.
