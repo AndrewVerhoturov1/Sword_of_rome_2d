@@ -43,7 +43,15 @@ async function apiPost(path, body) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     });
-    if (!res.ok) return null;
+    if (!res.ok) {
+      // Try to read error body for debugging
+      try {
+        const err = await res.json();
+        return { error: err.error || ("HTTP " + res.status), _http_status: res.status };
+      } catch (_) {
+        return { error: "HTTP " + res.status, _http_status: res.status };
+      }
+    }
     return res.json();
   } catch (e) {
     return null;
@@ -673,6 +681,7 @@ function renderAll() {
   renderHeader();
   renderSteps();
   renderSelection();
+  renderAuditPanel();
   renderStatus();
 }
 
@@ -1001,6 +1010,165 @@ function copySelectedTable() {
   copyText(buildSessionExportMarkdown(s, selectedSteps(), "Selected steps export"));
 }
 
+// ── Audit ──
+let auditResultCache = null;
+let auditLoading = false;
+
+async function auditSession(selectedOnly) {
+  if (!currentSourceId || !currentSessionId) {
+    showToast("Сначала выберите сессию");
+    return;
+  }
+  const stepIndices = selectedOnly ? [...selected].sort((a,b) => a-b) : null;
+  if (selectedOnly && (!stepIndices || stepIndices.length === 0)) {
+    showToast("Сначала выделите шаги (чекбоксами)");
+    return;
+  }
+  auditLoading = true;
+  auditResultCache = null;
+  renderAuditPanel();
+  const body = {
+    source_id: currentSourceId,
+    session_id: currentSessionId,
+  };
+  if (stepIndices && stepIndices.length > 0) {
+    body.step_indices = stepIndices;
+  }
+  const data = await apiPost("/api/audit_session", body);
+  auditResultCache = data;
+  auditLoading = false;
+  renderAuditPanel();
+  if (data && data.audit_status) {
+    showToast("Аудит: " + data.audit_status);
+  } else if (data && data.error) {
+    showToast("Ошибка: " + data.error);
+  } else {
+    showToast("Аудит: нет ответа от сервера");
+  }
+}
+
+function auditStatusEmoji(status) {
+  return status === "ok" ? "✅" : status === "warning" ? "⚠️" : status === "fail" ? "❌" : "❓";
+}
+
+function buildAuditSummaryRu(result, findings) {
+  const r = result || {};
+  const parts = [];
+  const statusText = r.audit_status === "ok" ? "Всё в порядке" : r.audit_status === "warning" ? "Есть замечания" : "Обнаружены ошибки";
+
+  parts.push(`<b>${statusText}.</b>`);
+
+  if (r.usage_confirmation === "all_confirmed") {
+    parts.push("Использование токенов подтверждено для всех шагов.");
+  } else if (r.usage_confirmation === "partial") {
+    const missingSteps = findings.filter(f => f.id === "step_usage_missing" || f.id === "step_usage_missing_unclear").length;
+    parts.push(`Использование токенов подтверждено не для всех шагов (${missingSteps} шаг(ов) без подтверждённых данных).`);
+  }
+
+  if (r.fallback_used) {
+    parts.push("Обнаружен fallback на общие (cumulative) данные вместо пошаговых.");
+  }
+
+  const mismatchF = findings.find(f => f.id === "summary_visible_step_mismatch");
+  if (mismatchF) {
+    parts.push("Общий итог сессии значительно больше суммы видимых шагов — это нормально для live-режима (в итог входят скрытые системные токены).");
+  }
+
+  if (r.cost_confidence === "estimated_from_cumulative") {
+    parts.push("Стоимость посчитана от общей суммы токенов, а не от суммы шагов — точность ограничена.");
+  }
+
+  return parts.join(" ");
+}
+
+function renderAuditPanel() {
+  const panel = document.getElementById("auditPanel");
+  if (!panel) return;
+
+  if (!sessionDetailCache) {
+    panel.innerHTML = "";
+    return;
+  }
+
+  if (auditLoading) {
+    panel.innerHTML = `<div class="loading">Запуск аудита...</div>`;
+    return;
+  }
+
+  const selCount = selected.size;
+  const auditButtonsHtml = `
+    <div class="audit-actions">
+      <button class="ghost" onclick="auditSession(false)">🔍 Аудит сессии</button>
+      ${selCount > 0 ? `<button class="ghost" onclick="auditSession(true)">🔍 Аудит выбранных (${selCount})</button>` : ""}
+      ${auditResultCache ? `<button class="ghost" onclick="auditResultCache=null;renderAuditPanel()" title="Сбросить результат аудита">✕ Сбросить</button>` : ""}
+    </div>`;
+
+  if (!auditResultCache) {
+    panel.innerHTML = auditButtonsHtml;
+    return;
+  }
+
+  const r = auditResultCache;
+  const findings = r.findings || [];
+  const failCount = findings.filter(f => f.level === "fail").length;
+  const warnCount = findings.filter(f => f.level === "warning").length;
+  const okCount = findings.filter(f => f.level === "ok").length;
+
+  let findingsHtml = "";
+  if (findings.length === 0) {
+    findingsHtml = `<div class="empty small">Все проверки пройдены</div>`;
+  } else {
+    findingsHtml = `<table class="audit-table"><thead><tr><th>Level</th><th>ID</th><th>Сообщение</th></tr></thead><tbody>`;
+    findings.forEach(f => {
+      findingsHtml += `<tr>
+        <td>${auditStatusEmoji(f.level)} ${f.level}</td>
+        <td class="mono xsmall">${escapeHtml(f.id || "")}</td>
+        <td class="xsmall">${escapeHtml(f.message || "")}</td>
+      </tr>`;
+    });
+    findingsHtml += `</tbody></table>`;
+  }
+
+  const collapseId = "audit-body";
+  const scopeLabel = r.step_indices ? ` (шаги: ${(r.step_indices || []).join(", ")})` : " (вся сессия)";
+
+  panel.innerHTML = `
+    <div class="audit-result">
+      <div class="audit-header">
+        <button class="ghost xsmall" onclick="toggleAuditCollapse()" id="auditCollapseBtn">▾</button>
+        <b>Результат аудита${scopeLabel}</b>
+        <span class="pill ${r.audit_status === 'ok' ? 'green' : r.audit_status === 'warning' ? 'yellow' : 'red'}">${auditStatusEmoji(r.audit_status)} ${r.audit_status}</span>
+        <button class="ghost xsmall" onclick="auditSession(false)">🔄</button>
+      </div>
+      <div id="${collapseId}">
+        <div class="audit-meta">
+          <div class="cmini"><span>Usage</span><b>${r.usage_confirmation || "—"}</b></div>
+          <div class="cmini"><span>Step attr.</span><b>${r.step_attribution_confidence || "—"}</b></div>
+          <div class="cmini"><span>Cost conf.</span><b>${r.cost_confidence || "—"}</b></div>
+          <div class="cmini"><span>Fallback</span><b>${r.fallback_used ? "да" : "нет"}</b></div>
+        </div>
+        <div class="audit-summary-ru">${buildAuditSummaryRu(r, findings)}</div>
+        <div class="audit-counts">
+          <span class="pill green">✅ ${okCount}</span>
+          <span class="pill yellow">⚠️ ${warnCount}</span>
+          <span class="pill red">❌ ${failCount}</span>
+        </div>
+        ${findingsHtml}
+        ${r.report_path ? `<div class="audit-path mono xsmall">Отчёт: ${escapeHtml(r.report_path)}</div>` : ""}
+      </div>
+      ${auditButtonsHtml}
+    </div>`;
+}
+
+function toggleAuditCollapse() {
+  const body = document.getElementById("audit-body");
+  const btn = document.getElementById("auditCollapseBtn");
+  if (!body || !btn) return;
+  const collapsed = body.style.display === "none";
+  body.style.display = collapsed ? "" : "none";
+  btn.textContent = collapsed ? "▾" : "▸";
+}
+
 // ── Auto refresh ──
 function toggleAutoRefresh() {
   autoRefresh = !autoRefresh;
@@ -1055,6 +1223,7 @@ async function applySessionFilters() {
     selected.clear();
     sessionDetailCache = null;
     sessionDetailLoading = true;
+    auditResultCache = null;
     renderAll();
     await loadSessionDetail();
     renderAll();

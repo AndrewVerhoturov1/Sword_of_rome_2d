@@ -28,6 +28,7 @@ Started: `2026-06-03`
 - [J-20260605-005](#j-20260605-005)
 - [J-20260606-001](#j-20260606-001)
 - [J-20260607-001](#j-20260607-001)
+- [J-20260607-002](#j-20260607-002)
 - [Bugs And Difficulties](#bugs-and-difficulties)
 - [Open Follow-ups](#open-follow-ups)
 
@@ -776,6 +777,41 @@ found and fixed partly
   - external audit confirmed that remaining risk is mostly semantic honesty, not source-split design.
 - Human verdict: `recorded`
 
+<a id="j-20260607-002"></a>
+
+### J-20260607-002 - External planning answer defined `Codex Token Monitor Audit` as the next execution slice
+
+- Stage: `Stage 1 - audit layer planning accepted`
+- Role: `Orc`
+- Execution route: `direct review + external V1 planning + Kilo handoff preparation`
+- Related decisions:
+  - [D-20260607-001](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/tokken_dashboard_decisions.md#d-20260607-001)
+  - [D-20260607-002](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/tokken_dashboard_decisions.md#d-20260607-002)
+- Confirmed:
+  - new external notebook entry [2026-06-07_V1-20260607-014953_detailed-implementation-plan-for-codex-token-monitor-audit.md](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/external_chats/notebook/2026-06-07_V1-20260607-014953_detailed-implementation-plan-for-codex-token-monitor-audit.md) is substantive and usable as planning baseline;
+  - accepted next execution slice is a separate `Codex Token Monitor Audit` layer, not another redesign of source split and not immediate full honesty hardening;
+  - the proposed audit scope matches local open risks:
+    - source/session truth;
+    - step attribution truth;
+    - `last_token_usage` vs `total_token_usage`;
+    - fallback downgrade semantics;
+    - cost-confidence semantics;
+    - export/copy completeness and warning preservation.
+- Verification:
+  - reviewed [V1_navigation.md](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/external_chats/V1_navigation.md) entry for `V1-20260607-014953`;
+  - reviewed notebook entry:
+    [2026-06-07_V1-20260607-014953_detailed-implementation-plan-for-codex-token-monitor-audit.md](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/external_chats/notebook/2026-06-07_V1-20260607-014953_detailed-implementation-plan-for-codex-token-monitor-audit.md);
+  - compared that plan against current monitor docs, session file and open bug note [BUG-20260607-001](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/logs/bug_journal.md).
+- Result:
+  - subproject route changed from generic `semantic hardening` to a stricter sequence:
+    - first implement `Audit` as technical verification layer;
+    - only after that do `Honesty hardening` as a separate UI/explanation slice;
+  - Kilo handoff preparation is now scoped around audit module, audit statuses, audit reports and minimal UI/API integration.
+- Bugs and difficulties:
+  - the external notebook still contains some mojibake in Russian snippets, so it should be treated as planning baseline, not as wording source for UI text;
+  - some external readback was partial, therefore local repo review still remains authoritative for exact file placement and endpoint shape.
+- Human verdict: `recorded`
+
 <a id="open-follow-ups"></a>
 
 ## Open follow-ups
@@ -783,4 +819,6 @@ found and fixed partly
 - Если подпроект пойдет дальше, завести безопасный локальный file capture для сырого потока.
 - Отдельно решить, какие поля маскировать до любого постоянного сбора.
 - Не включать dashboard-этап, пока нет решения по raw capture и privacy.
-- Для live monitor follow-up не трогать source split и не запускать новый OTel; следующий safe step только в semantic hardening UI/export вокруг `cached_tokens`, confidence и rich export wording.
+- Для live monitor follow-up не трогать source split и не запускать новый OTel; следующий safe execution step теперь такой:
+  - сначала `Codex Token Monitor Audit` как технический verification layer;
+  - потом отдельный slice `Honesty hardening` вокруг `cached_tokens`, confidence и human wording.

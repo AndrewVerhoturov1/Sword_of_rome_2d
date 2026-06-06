@@ -22,6 +22,7 @@ Decision layer: `subproject-level accepted decisions`
 - [D-20260605-004](#d-20260605-004)
 - [D-20260606-001](#d-20260606-001)
 - [D-20260607-001](#d-20260607-001)
+- [D-20260607-002](#d-20260607-002)
 - [Corrected Decisions](#corrected-decisions)
 - [Rejected Options](#rejected-options)
 - [Waivers](#waivers)
@@ -410,6 +411,26 @@ Decision layer: `subproject-level accepted decisions`
 - Reason: external audit of forensic pack `live_monitor_audit_019e9d2a` leaned toward real telemetry semantics rather than a simple mapping bug, and identified semantic overconfidence as the main remaining monitor risk.
 - Consequence: next safe monitor slice is semantic hardening and export honesty, not source-split redesign and not a new OTel experiment.
 - Boundary: this decision keeps the accepted hybrid baseline, does not reopen live/archive split, does not change live Codex config, and does not authorize writes into `C:/Users/andre/.codex/**`.
+- Human approval: `recorded`
+
+<a id="d-20260607-002"></a>
+
+### D-20260607-002 - Codex Token Monitor Audit must be implemented as a separate technical verification layer before honesty hardening
+
+- Status: `accepted`
+- Source: `external planning notebook V1-20260607-014953 + local orchestration review`
+- Decision: the next monitor execution slice is `Codex Token Monitor Audit` as a separate verification layer over the accepted hybrid monitor baseline. This layer checks technical truth of source selection, session identity, step attribution, usage basis, fallback semantics, cost confidence and export completeness.
+- Decision: `Audit` and `Honesty hardening` are different layers. `Audit` emits machine-readable verification results and human-readable audit reports. `Honesty hardening` remains a later follow-up that improves wording, badges, and explanatory UI text for humans.
+- Decision: `Audit` must verify at least:
+  - correct `source_kind` and `session_id`;
+  - request-level `last_token_usage` versus cumulative `total_token_usage`;
+  - that fallback is never shown as confirmed per-step usage;
+  - that session summary basis does not silently pretend to equal visible-step sums;
+  - that copy/export preserve warnings, basis fields, confirmation semantics and cost-confidence semantics.
+- Decision: the next Kilo implementation run for this slice should target the audit layer first, not reopen source split and not start a broad UI wording pass.
+- Reason: current accepted monitor baseline is technically useful, but the remaining risk is not only wording. We still need an explicit verification layer that can detect when monitor source/mapping/export behavior is wrong or looks more certain than the raw evidence allows.
+- Consequence: implementation planning, tests, docs and handoff scope now center on an audit module, audit endpoint/action, audit JSON/MD artifacts and confidence/status model. Human-facing semantics polish remains out of scope for this run unless needed only to surface audit results.
+- Boundary: this decision does not authorize a new OTel experiment, live Codex config changes, source-split redesign, writes into `C:/Users/andre/.codex/**`, or a full monitor UI rewrite.
 - Human approval: `recorded`
 
 ## Maintenance rule

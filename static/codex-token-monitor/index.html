@@ -92,6 +92,7 @@
         <div class="actions">
           <button onclick="refreshData()">Обновить</button>
           <button id="autoBtn" onclick="toggleAutoRefresh()">Auto: ON</button>
+          <button onclick="auditSession()">Аудит</button>
           <button onclick="copySessionSummary()">Session</button>
           <button onclick="copySessionJson()">Session JSON</button>
           <button class="primary" onclick="copySessionTable()">Session MD</button>
@@ -118,6 +119,7 @@
     </div>
 
     <div class="content">
+      <div class="audit-panel" id="auditPanel"></div>
       <div id="steps" class="steps"><div class="loading">Выберите сессию слева</div></div>
     </div>
   </main>

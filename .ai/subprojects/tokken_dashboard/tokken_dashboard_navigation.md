@@ -48,7 +48,7 @@ Navigation не заменяет:
 ## Current lifecycle stage
 
 ```text
-Stage 1 - hybrid monitor baseline accepted; live semantics hardening pending
+Stage 1 - hybrid monitor baseline accepted; audit implementation pending; honesty hardening deferred
 ```
 
 Gate state:
@@ -305,13 +305,19 @@ Keep v1 as the archive viewer. Build v2 as a hybrid monitor with two explicit so
 Focused next route:
 
 ```text
-Do not reopen the source split. The next slice is narrower: keep the hybrid baseline, treat first-step cached spikes as likely hidden-context live telemetry unless disproved, and harden UI/export wording around confidence, cumulative-vs-step basis and rich copy/export payloads.
+Do not reopen the source split. The next execution slice is Codex Token Monitor Audit: keep the hybrid baseline, verify source/session/step/usage/export truth, and emit audit statuses/artifacts before any wider honesty-hardening pass.
 ```
 
 New safe reading route:
 
 ```text
-Read D-20260606-001 -> J-20260606-001 -> forensic pack README -> V1-20260607-live-monitor-audit-r2 notebook entry -> BUG-20260607-001 before touching live cache semantics or export wording.
+Read D-20260606-001 -> D-20260607-001 -> D-20260607-002 -> J-20260607-002 -> V1-20260607-014953 notebook entry -> BUG-20260607-001 before implementing the audit layer.
+```
+
+Additional planning route:
+
+```text
+If task is "implement Audit", use the notebook entry V1-20260607-014953 as planning baseline, then local repo files as source of truth for exact file placement, API shape and tests.
 ```
 
 ## Maintenance rule

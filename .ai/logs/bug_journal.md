@@ -35,6 +35,7 @@ Cause:
 
 Fix:
 - not fixed yet;
+- next implementation slice should build `Codex Token Monitor Audit` first, so monitor can verify source/session/step/usage/export truth before wider human-facing wording changes;
 - future fix should keep current live/archive split, but make semantics more explicit in UI/export;
 - especially important:
   - label first live step as first visible step, not implicit cold start;
@@ -507,6 +508,47 @@ Related files:
 
 Notes for future agents:
 If notebook says import succeeded but repo files are missing, immediately search for stray `.ai/v3/` trees outside workspace root. First suspect: path resolution against user documents or archive-adjacent folder.
+
+### BUG-20260607-002 - Codex Token Monitor Server: старый процесс блокирует порт при повторном запуске
+
+Status: fixed
+
+Area:
+`start_codex_token_monitor.bat`
+
+Symptoms:
+- После нажатия «Остановить монитор» процесс Python мог остаться висеть
+- Повторный запуск `start_codex_token_monitor.bat` не убивал старый процесс
+- Браузер подключался к старому серверу без новых изменений
+- Новый endpoint `/api/audit_session` возвращал 404
+
+Cause:
+`start_codex_token_monitor.bat` запускал `python scripts/codex_token_monitor_server.py` без предварительной проверки занятости порта. Если старый процесс уже слушал `127.0.0.1:8765`, новый процесс падал с `Address already in use`, а старый продолжал отвечать.
+
+Fix:
+Добавлен блок в bat-файл:
+```
+for /f "tokens=5" %%a in ('netstat -ano ^| findstr ":8765.*LISTENING"') do (
+    taskkill /PID %%a /F
+)
+```
+
+Verification:
+- `netstat -ano | findstr ":8765"` показал два процесса LISTENING (PID 19500, 18560) до фикса
+- После `taskkill` оба процесса убиты
+- `start_codex_token_monitor.bat` запустился успешно
+- `/api/audit_session` начал отвечать 200
+
+Human check:
+suggested — при обновлении монитора обращать внимание, не открывается ли старая версия. Если кнопка «Аудит» не появляется — проверить, не висит ли старый процесс на порту.
+
+Related files:
+- [start_codex_token_monitor.bat](/D:/Codex+Kilocode/projects/sword-of-rome-web/start_codex_token_monitor.bat)
+- [codex_token_monitor_server.py](/D:/Codex+Kilocode/projects/sword-of-rome-web/scripts/codex_token_monitor_server.py)
+
+Notes for future agents:
+- Если новый endpoint возвращает 404, первым делом проверить `netstat -ano | findstr ":8765"` — если есть LISTENING PID, убить.
+- Баталка авто-убивает PID при запуске, но если сервер стартует не через bat — нужно убивать вручную.
 
 ### BUG-20260528-005 - V2 cycle: содержательный patch остаётся в review-ветке и не возвращается в рабочую ветку
 

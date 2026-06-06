@@ -8,7 +8,14 @@ if not exist "scripts\codex_token_monitor_server.py" (
     exit /b 1
 )
 
-echo Starting Codex Token Monitor Server v1...
+REM Kill any existing server on port 8765
+for /f "tokens=5" %%a in ('netstat -ano ^| findstr ":8765.*LISTENING"') do (
+    echo Killing old server PID %%a...
+    taskkill /PID %%a /F >nul 2>&1
+)
+timeout /t 1 /nobreak >nul
+
+echo Starting Codex Token Monitor Server v2...
 echo http://127.0.0.1:8765
 echo Press Ctrl+C to stop.
 echo.

@@ -250,3 +250,18 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--green); cu
   .actions { justify-content: flex-start; } .summary,.metrics,.preview-row { grid-template-columns: 1fr 1fr; }
   .filter-row,.statusbar { grid-template-columns: 1fr; }
 }
+
+/* ── Audit panel ── */
+.audit-panel { margin-bottom: 12px; padding: 10px 12px; background: rgba(124,156,255,.06); border: 1px solid rgba(124,156,255,.25); border-radius: 6px; }
+.audit-placeholder { text-align: center; padding: 8px; }
+.audit-result { display: flex; flex-direction: column; gap: 8px; }
+.audit-header { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.audit-meta { display: flex; gap: 8px; flex-wrap: wrap; }
+.audit-counts { display: flex; gap: 4px; }
+.audit-table { width: 100%; border-collapse: collapse; font-size: .75rem; }
+.audit-table th { text-align: left; padding: 2px 6px; border-bottom: 1px solid rgba(124,156,255,.15); color: rgba(200,210,255,.5); font-weight: 400; }
+.audit-table td { padding: 2px 6px; vertical-align: top; }
+.audit-path { color: rgba(200,210,255,.35); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.audit-summary-ru { font-size: .8rem; color: rgba(200,210,255,.75); line-height: 1.5; margin: 2px 0 4px; }
+.pill.red { background: rgba(255,99,99,.18); color: #ff6363; }
+

@@ -25,6 +25,7 @@ SCRIPTS_DIR = REPO_ROOT / "scripts"
 CONFIG_DIR = REPO_ROOT / "config"
 STATIC_DIR = REPO_ROOT / "static" / "codex-token-monitor"
 LOCAL_MONITOR_DIR = REPO_ROOT / "_local" / "codex-token-monitor"
+AUDITS_DIR = LOCAL_MONITOR_DIR / "audits"
 ROLLOUT_INDEX_TTL_SEC = 10.0
 
 _live_rollout_summary_cache: dict[str, tuple[float, dict[str, dict[str, Any]]]] = {}
@@ -1203,6 +1204,8 @@ class MonitorHandler(SimpleHTTPRequestHandler):
             return self._handle_archive(body, params, archive=True)
         if path == "/api/unarchive":
             return self._handle_archive(body, params, archive=False)
+        if path == "/api/audit_session":
+            return self._handle_audit_session(body, params)
         if path == "/api/shutdown":
             return self._handle_shutdown()
 
@@ -1441,6 +1444,98 @@ class MonitorHandler(SimpleHTTPRequestHandler):
             "source_id": source["id"],
             "session_id": session_id,
             "archived": archive,
+        })
+
+    def _handle_audit_session(self, body: dict[str, Any], params: dict[str, list[str]]) -> None:
+        """Run audit over current session detail and return findings + artifact paths."""
+        config = load_config(self.server.config_path)
+        source_id = (
+            body.get("source_id") or body.get("project_id")
+            or (params.get("source_id", [""]) or [""])[0]
+            or (params.get("project_id", [""]) or [""])[0]
+        )
+        session_id = body.get("session_id") or (params.get("session_id", [""]) or [""])[0]
+
+        if not source_id:
+            source_id = config.get("default_source_id", "")
+        source = find_source(config, source_id)
+        if not source:
+            self._error(404, f"source not found: {source_id}")
+            return
+        if not session_id:
+            self._error(400, "session_id is required")
+            return
+
+        # Build session detail using current monitor logic
+        kind = source.get("kind", "archive")
+        if kind == "live":
+            detail = build_live_session_detail(source, session_id)
+        else:
+            detail = build_archive_session_detail(source, session_id)
+
+        if detail is None:
+            self._error(404, f"session not found: {session_id}")
+            return
+
+        # Filter steps if step_indices provided
+        step_indices = body.get("step_indices")
+        if isinstance(step_indices, list) and step_indices:
+            all_steps = detail.get("steps", [])
+            if isinstance(all_steps, list):
+                idx_set = set(int(i) for i in step_indices)
+                detail["steps"] = [s for s in all_steps if s.get("step_index") in idx_set]
+
+        # Load and run audit module
+        audit_path = SCRIPTS_DIR / "codex_token_monitor_audit.py"
+        if not audit_path.exists():
+            self._error(500, "audit module not found")
+            return
+
+        try:
+            if str(SCRIPTS_DIR) not in sys.path:
+                sys.path.insert(0, str(SCRIPTS_DIR))
+            import codex_token_monitor_audit as audit_mod
+        except Exception as exc:
+            import traceback
+            traceback.print_exc()
+            self._error(500, f"failed to load audit module: {exc}")
+            return
+
+        result = audit_mod.run_audit(
+            detail,
+            source_kind=kind,
+            source_id=source["id"],
+            session_id=session_id,
+        )
+
+        # Generate artifacts
+        output_dir = AUDITS_DIR / source["id"] / session_id
+        summary_path, report_path = audit_mod.generate_audit_artifacts(
+            result, output_dir, session_id=session_id, source_id=source["id"]
+        )
+
+        self._ok({
+            "audit_status": result["audit_status"],
+            "usage_confirmation": result["usage_confirmation"],
+            "step_attribution_confidence": result["step_attribution_confidence"],
+            "cost_confidence": result["cost_confidence"],
+            "fallback_used": result["fallback_used"],
+            "findings": result["findings"],
+            "step_findings": [
+                {
+                    "step_index": sf["step_index"],
+                    "usage_available": sf["usage_available"],
+                    "usage_confirmation_status": sf["usage_confirmation_status"],
+                    "usage_source": sf["usage_source"],
+                    "finding_count": len(sf.get("findings", [])),
+                }
+                for sf in result.get("step_findings", [])
+            ],
+            "summary_path": str(summary_path.relative_to(REPO_ROOT)),
+            "report_path": str(report_path.relative_to(REPO_ROOT)),
+            "source_kind": kind,
+            "session_id": session_id,
+            "audit_timestamp": result["audit_timestamp"],
         })
 
     def _handle_shutdown(self) -> None:

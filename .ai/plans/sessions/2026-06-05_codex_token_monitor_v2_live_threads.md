@@ -38,9 +38,15 @@ active follow-up
 - Обновить tests и docs.
 - Прогнать unit tests и `git diff --check`.
 
+### P5: Add Codex Token Monitor Audit as the next verification layer
+
+- Status: planned.
+- Реализовать отдельный audit layer поверх current hybrid monitor без нового OTel и без source-split churn.
+- Разделить `Audit` и `Honesty hardening`: сначала technical truth checks и audit artifacts, потом отдельный human-facing wording slice.
+
 ## Active Plan Item
 
-`P1: Add a source-aware hybrid monitor`
+`P5: Add Codex Token Monitor Audit as the next verification layer`
 
 ## Runs
 
@@ -49,6 +55,7 @@ active follow-up
 | 001 | Prepared planning artifact and Kilo handoff for `Codex Token Monitor v2` hybrid live/archive implementation. |
 | 002 | Direct Codex hardening turned the hybrid monitor into a working live/archive baseline; remaining open slice is `cache semantics + rich export`. |
 | 003 | External forensic audit and documentation pass confirmed hybrid baseline, explained `cached_tokens` as mixed-case live semantics, and narrowed next slice to semantic honesty plus rich export wording. |
+| 004 | External planning answer `V1-20260607-014953` defined `Codex Token Monitor Audit` as the next execution slice; docs and next Kilo handoff retargeted from generic hardening to a separate verification layer. |
 
 ## User Overrides
 
@@ -58,14 +65,16 @@ active follow-up
 - Не запускать новый OTel.
 - Не менять live Codex config.
 - Не писать в `C:/Users/andre/.codex/**`.
-- Для follow-up по `cached_tokens` и export сначала обновлять semantic wording и документацию, а не переделывать source split.
+- Не переделывать source split.
+- Для follow-up по `cached_tokens` и export сначала реализовать `Audit` как technical truth layer, а уже потом делать отдельный human-facing `Honesty hardening`.
 
 ## Checkpoint State
 
 - `Codex Token Monitor Server v1` принят как archive viewer baseline.
 - Принято решение [D-20260605-004](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/tokken_dashboard_decisions.md#d-20260605-004): следующая версия должна разделять реальные чаты и архивные run artifacts.
 - Принято решение [D-20260607-001](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/tokken_dashboard_decisions.md#d-20260607-001): live cache spikes сначала трактовать как semantics/confidence risk, а не как доказанный math bug.
-- Следующий ожидаемый шаг: один Kilo implementation run по handoff `0047_codex_token_monitor_v2_live_threads.md`.
+- Принято решение [D-20260607-002](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/tokken_dashboard_decisions.md#d-20260607-002): следующий execution slice = `Codex Token Monitor Audit` как отдельный verification layer.
+- Следующий ожидаемый шаг: один Kilo implementation run по handoff `0048_codex_token_monitor_audit.md`.
 ## Review checkpoint - 2026-06-06
 
 - Hybrid monitor now exists as the current working baseline for local live/archive inspection.
@@ -84,3 +93,11 @@ active follow-up
 - This slice is now explicitly tracked as:
   - `cache semantics + rich export`
   - with doc + wording hardening before any further behavioral changes.
+
+## Review checkpoint - 2026-06-07 audit planning follow-up
+
+- External notebook plan `V1-20260607-014953` is accepted as planning baseline for the next run.
+- Scope is now split more strictly:
+  - current run: implement `Codex Token Monitor Audit`;
+  - later run: `Honesty hardening`.
+- Kilo handoff should target audit module, audit statuses, audit JSON/MD artifacts, minimal API/UI integration and tests.
