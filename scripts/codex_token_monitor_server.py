@@ -818,6 +818,18 @@ def build_live_session_detail(source: dict[str, Any], session_id: str) -> dict[s
                 + (total_output / 1_000_000) * p.get("output", 0)
             )
 
+    summary_warnings: list[dict[str, str]] = []
+    if total_input > 0:
+        summary_warnings.append({
+            "id": "live_totals_are_cumulative",
+            "message": "В live-источнике totals берутся из последнего cumulative total_token_usage по треду, а не из суммы видимых шагов.",
+        })
+    if any((step.get("usage", {}) or {}).get("available") for step in steps):
+        summary_warnings.append({
+            "id": "live_steps_use_request_usage",
+            "message": "Per-step usage для live-шага берётся из request-level last_token_usage, если он есть в rollout.",
+        })
+
     return {
         "id": session_id,
         "title": title,
@@ -829,6 +841,8 @@ def build_live_session_detail(source: dict[str, Any], session_id: str) -> dict[s
         "summary": {
             "turn_count": len(steps),
             "session_count": 1,
+            "usage_basis": "live_total_token_usage_latest",
+            "step_usage_basis": "live_last_token_usage",
             "total_input_tokens": total_input,
             "total_cached_tokens": total_cached,
             "total_non_cached_input_tokens": total_input - total_cached,
@@ -837,7 +851,7 @@ def build_live_session_detail(source: dict[str, Any], session_id: str) -> dict[s
             "total_reasoning_tokens": total_reasoning,
             "total_tool_tokens": total_tool,
             "estimated_total_cost_usd": total_cost,
-            "warnings": [],
+            "warnings": summary_warnings,
         },
         "timeline_events": timeline_events,
         "steps": steps,
@@ -862,6 +876,7 @@ def _build_live_steps(events: list[dict[str, Any]], thread_id: str) -> tuple[lis
     current_reasoning = "unknown"
     last_visible_step_index = 0
     active_task_turn_id = ""
+    current_turn_context: dict[str, Any] = {}
 
     def finalize_current_step(reason: str = "next_user") -> None:
         nonlocal current_step, pending_text, last_visible_step_index
@@ -901,6 +916,8 @@ def _build_live_steps(events: list[dict[str, Any]], thread_id: str) -> tuple[lis
                     "reasoning_tokens": reasoning_tokens if has_nonzero_usage else 0,
                     "tool_tokens": tool_tokens if has_nonzero_usage else 0,
                     "available": has_nonzero_usage,
+                    "confirmation_status": "confirmed_request_usage" if has_nonzero_usage else "missing_request_usage",
+                    "source": "live_last_token_usage" if has_nonzero_usage else "missing",
                     "note": "" if has_nonzero_usage else "no confirmed last_token_usage for this step",
                     **(
                         _estimate_usage_costs(
@@ -921,6 +938,8 @@ def _build_live_steps(events: list[dict[str, Any]], thread_id: str) -> tuple[lis
             )
         elif isinstance(usage, dict):
             usage["available"] = False
+            usage["confirmation_status"] = "missing_request_usage"
+            usage["source"] = "missing"
             if reason == "next_user":
                 usage["note"] = "next turn started before token checkpoint for this step"
             elif reason == "task_complete":
@@ -941,6 +960,7 @@ def _build_live_steps(events: list[dict[str, Any]], thread_id: str) -> tuple[lis
 
         # turn_context carries model/effort for subsequent steps
         if outer_type == "turn_context":
+            current_turn_context = pl
             current_model = str(pl.get("model", current_model))
             current_reasoning = str(pl.get("effort", pl.get("reasoning_effort", current_reasoning)))
             continue
@@ -977,10 +997,12 @@ def _build_live_steps(events: list[dict[str, Any]], thread_id: str) -> tuple[lis
 
         # token_count in event_msg: prefer payload.info.last_token_usage for per-step live usage
         token_count = None
+        model_context_window = 0
         if outer_type == "event_msg":
             info = pl.get("info", {})
             if isinstance(info, dict):
                 token_count = info.get("last_token_usage") or info.get("total_token_usage")
+                model_context_window = to_int(info.get("model_context_window"), 0)
 
         if is_user:
             user_text = ""
@@ -1030,6 +1052,23 @@ def _build_live_steps(events: list[dict[str, Any]], thread_id: str) -> tuple[lis
                 },
                 "environment": {
                     "thread_id": thread_id,
+                    "cwd": str(current_turn_context.get("cwd", "")),
+                    "workspace_roots": current_turn_context.get("workspace_roots")
+                    if isinstance(current_turn_context.get("workspace_roots"), list)
+                    else [],
+                    "current_date": str(current_turn_context.get("current_date", "")),
+                    "timezone": str(current_turn_context.get("timezone", "")),
+                    "approval_policy": str(current_turn_context.get("approval_policy", "")),
+                    "sandbox_policy": (
+                        current_turn_context.get("sandbox_policy", {}).get("type", "")
+                        if isinstance(current_turn_context.get("sandbox_policy"), dict)
+                        else ""
+                    ),
+                    "permission_profile": (
+                        current_turn_context.get("permission_profile", {}).get("type", "")
+                        if isinstance(current_turn_context.get("permission_profile"), dict)
+                        else ""
+                    ),
                     "observed_mcp_server_count": 0,
                     "observed_mcp_servers": [],
                     "enabled_plugins_count": 0,
@@ -1058,6 +1097,7 @@ def _build_live_steps(events: list[dict[str, Any]], thread_id: str) -> tuple[lis
                 "reasoning_tokens": to_int(token_count.get("reasoning_output_tokens", token_count.get("reasoning_token_count", 0))),
                 "tool_tokens": to_int(token_count.get("tool_tokens", token_count.get("tool_token_count", 0))),
             }
+            current_step.setdefault("environment", {})["model_context_window"] = model_context_window
 
     finalize_current_step("session_end")
 

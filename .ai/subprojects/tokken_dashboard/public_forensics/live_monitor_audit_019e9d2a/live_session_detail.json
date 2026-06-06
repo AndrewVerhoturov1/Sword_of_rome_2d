@@ -1,0 +1,150 @@
+{
+  "id": "019e9d2a-17d7-7210-ba5e-bd42e6ce6e5f",
+  "title": "Скажи тест",
+  "date": 1780753297,
+  "model": "gpt-5.4-mini",
+  "reasoning": "low",
+  "workdir": "\\\\?\\D:\\Codex+Kilocode\\projects\\sword-of-rome-web",
+  "source_kind": "live",
+  "summary": {
+    "turn_count": 2,
+    "session_count": 1,
+    "usage_basis": "live_total_token_usage_latest",
+    "step_usage_basis": "live_last_token_usage",
+    "total_input_tokens": "[REDACTED]",
+    "total_cached_tokens": "[REDACTED]",
+    "total_non_cached_input_tokens": "[REDACTED]",
+    "average_cached_ratio": 0.7413152432541892,
+    "total_output_tokens": "[REDACTED]",
+    "total_reasoning_tokens": "[REDACTED]",
+    "total_tool_tokens": "[REDACTED]",
+    "estimated_total_cost_usd": 0.02634945,
+    "warnings": [
+      {
+        "id": "live_totals_are_cumulative",
+        "message": "В live-источнике totals берутся из последнего cumulative total_token_usage по треду, а не из суммы видимых шагов."
+      },
+      {
+        "id": "live_steps_use_request_usage",
+        "message": "Per-step usage для live-шага берётся из request-level last_token_usage, если он есть в rollout."
+      }
+    ]
+  },
+  "timeline_events": [],
+  "steps": [
+    {
+      "step_index": 1,
+      "turn_id": "turn-1",
+      "timestamp": "2026-06-06T13:41:02.385Z",
+      "model": "gpt-5.4-mini",
+      "reasoning_effort": "low",
+      "user_prompt": {
+        "available": true,
+        "text": "Скажи тест",
+        "hidden_by_default": true,
+        "kind": "user_message"
+      },
+      "assistant_answer": {
+        "available": true,
+        "text": "Сначала быстро проверю правила caveman и отвечу в нужном формате. После этого дам короткий тестовый ответ без лишнего контекста.\nПуть скилла другой, беру локальную копию из доступных skill roots и сразу отвечу кратко.\nтест",
+        "hidden_by_default": true
+      },
+      "usage": {
+        "input_tokens": "[REDACTED]",
+        "cached_tokens": "[REDACTED]",
+        "non_cached_input_tokens": "[REDACTED]",
+        "cached_ratio": 0.9056253624589213,
+        "output_tokens": "[REDACTED]",
+        "reasoning_tokens": "[REDACTED]",
+        "tool_tokens": "[REDACTED]",
+        "available": true,
+        "note": "",
+        "estimated_total_cost_usd": 0.00375405,
+        "estimated_input_cost_usd": 0.00183075,
+        "estimated_cached_input_cost_usd": 0.0017568,
+        "estimated_output_cost_usd": 0.00016649999999999998,
+        "confirmation_status": "confirmed_request_usage",
+        "source": "live_last_token_usage"
+      },
+      "environment": {
+        "thread_id": "019e9d2a-17d7-7210-ba5e-bd42e6ce6e5f",
+        "cwd": "D:\\Codex+Kilocode\\projects\\sword-of-rome-web",
+        "workspace_roots": [
+          "D:\\Codex+Kilocode\\projects\\sword-of-rome-web"
+        ],
+        "current_date": "2026-06-06",
+        "timezone": "Asia/Yekaterinburg",
+        "approval_policy": "never",
+        "sandbox_policy": "danger-full-access",
+        "permission_profile": "disabled",
+        "observed_mcp_server_count": 0,
+        "observed_mcp_servers": [],
+        "enabled_plugins_count": 0,
+        "enabled_skills_count": 0,
+        "global_user_instructions_status": "unknown",
+        "repo_context_status": "unknown",
+        "model_context_window": 258400,
+        "task_turn_id": "019e9d2a-4a1b-7980-b660-264641482e18"
+      },
+      "warnings": [],
+      "post_step_badges": []
+    },
+    {
+      "step_index": 2,
+      "turn_id": "turn-2",
+      "timestamp": "2026-06-06T13:41:33.191Z",
+      "model": "gpt-5.4-mini",
+      "reasoning_effort": "low",
+      "user_prompt": {
+        "available": true,
+        "text": "Скажи тест 2",
+        "hidden_by_default": true,
+        "kind": "user_message"
+      },
+      "assistant_answer": {
+        "available": true,
+        "text": "тест 2",
+        "hidden_by_default": true
+      },
+      "usage": {
+        "input_tokens": "[REDACTED]",
+        "cached_tokens": "[REDACTED]",
+        "non_cached_input_tokens": "[REDACTED]",
+        "cached_ratio": 0.888578630987008,
+        "output_tokens": "[REDACTED]",
+        "reasoning_tokens": "[REDACTED]",
+        "tool_tokens": "[REDACTED]",
+        "available": true,
+        "note": "",
+        "estimated_total_cost_usd": 0.004008149999999999,
+        "estimated_input_cost_usd": 0.00215475,
+        "estimated_cached_input_cost_usd": 0.0017184,
+        "estimated_output_cost_usd": 0.000135,
+        "confirmation_status": "confirmed_request_usage",
+        "source": "live_last_token_usage"
+      },
+      "environment": {
+        "thread_id": "019e9d2a-17d7-7210-ba5e-bd42e6ce6e5f",
+        "cwd": "D:\\Codex+Kilocode\\projects\\sword-of-rome-web",
+        "workspace_roots": [
+          "D:\\Codex+Kilocode\\projects\\sword-of-rome-web"
+        ],
+        "current_date": "2026-06-06",
+        "timezone": "Asia/Yekaterinburg",
+        "approval_policy": "never",
+        "sandbox_policy": "danger-full-access",
+        "permission_profile": "disabled",
+        "observed_mcp_server_count": 0,
+        "observed_mcp_servers": [],
+        "enabled_plugins_count": 0,
+        "enabled_skills_count": 0,
+        "global_user_instructions_status": "unknown",
+        "repo_context_status": "unknown",
+        "model_context_window": 258400,
+        "task_turn_id": "019e9d2a-df66-7fd2-b055-0d47b9159ea7"
+      },
+      "warnings": [],
+      "post_step_badges": []
+    }
+  ]
+}

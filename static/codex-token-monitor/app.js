@@ -725,71 +725,280 @@ function copySourcePath() {
   copyText(selectedPath || (s ? (s.kind === "live" ? "C:/Users/andre/.codex" : "D:/Codex+Kilocode/projects/sword-of-rome-web/_local/codex-token-debugger") : ""));
 }
 
-function summary(title, steps, metricsOverride = null) {
-  const z = metricsOverride || totals(steps);
-  const ratio = metricsOverride ? (metricsOverride.ratio || 0) : (z.input ? z.cached / z.input : 0);
-  const src = currentSource();
-  const models = [...new Set(steps.map(t => t.model))].join(", ") || "-";
-  return `${title}
-Source: ${src ? src.name : ""}
-Source ID: ${currentSourceId}
-Session: ${currentSessionId}
-Steps: ${steps.length}
-Models: ${models}
-Total cost: ${money(z.cost)}
-Total input: ${z.input}
-Total cached: ${z.cached}
-Total non-cached: ${z.non}
-Cache ratio: ${pct(ratio)}
-Total output: ${z.output}
-Total reasoning: ${z.reasoning}
-Warnings: ${z.warnings}`;
+function usageConfirmationLabel(usage) {
+  if (!usage) return "нет данных";
+  if (usage.confirmation_status === "confirmed_request_usage") return "подтверждено: request-level last_token_usage";
+  if (usage.confirmation_status === "missing_request_usage") return "не подтверждено";
+  return usage.available === false ? "не подтверждено" : "доступно";
 }
 
-function table(steps) {
-  const rows = [
-    "| Step | Model | Cost | Input | Cached | Non-cached | Cache | Output | Reasoning | Prompt | Answer |",
-    "|---:|---|---:|---:|---:|---:|---:|---:|---:|---|---|"
-  ];
-  steps.forEach(t => {
-    const u = t.usage || {};
-    rows.push(`| ${t.step_index} | ${t.model} | ${usageMoney(u, "estimated_total_cost_usd")} | ${usageNumber(u, "input_tokens")} | ${usageNumber(u, "cached_tokens")} | ${usageNumber(u, "non_cached_input_tokens")} | ${usagePercent(u, "cached_ratio")} | ${usageNumber(u, "output_tokens")} | ${usageNumber(u, "reasoning_tokens")} | ${t.user_prompt.available ? "yes" : "no"} | ${t.assistant_answer.available ? "yes" : "no"} |`);
+function buildTelemetryWarnings(session, step) {
+  const warnings = [];
+  const summaryWarnings = session?.summary?.warnings || [];
+  summaryWarnings.forEach(w => {
+    if (typeof w === "string") warnings.push(w);
+    else if (w && w.message) warnings.push(w.message);
   });
-  return rows.join("\n");
+
+  if (session?.source_kind === "live") {
+    warnings.push("В live-чате высокий cached input может относиться к переиспользованному скрытому контексту текущего запроса, а не только к видимому prompt.");
+  }
+
+  if (step) {
+    const usage = step.usage || {};
+    if (usage.note) warnings.push(`Usage note: ${usage.note}`);
+    (step.warnings || []).forEach(w => warnings.push(`Step warning: ${w}`));
+  }
+
+  return [...new Set(warnings.filter(Boolean))];
+}
+
+function buildTimelineContext(session, step) {
+  if (!session || !step) return [];
+  return (session.timeline_events || [])
+    .filter(evt => Number(evt.after_step_index || 0) === Number(step.step_index || 0))
+    .map(evt => ({
+      event_type: evt.event_type || "",
+      label: evt.label || evt.event_type || "",
+      timestamp: evt.timestamp || "",
+      after_step_index: evt.after_step_index || 0,
+      compaction_task_id: evt.compaction_task_id || null,
+      after_step_turn_id: evt.after_step_turn_id || null,
+    }));
+}
+
+function buildStepExportData(step, session) {
+  const usage = step?.usage || {};
+  const environment = step?.environment || {};
+  return {
+    step_index: step?.step_index || 0,
+    turn_id: step?.turn_id || "",
+    timestamp: step?.timestamp || "",
+    model: step?.model || "unknown",
+    reasoning: {
+      effort: step?.reasoning_effort || "unknown",
+      output_tokens: usage.available === false ? null : (usage.reasoning_tokens ?? null),
+    },
+    prompt: {
+      available: !!step?.user_prompt?.available,
+      kind: step?.user_prompt?.kind || "user_message",
+      text: step?.user_prompt?.available ? (step?.user_prompt?.text || "") : "",
+    },
+    answer: {
+      available: !!step?.assistant_answer?.available,
+      text: step?.assistant_answer?.available ? (step?.assistant_answer?.text || "") : "",
+    },
+    usage: {
+      available: usage.available !== false,
+      confirmation_status: usage.confirmation_status || (usage.available === false ? "missing_request_usage" : "confirmed_request_usage"),
+      confirmation_label: usageConfirmationLabel(usage),
+      source: usage.source || "",
+      note: usage.note || "",
+      input_tokens: usage.available === false ? null : (usage.input_tokens ?? null),
+      cached_tokens: usage.available === false ? null : (usage.cached_tokens ?? null),
+      non_cached_input_tokens: usage.available === false ? null : (usage.non_cached_input_tokens ?? null),
+      cached_ratio: usage.available === false ? null : (usage.cached_ratio ?? null),
+      output_tokens: usage.available === false ? null : (usage.output_tokens ?? null),
+      reasoning_tokens: usage.available === false ? null : (usage.reasoning_tokens ?? null),
+      tool_tokens: usage.available === false ? null : (usage.tool_tokens ?? null),
+    },
+    cost_breakdown: {
+      confirmed: usage.available !== false && usage.estimated_total_cost_usd != null,
+      total_usd: usage.estimated_total_cost_usd ?? null,
+      input_usd: usage.estimated_input_cost_usd ?? null,
+      cached_input_usd: usage.estimated_cached_input_cost_usd ?? null,
+      output_usd: usage.estimated_output_cost_usd ?? null,
+    },
+    environment: {
+      thread_id: environment.thread_id || "",
+      cwd: environment.cwd || "",
+      workspace_roots: environment.workspace_roots || [],
+      current_date: environment.current_date || "",
+      timezone: environment.timezone || "",
+      approval_policy: environment.approval_policy || "",
+      sandbox_policy: environment.sandbox_policy || "",
+      permission_profile: environment.permission_profile || "",
+      model_context_window: environment.model_context_window || 0,
+      observed_mcp_server_count: environment.observed_mcp_server_count || 0,
+      observed_mcp_servers: environment.observed_mcp_servers || [],
+      enabled_plugins_count: environment.enabled_plugins_count || 0,
+      enabled_skills_count: environment.enabled_skills_count || 0,
+      repo_context_status: environment.repo_context_status || "",
+      global_user_instructions_status: environment.global_user_instructions_status || "",
+      task_turn_id: environment.task_turn_id || "",
+    },
+    warnings: buildTelemetryWarnings(session, step),
+    compaction_timeline: buildTimelineContext(session, step),
+    post_step_badges: step?.post_step_badges || [],
+  };
+}
+
+function buildSessionExportJson(session, steps) {
+  const src = currentSource();
+  const selectedStepsList = steps || [];
+  return {
+    export_kind: "codex-token-monitor-session",
+    source: {
+      id: currentSourceId,
+      name: src ? src.name : "",
+      kind: session?.source_kind || "",
+    },
+    session: {
+      id: session?.id || currentSessionId,
+      title: session?.title || "",
+      date: session?.date || "",
+      model: session?.model || "",
+      reasoning: session?.reasoning || "",
+      workdir: session?.workdir || "",
+      archived: !!session?.archived,
+    },
+    summary: session?.summary || {},
+    warnings: buildTelemetryWarnings(session, null),
+    timeline_events: session?.timeline_events || [],
+    steps: selectedStepsList.map(step => buildStepExportData(step, session)),
+  };
+}
+
+function buildSessionExportMarkdown(session, steps, title) {
+  const data = buildSessionExportJson(session, steps);
+  const models = [...new Set((steps || []).map(step => step.model).filter(Boolean))];
+  const summary = data.summary || {};
+  const lines = [
+    `# ${title}`,
+    "",
+    "## Session",
+    `- Source: ${data.source.name} (${data.source.kind || "unknown"})`,
+    `- Source ID: ${data.source.id}`,
+    `- Session ID: ${data.session.id}`,
+    `- Title: ${data.session.title}`,
+    `- Date: ${data.session.date}`,
+    `- Workdir: ${data.session.workdir || "—"}`,
+    `- Model(s): ${models.join(", ") || "—"}`,
+    `- Steps exported: ${(steps || []).length}`,
+    "",
+    "## Summary",
+    `- Total cost: ${summary.estimated_total_cost_usd == null ? "не подтверждено" : money(summary.estimated_total_cost_usd)}`,
+    `- Total input: ${summary.total_input_tokens ?? "не подтверждено"}`,
+    `- Total cached: ${summary.total_cached_tokens ?? "не подтверждено"}`,
+    `- Total non-cached: ${summary.total_non_cached_input_tokens ?? "не подтверждено"}`,
+    `- Cache ratio: ${summary.average_cached_ratio == null ? "не подтверждено" : pct(summary.average_cached_ratio)}`,
+    `- Total output: ${summary.total_output_tokens ?? "не подтверждено"}`,
+    `- Total reasoning: ${summary.total_reasoning_tokens ?? "не подтверждено"}`,
+    `- Usage basis: ${summary.usage_basis || "—"}`,
+    `- Step usage basis: ${summary.step_usage_basis || "—"}`,
+    "",
+    "## Warnings",
+    ...(data.warnings.length ? data.warnings.map(w => `- ${w}`) : ["- none"]),
+  ];
+
+  data.steps.forEach(step => {
+    lines.push(
+      "",
+      `## Step ${step.step_index}`,
+      `- Timestamp: ${step.timestamp || "—"}`,
+      `- Turn ID: ${step.turn_id || "—"}`,
+      `- Model: ${step.model}`,
+      `- Reasoning effort: ${step.reasoning.effort}`,
+      `- Usage confirmation: ${step.usage.confirmation_label}`,
+      `- Usage source: ${step.usage.source || "—"}`,
+      `- Usage note: ${step.usage.note || "—"}`,
+      `- Cost confirmed: ${step.cost_breakdown.confirmed ? "yes" : "no"}`,
+      "",
+      "### Prompt",
+      step.prompt.available ? step.prompt.text : "не доступен в источнике",
+      "",
+      "### Answer",
+      step.answer.available ? step.answer.text : "не доступен в источнике",
+      "",
+      "### Usage",
+      `- Input: ${step.usage.input_tokens ?? "не подтверждено"}`,
+      `- Cached: ${step.usage.cached_tokens ?? "не подтверждено"}`,
+      `- Non-cached: ${step.usage.non_cached_input_tokens ?? "не подтверждено"}`,
+      `- Cache ratio: ${step.usage.cached_ratio == null ? "не подтверждено" : pct(step.usage.cached_ratio)}`,
+      `- Output: ${step.usage.output_tokens ?? "не подтверждено"}`,
+      `- Reasoning: ${step.usage.reasoning_tokens ?? "не подтверждено"}`,
+      `- Tools: ${step.usage.tool_tokens ?? "не подтверждено"}`,
+      "",
+      "### Cost breakdown",
+      `- Total: ${step.cost_breakdown.total_usd == null ? "не подтверждено" : money(step.cost_breakdown.total_usd)}`,
+      `- Input: ${step.cost_breakdown.input_usd == null ? "не подтверждено" : money(step.cost_breakdown.input_usd)}`,
+      `- Cached input: ${step.cost_breakdown.cached_input_usd == null ? "не подтверждено" : money(step.cost_breakdown.cached_input_usd)}`,
+      `- Output: ${step.cost_breakdown.output_usd == null ? "не подтверждено" : money(step.cost_breakdown.output_usd)}`,
+      "",
+      "### Environment",
+      `- Thread ID: ${step.environment.thread_id || "—"}`,
+      `- CWD: ${step.environment.cwd || "—"}`,
+      `- Workspace roots: ${(step.environment.workspace_roots || []).join(", ") || "—"}`,
+      `- Current date: ${step.environment.current_date || "—"}`,
+      `- Timezone: ${step.environment.timezone || "—"}`,
+      `- Approval policy: ${step.environment.approval_policy || "—"}`,
+      `- Sandbox policy: ${step.environment.sandbox_policy || "—"}`,
+      `- Permission profile: ${step.environment.permission_profile || "—"}`,
+      `- Model context window: ${step.environment.model_context_window || "—"}`,
+      `- MCP servers: ${(step.environment.observed_mcp_servers || []).join(", ") || "—"}`,
+      `- Plugins count: ${step.environment.enabled_plugins_count || 0}`,
+      `- Skills count: ${step.environment.enabled_skills_count || 0}`,
+      `- Repo context: ${step.environment.repo_context_status || "—"}`,
+      "",
+      "### Step warnings",
+      ...(step.warnings.length ? step.warnings.map(w => `- ${w}`) : ["- none"]),
+      "",
+      "### Compaction / timeline context",
+      ...(step.compaction_timeline.length
+        ? step.compaction_timeline.map(evt => `- ${evt.label} @ ${evt.timestamp || "—"} (task: ${evt.compaction_task_id || "—"})`)
+        : ["- none"]),
+    );
+  });
+
+  return lines.join("\n");
+}
+
+function buildStepExportText(step, session, options = {}) {
+  return buildSessionExportMarkdown(session, [step], options.title || `Step ${step.step_index} export`);
 }
 
 function copyStepSummary(i) {
   const s = sessionDetailCache;
   if (!s || !s.steps) return;
-  copyText(summary("Step summary", s.steps.filter(t => t.step_index === i)));
+  const step = s.steps.find(t => t.step_index === i);
+  if (!step) return;
+  copyText(buildStepExportText(step, s));
 }
 
 function copySessionSummary() {
   const s = sessionDetailCache;
   if (!s || !s.steps) return;
-  copyText(summary("Session summary", s.steps, metricsForSession(s)));
+  copyText(buildSessionExportMarkdown(s, s.steps, "Session export"));
 }
 
 function copySessionJson() {
-  copyText(JSON.stringify(sessionDetailCache, null, 2));
+  const s = sessionDetailCache;
+  if (!s || !s.steps) return;
+  copyText(JSON.stringify(buildSessionExportJson(s, s.steps), null, 2));
 }
 
 function copySessionTable() {
   const s = sessionDetailCache;
   if (!s || !s.steps) return;
-  copyText(table(s.steps));
+  copyText(buildSessionExportMarkdown(s, s.steps, "Session markdown export"));
 }
 
 function copySelectedSummary() {
-  copyText(summary("Selected steps", selectedSteps()));
+  const s = sessionDetailCache;
+  if (!s || !s.steps) return;
+  copyText(buildSessionExportMarkdown(s, selectedSteps(), "Selected steps export"));
 }
 
 function copySelectedJson() {
-  copyText(JSON.stringify(selectedSteps(), null, 2));
+  const s = sessionDetailCache;
+  if (!s || !s.steps) return;
+  copyText(JSON.stringify(buildSessionExportJson(s, selectedSteps()), null, 2));
 }
 
 function copySelectedTable() {
-  copyText(table(selectedSteps()));
+  const s = sessionDetailCache;
+  if (!s || !s.steps) return;
+  copyText(buildSessionExportMarkdown(s, selectedSteps(), "Selected steps export"));
 }
 
 // ── Auto refresh ──
@@ -1060,6 +1269,187 @@ function renderSteps() {
             ${kv("skills_count", env.enabled_skills_count)}
             ${kv("repo_context", env.repo_context_status)}
             ${kv("warnings", (t.warnings || []).join(", ") || "none")}
+          </div>
+        </div>
+      </div>`;
+    root.appendChild(el);
+
+    const extraEvents = timelineByStep.get(Number(idx)) || [];
+    extraEvents.forEach(evt => {
+      const wrap = document.createElement("div");
+      wrap.innerHTML = renderTimelineEvent(evt);
+      root.appendChild(wrap.firstElementChild);
+    });
+  });
+}
+
+function renderHeader() {
+  const s = sessionDetailCache;
+  if (!s) {
+    document.getElementById("title").textContent = "Выберите сессию";
+    const selectedSession = currentSession();
+    document.getElementById("title").textContent = selectedSession && sessionDetailLoading
+      ? "Загрузка сессии..."
+      : document.getElementById("title").textContent;
+    document.getElementById("meta").textContent = selectedSession ? selectedSession.title : "";
+    document.getElementById("stats").innerHTML = "";
+    return;
+  }
+
+  const z = metricsForSession(s);
+  const src = currentSource();
+  const sourceKind = s.source_kind || "archive";
+  const kindLabel = sourceKind === "live" ? "live" : "архив";
+  const hasAmbiguousLiveSteps = sourceKind === "live" && (s.steps || []).some(t => t?.usage?.available === false);
+  const usageNoteParts = [];
+  if (sourceKind === "live" && (s.summary?.usage_basis || s.summary?.step_usage_basis)) {
+    usageNoteParts.push("live totals = cumulative, step usage = request-level");
+  }
+  if (hasAmbiguousLiveSteps) {
+    usageNoteParts.push("часть шагов без точной per-step разбивки");
+  }
+  const usageNote = usageNoteParts.length ? ` · ${usageNoteParts.join(" · ")}` : "";
+
+  document.getElementById("title").textContent = s.title;
+  document.getElementById("meta").textContent = `${src ? src.name : ""} [${kindLabel}] · ${s.id} · ${s.date} · ${s.workdir}${usageNote}`;
+  document.getElementById("stats").innerHTML = [
+    stat("Cost", money(z.cost), "good"),
+    stat("Input", nf.format(z.input), "blue"),
+    stat("Cached", nf.format(z.cached), "good"),
+    stat("Non-cached", nf.format(z.non), "warn"),
+    stat("Cache", pct(z.ratio), "blue"),
+    stat("Output", nf.format(z.output)),
+  ].join("");
+}
+
+function renderSteps() {
+  const root = document.getElementById("steps");
+  root.innerHTML = "";
+  const s = sessionDetailCache;
+  if (!s) {
+    root.innerHTML = `<div class="loading">${currentSession() && sessionDetailLoading ? "Загрузка шагов..." : "Выберите сессию слева"}</div>`;
+    return;
+  }
+  if (!s.steps || !s.steps.length) {
+    root.innerHTML = `<div class="loading">Для этой сессии шаги пока не найдены</div>`;
+    return;
+  }
+
+  const sourceKind = s.source_kind || "archive";
+  const hasAmbiguousLiveSteps = sourceKind === "live" && s.steps.some(t => t?.usage?.available === false);
+  const summaryWarnings = buildTelemetryWarnings(s, null);
+  const usageWarning = hasAmbiguousLiveSteps
+    ? `<div class="empty small" style="margin-bottom:8px">⚠ Для части live-шагов точная per-step разбивка не подтверждена. В таких местах смотри totals всей сессии.</div>`
+    : "";
+  const telemetryWarning = summaryWarnings.length
+    ? `<div class="empty small" style="margin-bottom:8px">${summaryWarnings.map(w => `⚠ ${escapeHtml(w)}`).join("<br>")}</div>`
+    : "";
+
+  if (usageWarning) {
+    const warnEl = document.createElement("div");
+    warnEl.innerHTML = usageWarning;
+    root.appendChild(warnEl);
+  }
+  if (telemetryWarning) {
+    const telemetryEl = document.createElement("div");
+    telemetryEl.innerHTML = telemetryWarning;
+    root.appendChild(telemetryEl);
+  }
+
+  const timelineByStep = new Map();
+  (s.timeline_events || []).forEach(evt => {
+    const key = Number(evt.after_step_index || 0);
+    if (!timelineByStep.has(key)) timelineByStep.set(key, []);
+    timelineByStep.get(key).push(evt);
+  });
+
+  s.steps.forEach(t => {
+    const el = document.createElement("div");
+    const idx = t.step_index;
+    el.className = "step" + (selected.has(idx) ? " selected" : "");
+    el.id = "step-" + idx;
+    const u = t.usage || {};
+    const env = t.environment || {};
+    const usageAvail = u.available !== false;
+    const usageNote = (!usageAvail && u.note) ? `<span class="muted xsmall"> (${u.note})</span>` : "";
+    const postBadges = (t.post_step_badges || []).map(b => `<span class="pill yellow">${escapeHtml(b)}</span>`).join("");
+
+    el.innerHTML = `
+      <div class="step-head" onclick="toggleDetails(${idx})">
+        <input type="checkbox" ${selected.has(idx) ? "checked" : ""} onclick="event.stopPropagation()" onchange="toggleSelect(${idx})">
+        <div>
+          <div class="step-title">
+            <b>Step ${idx}</b>
+            <span class="pill blue">${escapeHtml(t.model)}</span>
+            <span class="pill purple">${escapeHtml(t.reasoning_effort)}</span>
+            ${usageAvail ? '' : '<span class="pill yellow" title="Для этого шага нет подтвержденной per-step token delta">usage⚠</span>'}
+            <span class="pill ${(t.warnings || []).length ? 'yellow' : 'green'}">${(t.warnings || []).length} warn</span>
+            ${postBadges}
+          </div>
+          <div class="metrics">
+            ${metric("Cost", usageMoney(u, "estimated_total_cost_usd"))}
+            ${metric("Input", usageNumber(u, "input_tokens"))}
+            ${metric("Cached", usageNumber(u, "cached_tokens"))}
+            ${metric("Non-cached", usageNumber(u, "non_cached_input_tokens"))}
+            ${metric("Cache", usagePercent(u, "cached_ratio"))}
+            ${metric("Output", usageNumber(u, "output_tokens"))}
+            ${metric("Reasoning", usageNumber(u, "reasoning_tokens"))}
+            ${metric("MCP", nf.format(env.observed_mcp_server_count))}
+          </div>
+          <div class="preview-row">
+            <div class="preview">
+              <span class="label">${t.user_prompt.kind === 'system_composed' ? 'System prompt' : 'Prompt'}</span>
+              <div class="text">${t.user_prompt.available ? escapeHtml(ellipsis(t.user_prompt.text, 90)) : "—"}</div>
+            </div>
+            <div class="preview">
+              <span class="label">Answer</span>
+              <div class="text">${t.assistant_answer.available ? escapeHtml(ellipsis(t.assistant_answer.text, 90)) : "—"}</div>
+            </div>
+          </div>
+        </div>
+        <div class="row-actions">
+          <button class="icon" onclick="event.stopPropagation();copyStepSummary(${idx})">Copy</button>
+        </div>
+      </div>
+      <div class="detail">
+        ${textBlock(t.user_prompt.kind === 'system_composed' ? "System prompt (composed)" : "User prompt", "prompt", t.user_prompt.available, t.user_prompt.text, idx)}
+        ${textBlock("Assistant answer", "answer", t.assistant_answer.available, t.assistant_answer.text, idx)}
+        <div class="detail-grid">
+          <div class="box">
+            <h3>Tokens${usageNote}</h3>
+            ${kv("input_tokens", usageNumber(u, "input_tokens"))}
+            ${kv("cached_tokens", usageNumber(u, "cached_tokens"))}
+            ${kv("non_cached", usageNumber(u, "non_cached_input_tokens"))}
+            ${kv("cached_ratio", usagePercent(u, "cached_ratio"))}
+            ${kv("output_tokens", usageNumber(u, "output_tokens"))}
+            ${kv("reasoning_tokens", usageNumber(u, "reasoning_tokens"))}
+            ${kv("tool_tokens", usageNumber(u, "tool_tokens"))}
+            ${kv("confirmation", usageConfirmationLabel(u))}
+            ${kv("source", u.source || "—")}
+          </div>
+          <div class="box">
+            <h3>Cost</h3>
+            ${kv("input_cost", usageMoney(u, "estimated_input_cost_usd"))}
+            ${kv("cached_cost", usageMoney(u, "estimated_cached_input_cost_usd"))}
+            ${kv("output_cost", usageMoney(u, "estimated_output_cost_usd"))}
+            ${kv("total_cost", usageMoney(u, "estimated_total_cost_usd"))}
+            ${kv("pricing", "config/token_pricing.json")}
+          </div>
+          <div class="box">
+            <h3>Environment</h3>
+            ${kv("thread_id", env.thread_id)}
+            ${kv("cwd", env.cwd || "—")}
+            ${kv("timezone", env.timezone || "—")}
+            ${kv("approval_policy", env.approval_policy || "—")}
+            ${kv("sandbox_policy", env.sandbox_policy || "—")}
+            ${kv("permission_profile", env.permission_profile || "—")}
+            ${kv("model_context_window", env.model_context_window || "—")}
+            ${kv("turn_id", t.turn_id)}
+            ${kv("MCP servers", (env.observed_mcp_servers || []).join(", ") || "none")}
+            ${kv("plugins_count", env.enabled_plugins_count)}
+            ${kv("skills_count", env.enabled_skills_count)}
+            ${kv("repo_context", env.repo_context_status)}
+            ${kv("warnings", buildTelemetryWarnings(s, t).join(" | ") || "none")}
           </div>
         </div>
       </div>`;

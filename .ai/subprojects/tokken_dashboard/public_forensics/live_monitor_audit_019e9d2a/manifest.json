@@ -1,0 +1,20 @@
+{
+  "pack_id": "live_monitor_audit_019e9d2a",
+  "generated_at_local": "2026-06-07 Asia/Yekaterinburg",
+  "session_id": "019e9d2a-17d7-7210-ba5e-bd42e6ce6e5f",
+  "source_id": "codex_live_threads",
+  "source_kind": "live",
+  "origin_commit_before_pack": "35f2b038c9b77bf88ae66c7b0c61c94992562321",
+  "files": [
+    "live_rollout_redacted.jsonl",
+    "live_session_detail.json",
+    "live_session_export.json",
+    "live_session_export.md",
+    "live_step_1_export.md"
+  ],
+  "notes": [
+    "Pack generated from local read-only live source C:/Users/andre/.codex.",
+    "Redaction masks obvious secret-like keys and known user identity fields.",
+    "Markdown export mirrors current app.js export semantics, generated locally for audit convenience."
+  ]
+}

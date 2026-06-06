@@ -182,6 +182,7 @@
 
 ### Active subproject docs
 
+- [`subprojects/tokken_dashboard/public_forensics/live_monitor_audit_019e9d2a/README.md`](subprojects/tokken_dashboard/public_forensics/live_monitor_audit_019e9d2a/README.md) — publishable forensic-pack: redacted live rollout, API-equivalent session detail and export snapshots for external audit of monitor semantics.
 - [`subprojects/tokken_dashboard/tokken_dashboard_readme.md`](subprojects/tokken_dashboard/tokken_dashboard_readme.md) — human-first вход в локальный OTel подпроект.
 - [`subprojects/tokken_dashboard/tokken_dashboard_navigation.md`](subprojects/tokken_dashboard/tokken_dashboard_navigation.md) — карта чтения и связи между doc-слоями подпроекта.
 - [`subprojects/tokken_dashboard/tokken_dashboard_decisions.md`](subprojects/tokken_dashboard/tokken_dashboard_decisions.md) — canonical решения, baseline, запреты и waivers по локальному OTel пути.

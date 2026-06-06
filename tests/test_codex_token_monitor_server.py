@@ -648,6 +648,36 @@ class TestBuildSessionDetail(unittest.TestCase):
         self.assertIn("environment", step0)
 
 
+class TestLiveUsageSemanticsAndRichExport(unittest.TestCase):
+    """Regression tests for live semantics messaging and export helpers."""
+
+    def test_live_fixture_exposes_usage_basis_and_confirmation(self):
+        fixture = TestLiveChatFixture()
+        fixture.setUp()
+        try:
+            source = {"id": "codex_live_threads", "kind": "live", "codex_dir": str(fixture.codex_dir)}
+            detail = _server_mod.build_live_session_detail(source, fixture.thread_id)
+            self.assertIsNotNone(detail)
+            self.assertEqual(detail["summary"]["usage_basis"], "live_total_token_usage_latest")
+            self.assertEqual(detail["summary"]["step_usage_basis"], "live_last_token_usage")
+            self.assertTrue(any(w.get("id") == "live_totals_are_cumulative" for w in detail["summary"]["warnings"]))
+            self.assertEqual(detail["steps"][0]["usage"]["confirmation_status"], "confirmed_request_usage")
+            self.assertEqual(detail["steps"][0]["usage"]["source"], "live_last_token_usage")
+        finally:
+            fixture.tearDown()
+
+    def test_frontend_has_rich_export_helpers(self):
+        app_js = (REPO_ROOT / "static" / "codex-token-monitor" / "app.js").read_text(encoding="utf-8")
+        self.assertIn("function buildStepExportText(step, session, options = {})", app_js)
+        self.assertIn("function buildSessionExportJson(session, steps)", app_js)
+        self.assertIn("function buildSessionExportMarkdown(session, steps, title)", app_js)
+        self.assertIn("function buildTelemetryWarnings(session, step)", app_js)
+        self.assertIn("function usageConfirmationLabel(usage)", app_js)
+        self.assertIn("copyText(buildStepExportText(step, s));", app_js)
+        self.assertIn("copyText(JSON.stringify(buildSessionExportJson(s, s.steps), null, 2));", app_js)
+        self.assertIn("copyText(buildSessionExportMarkdown(s, selectedSteps(), \"Selected steps export\"));", app_js)
+
+
 # Static version of _refresh_session for testing without the full handler class
 def _refresh_session_static(project, session_id):
     project_path = Path(project["path"])
