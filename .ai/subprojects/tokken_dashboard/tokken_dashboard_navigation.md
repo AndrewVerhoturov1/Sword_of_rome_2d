@@ -3,7 +3,7 @@
 Slug: `tokken_dashboard`  
 Owner: `Orc`  
 Status: `draft`  
-Last updated: `2026-06-05`
+Last updated: `2026-06-07`
 
 ## Quick Navigation
 
@@ -48,7 +48,7 @@ Navigation не заменяет:
 ## Current lifecycle stage
 
 ```text
-Stage 1 - tool environment + instruction inventory working
+Stage 1 - hybrid monitor baseline accepted; live semantics hardening pending
 ```
 
 Gate state:
@@ -247,7 +247,8 @@ Additional route:
   [manifest.json](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/public_forensics/live_monitor_audit_019e9d2a/manifest.json) ->
   [live_rollout_redacted.jsonl](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/public_forensics/live_monitor_audit_019e9d2a/live_rollout_redacted.jsonl) ->
   [live_session_detail.json](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/public_forensics/live_monitor_audit_019e9d2a/live_session_detail.json) ->
-  [live_session_export.md](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/public_forensics/live_monitor_audit_019e9d2a/live_session_export.md)
+  [live_session_export.md](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/public_forensics/live_monitor_audit_019e9d2a/live_session_export.md) ->
+  [2026-06-07_V1-20260607-live-monitor-audit-r2_forensic-audit-of-live-token-monitor.md](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/external_chats/notebook/2026-06-07_V1-20260607-live-monitor-audit-r2_forensic-audit-of-live-token-monitor.md)
 
 <a id="maintenance-rule"></a>
 
@@ -304,7 +305,13 @@ Keep v1 as the archive viewer. Build v2 as a hybrid monitor with two explicit so
 Focused next route:
 
 ```text
-Do not reopen the source split. The next slice is narrower: verify live cached-token semantics on short chats and redesign copy/export so a single step, selected steps, or a whole session can be exported with full prompt/answer/usage/cost/environment detail.
+Do not reopen the source split. The next slice is narrower: keep the hybrid baseline, treat first-step cached spikes as likely hidden-context live telemetry unless disproved, and harden UI/export wording around confidence, cumulative-vs-step basis and rich copy/export payloads.
+```
+
+New safe reading route:
+
+```text
+Read D-20260606-001 -> J-20260606-001 -> forensic pack README -> V1-20260607-live-monitor-audit-r2 notebook entry -> BUG-20260607-001 before touching live cache semantics or export wording.
 ```
 
 ## Maintenance rule

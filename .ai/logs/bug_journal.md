@@ -8,6 +8,64 @@ Do not record every tiny typo. Record issues that may help future debugging.
 
 ## Entries
 
+### BUG-20260607-001 - Live monitor may overstate certainty for cached tokens and step attribution
+
+Status: open
+
+Area:
+`scripts/codex_token_monitor_server.py`, `static/codex-token-monitor/app.js`, live monitor semantics/export
+
+Symptoms:
+- короткий первый видимый шаг live-чата может показывать очень большой `Cached` и `Cache ratio`, как будто кэш относится только к видимому prompt;
+- summary и шаги выглядят одинаково точными, хотя у них разная semantic basis;
+- подписи вроде `confirmed_request_usage` и `Cost confirmed: yes` могут звучать сильнее, чем реально позволяет live telemetry.
+
+Observed recurrence:
+- confirmed on forensic thread `019e9d2a-17d7-7210-ba5e-bd42e6ce6e5f`;
+- external audit notebook entry `V1-20260607-live-monitor-audit-r2` classified this as mixed case leaning real telemetry semantics, not simple mapping bug.
+
+Cause:
+- live per-step usage для видимого шага берётся из request-level `last_token_usage`, и это похоже на реальную telemetry semantics;
+- первый видимый шаг не равен cold-start request: в live rollout перед видимым prompt есть большой скрытый `system / developer / plugin / runtime` context;
+- monitor всё ещё может выглядеть слишком уверенно, потому что UI/export не везде ясно отделяют:
+  - `first visible step` от полного provider request;
+  - `request-level usage found` от точной привязки всех токенов к видимой карточке;
+  - `usage source confirmed` от `cost estimated from local pricing`;
+  - `session cumulative totals` от `visible step totals`.
+
+Fix:
+- not fixed yet;
+- future fix should keep current live/archive split, but make semantics more explicit in UI/export;
+- especially important:
+  - label first live step as first visible step, not implicit cold start;
+  - warn that cached input may include hidden/system/runtime context;
+  - never present cumulative fallback as confirmed per-step usage;
+  - separate confirmed usage source from estimated cost wording;
+  - fix export warning mojibake if still present.
+
+Verification:
+- external audit reviewed published forensic pack and recorded verdict in:
+  - [2026-06-07_V1-20260607-live-monitor-audit-r2_forensic-audit-of-live-token-monitor.md](D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/external_chats/notebook/2026-06-07_V1-20260607-live-monitor-audit-r2_forensic-audit-of-live-token-monitor.md)
+- local published artifacts referenced by that audit:
+  - [README.md](D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/public_forensics/live_monitor_audit_019e9d2a/README.md)
+  - [live_rollout_redacted.jsonl](D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/public_forensics/live_monitor_audit_019e9d2a/live_rollout_redacted.jsonl)
+  - [live_session_detail.json](D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/public_forensics/live_monitor_audit_019e9d2a/live_session_detail.json)
+- tests not run for this journal-only update.
+
+Human check:
+not needed
+
+Related files:
+- [bug_journal.md](D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/logs/bug_journal.md)
+- [codex_token_monitor_server.py](D:/Codex+Kilocode/projects/sword-of-rome-web/scripts/codex_token_monitor_server.py)
+- [app.js](D:/Codex+Kilocode/projects/sword-of-rome-web/static/codex-token-monitor/app.js)
+- [2026-06-07_V1-20260607-live-monitor-audit-r2_forensic-audit-of-live-token-monitor.md](D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/external_chats/notebook/2026-06-07_V1-20260607-live-monitor-audit-r2_forensic-audit-of-live-token-monitor.md)
+
+Notes for future agents:
+- `cached_tokens` on first visible live step is not enough evidence of mapping bug by itself;
+- treat this as semantics/communication risk first, arithmetic bug second;
+- if a later fix changes wording or confidence flags, verify both UI and export, not only backend JSON.
+
 ### BUG-20260606-009 - Monitor defaulted to empty live chat and showed infinite loading instead of honest no-steps state
 
 Status: fixed

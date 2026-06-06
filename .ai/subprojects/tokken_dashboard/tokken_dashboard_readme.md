@@ -4,7 +4,7 @@ Slug: `tokken_dashboard`
 Owner: `Orc`  
 Audience: human first  
 Status: `draft`  
-Lifecycle stage: `Stage 1 - tool environment + instruction inventory working`
+Lifecycle stage: `Stage 1 - hybrid monitor baseline accepted; live semantics hardening pending`
 Active route: `Planner -> Orc`
 
 ## Quick Navigation
@@ -137,7 +137,7 @@ Active route: `Planner -> Orc`
 ## Current safe next step
 
 ```text
-Следующий безопасный шаг: temporary no-plugin/no-extra-tools run. Tool Environment Inventory показал, что после physical MCP removal observed MCP inventory упал до 3, но input tokens не снизились, а plugins все еще включены. Значит сначала надо отделить plugin overhead от runtime/internal слоя, и только потом возвращаться к group attribution. Dashboard все еще не делать.
+Следующий безопасный шаг: не запускать новый OTel и не трогать source split. Сначала harden live monitor semantics: явно подписать `first visible step`, `hidden context possible`, `session cumulative vs step request-level`, отделить confirmed usage source от estimated cost и проверить rich export wording/encoding.
 ```
 
 <a id="role-warning"></a>
@@ -225,7 +225,19 @@ Current open follow-up:
 - verify how `cached_tokens` should be interpreted on very short live chats;
 - redesign `Copy`, `Session`, `Selected JSON`, and `Selected MD` so they export full step detail, not only compact summaries.
 
+External forensic audit update:
+
+- current accepted interpretation is mixed-case, leaning real telemetry semantics, not a simple mapping bug;
+- a very short first visible live prompt may still show large `cached_tokens`, because the request-level boundary can include hidden `system / developer / plugin / runtime` context before that visible prompt;
+- the biggest remaining risk is not fake arithmetic by itself, but labels/export that look more certain than the underlying live evidence really is;
+- accepted rich export direction:
+  - `Copy` of one step = full step export;
+  - `Session` = detailed session export;
+  - `Selected JSON` = detailed selected-step JSON;
+  - `Selected MD` = detailed selected-step Markdown.
+
 See [D-20260606-001](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/tokken_dashboard_decisions.md#d-20260606-001) and [J-20260606-001](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/tokken_dashboard_journal.md#j-20260606-001).
+See also [D-20260607-001](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/tokken_dashboard_decisions.md#d-20260607-001), [J-20260607-001](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/tokken_dashboard_journal.md#j-20260607-001), and [BUG-20260607-001](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/logs/bug_journal.md).
 
 <a id="token-cost-normalizer-v1"></a>
 

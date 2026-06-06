@@ -48,6 +48,7 @@ active follow-up
 |---|---|
 | 001 | Prepared planning artifact and Kilo handoff for `Codex Token Monitor v2` hybrid live/archive implementation. |
 | 002 | Direct Codex hardening turned the hybrid monitor into a working live/archive baseline; remaining open slice is `cache semantics + rich export`. |
+| 003 | External forensic audit and documentation pass confirmed hybrid baseline, explained `cached_tokens` as mixed-case live semantics, and narrowed next slice to semantic honesty plus rich export wording. |
 
 ## User Overrides
 
@@ -57,11 +58,13 @@ active follow-up
 - Не запускать новый OTel.
 - Не менять live Codex config.
 - Не писать в `C:/Users/andre/.codex/**`.
+- Для follow-up по `cached_tokens` и export сначала обновлять semantic wording и документацию, а не переделывать source split.
 
 ## Checkpoint State
 
 - `Codex Token Monitor Server v1` принят как archive viewer baseline.
 - Принято решение [D-20260605-004](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/tokken_dashboard_decisions.md#d-20260605-004): следующая версия должна разделять реальные чаты и архивные run artifacts.
+- Принято решение [D-20260607-001](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/tokken_dashboard_decisions.md#d-20260607-001): live cache spikes сначала трактовать как semantics/confidence risk, а не как доказанный math bug.
 - Следующий ожидаемый шаг: один Kilo implementation run по handoff `0047_codex_token_monitor_v2_live_threads.md`.
 ## Review checkpoint - 2026-06-06
 
@@ -70,3 +73,14 @@ active follow-up
 - The next focused follow-up is narrower:
   - verify live `cached_tokens` semantics on short chats;
   - redesign monitor copy/export actions to emit full useful step/session detail.
+
+## Review checkpoint - 2026-06-07
+
+- External notebook audit `V1-20260607-live-monitor-audit-r2` read the published forensic pack and leaned toward real live telemetry semantics, not a simple mapping bug.
+- Accepted interpretation update:
+  - first visible live step is not equal to cold-start provider request;
+  - high `cached_tokens` may include hidden `system / developer / plugin / runtime` context;
+  - current risk is semantic overconfidence in UI/export wording.
+- This slice is now explicitly tracked as:
+  - `cache semantics + rich export`
+  - with doc + wording hardening before any further behavioral changes.

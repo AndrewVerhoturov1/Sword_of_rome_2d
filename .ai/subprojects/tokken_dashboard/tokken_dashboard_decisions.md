@@ -3,7 +3,7 @@
 Slug: `tokken_dashboard`  
 Owner: `Orc`  
 Status: `active`  
-Last updated: `2026-06-05`
+Last updated: `2026-06-07`
 Decision layer: `subproject-level accepted decisions`
 
 ## Quick Navigation
@@ -21,6 +21,7 @@ Decision layer: `subproject-level accepted decisions`
 - [D-20260605-001](#d-20260605-001)
 - [D-20260605-004](#d-20260605-004)
 - [D-20260606-001](#d-20260606-001)
+- [D-20260607-001](#d-20260607-001)
 - [Corrected Decisions](#corrected-decisions)
 - [Rejected Options](#rejected-options)
 - [Waivers](#waivers)
@@ -395,6 +396,20 @@ Decision layer: `subproject-level accepted decisions`
 - Reason: user review showed that cumulative totals make short prompts look absurdly expensive, and current copy/export output is too weak to use as a practical forensic tool.
 - Consequence: live cache/cost interpretation must remain conservative; request-local usage stays nullable, and export payloads must preserve uncertainty notes instead of hiding them.
 - Boundary: this decision does not authorize invented pricing, synthetic prompt reconstruction, or writes into `C:/Users/andre/.codex/**`.
+- Human approval: `recorded`
+
+<a id="d-20260607-001"></a>
+
+### D-20260607-001 - Live cached-token spikes must be treated as first-visible-step semantics risk before they are treated as math failure
+
+- Status: `accepted`
+- Source: `external forensic audit V1-20260607-live-monitor-audit-r2 + local review`
+- Decision: in live mode, a very short first visible prompt with high `cached_tokens` is not enough evidence of monitor math failure by itself. Accepted baseline is mixed-case live telemetry semantics: request-level `last_token_usage` may include hidden `system / developer / plugin / runtime` context that is not shown as the visible prompt text.
+- Decision: UI and export must clearly separate `first visible step`, `request-level usage found`, `session cumulative totals`, and `estimated cost from local pricing`. These meanings must not collapse into one exact-looking label.
+- Decision: if per-step display falls back to cumulative totals, that fallback must never be presented as confirmed per-step usage.
+- Reason: external audit of forensic pack `live_monitor_audit_019e9d2a` leaned toward real telemetry semantics rather than a simple mapping bug, and identified semantic overconfidence as the main remaining monitor risk.
+- Consequence: next safe monitor slice is semantic hardening and export honesty, not source-split redesign and not a new OTel experiment.
+- Boundary: this decision keeps the accepted hybrid baseline, does not reopen live/archive split, does not change live Codex config, and does not authorize writes into `C:/Users/andre/.codex/**`.
 - Human approval: `recorded`
 
 ## Maintenance rule

@@ -27,6 +27,7 @@ Started: `2026-06-03`
 - [J-20260605-004](#j-20260605-004)
 - [J-20260605-005](#j-20260605-005)
 - [J-20260606-001](#j-20260606-001)
+- [J-20260607-001](#j-20260607-001)
 - [Bugs And Difficulties](#bugs-and-difficulties)
 - [Open Follow-ups](#open-follow-ups)
 
@@ -737,6 +738,44 @@ found and fixed partly
   - current copy/export flow is still too summary-heavy for forensic usage and needs a dedicated redesign.
 - Human verdict: `recorded`
 
+<a id="j-20260607-001"></a>
+
+### J-20260607-001 - External forensic audit clarified live cache semantics and locked rich export as the accepted direction
+
+- Stage: `Stage 1 - live monitor semantics audit`
+- Role: `Orc`
+- Execution route: `direct review + external V1 audit + documentation follow-up`
+- Related decisions:
+  - [D-20260606-001](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/tokken_dashboard_decisions.md#d-20260606-001)
+  - [D-20260607-001](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/tokken_dashboard_decisions.md#d-20260607-001)
+- Confirmed:
+  - accepted baseline did not change: monitor remains a hybrid viewer with `Реальные чаты Codex` and `Архив тестов OTel`;
+  - external audit on live forensic thread `019e9d2a-17d7-7210-ba5e-bd42e6ce6e5f` leaned toward mixed-case real telemetry semantics, not a simple mapping bug;
+  - a short first visible live prompt can still show large `cached_tokens`, because request-level `last_token_usage` may include hidden `system / developer / plugin / runtime` context before the visible prompt;
+  - accepted export direction is now explicit:
+    - `Copy` of one step = full step export with prompt, answer, model, reasoning, usage, cost breakdown, environment, warnings and nearby compaction/timeline context when present;
+    - `Session` = detailed session export instead of a short summary;
+    - `Selected JSON` = detailed selected-step JSON with source/basis/confirmation fields;
+    - `Selected MD` = detailed selected-step Markdown instead of aggregate-only text.
+- Verification:
+  - reviewed external notebook entry:
+    [2026-06-07_V1-20260607-live-monitor-audit-r2_forensic-audit-of-live-token-monitor.md](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/external_chats/notebook/2026-06-07_V1-20260607-live-monitor-audit-r2_forensic-audit-of-live-token-monitor.md)
+  - reviewed forensic pack index:
+    [README.md](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/public_forensics/live_monitor_audit_019e9d2a/README.md)
+  - reviewed durable bug note:
+    [BUG-20260607-001](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/logs/bug_journal.md)
+- Result:
+  - accepted baseline now includes a stricter interpretation rule: high first-step `cached_tokens` in live mode are plausible telemetry if hidden request context exists;
+  - open slice is narrower and documentation-safe:
+    - make first-visible-step semantics explicit in UI/export;
+    - separate `usage source confirmed` from `cost estimated`;
+    - never present cumulative fallback as confirmed per-step usage;
+    - fix any remaining export mojibake if still present.
+- Bugs and difficulties:
+  - during review the wrong V1 source was opened once before the correct notebook entry was read;
+  - external audit confirmed that remaining risk is mostly semantic honesty, not source-split design.
+- Human verdict: `recorded`
+
 <a id="open-follow-ups"></a>
 
 ## Open follow-ups
@@ -744,3 +783,4 @@ found and fixed partly
 - Если подпроект пойдет дальше, завести безопасный локальный file capture для сырого потока.
 - Отдельно решить, какие поля маскировать до любого постоянного сбора.
 - Не включать dashboard-этап, пока нет решения по raw capture и privacy.
+- Для live monitor follow-up не трогать source split и не запускать новый OTel; следующий safe step только в semantic hardening UI/export вокруг `cached_tokens`, confidence и rich export wording.
