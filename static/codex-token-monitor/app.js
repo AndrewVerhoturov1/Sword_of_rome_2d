@@ -19,11 +19,17 @@ let sessionDetailCache = null;
 let sessionDetailLoading = false;
 let statusCache = { collector: "unknown", prompt_logging: true, last_update: "" };
 let currentWorkdirFilter = ALL_WORKDIRS_VALUE;
+// Track expanded step details across re-renders (auto-refresh)
+let expandedSteps = new Set();
+let openTextBlocks = new Set();
 
 // ── Formatters ──
 const nf = new Intl.NumberFormat("ru-RU");
 const money = n => "$" + Number(n || 0).toFixed(5);
+const moneyOrNA = n => (n != null) ? "$" + Number(n).toFixed(5) : "—";
 const pct = n => (Number(n || 0) * 100).toFixed(1) + "%";
+const numOrNA = n => (n != null && n !== 0) ? nf.format(n) : (n === 0 ? "0" : "—");
+const numWithSign = n => (n != null) ? ((n >= 0 ? "+" : "") + nf.format(n)) : "—";
 
 // ── API helpers ──
 async function api(path) {
@@ -391,6 +397,8 @@ function renderSessions() {
     el.onclick = async () => {
       currentSessionId = s.id;
       selected.clear();
+      expandedSteps.clear();
+      openTextBlocks.clear();
       sessionDetailCache = null;
       sessionDetailLoading = true;
       renderAll();
@@ -495,6 +503,17 @@ function textBlock(title, kind, available, text, stepIndex) {
   </div>`;
 }
 
+function wideBlock(label, suffix, content, stepIdx) {
+  const id = suffix + '-' + stepIdx;
+  return `<div class="text-block" id="${id}">
+    <div class="text-head" onclick="toggleText('${id}')">
+      <div><b>${label}</b></div>
+      <button class="ghost" onclick="event.stopPropagation();toggleText('${id}')">Показать</button>
+    </div>
+    <div class="text-body">${content}</div>
+  </div>`;
+}
+
 function renderTimelineEvent(evt) {
   const ids = [];
   if (evt.compaction_task_id) ids.push(`task: ${escapeHtml(evt.compaction_task_id)}`);
@@ -587,6 +606,7 @@ function renderSteps() {
           </div>
         </div>
         <div class="row-actions">
+          <button class="icon" onclick="event.stopPropagation();openStepPopup(${idx})">Подробно</button>
           <button class="icon" onclick="event.stopPropagation();copyStepSummary(${idx})">Copy</button>
         </div>
       </div>
@@ -688,12 +708,26 @@ function renderAll() {
 // ── Interactions ──
 function toggleDetails(i) {
   const el = document.getElementById("step-" + i);
-  if (el) el.classList.toggle("open");
+  if (el) {
+    el.classList.toggle("open");
+    if (el.classList.contains("open")) {
+      expandedSteps.add(i);
+    } else {
+      expandedSteps.delete(i);
+    }
+  }
 }
 
 function toggleText(id) {
   const el = document.getElementById(id);
-  if (el) el.classList.toggle("open");
+  if (el) {
+    el.classList.toggle("open");
+    if (el.classList.contains("open")) {
+      openTextBlocks.add(id);
+    } else {
+      openTextBlocks.delete(id);
+    }
+  }
 }
 
 function toggleSelect(i) {
@@ -776,6 +810,461 @@ function buildTimelineContext(session, step) {
     }));
 }
 
+function buildAgentActivityMarkdown(step) {
+  const aa = step.agent_activity || {};
+  if (!aa.available) return ["- данные недоступны"];
+  const ac = aa.activity_counts || {};
+  const lines = [];
+
+  // Summary
+  const summaryLines = aa.activity_summary_ru || [];
+  if (summaryLines.length) {
+    lines.push("Кратко:");
+    summaryLines.forEach((s, i) => lines.push(`${i + 1}. ${s}`));
+    lines.push("");
+  }
+
+  // Internal actions table
+  const sia = aa.step_internal_actions || [];
+  const rwu = aa.requests_with_usage || 0;
+  const mre = aa.model_related_events || 0;
+  if (sia.length > 0) {
+    // Timeline
+    const tl = aa.agent_timeline || {};
+    const tlItems = tl.items || [];
+    if (tlItems.length > 0) {
+      lines.push("### Человеческая хронология работы");
+      lines.push("");
+      lines.push("| # | Время | Действие | Объекты | AI | Cost | Нов. input | Output | Δt | Увер. |");
+      lines.push("|---|---|---|---:|---:|---:|---:|---:|");
+      tlItems.forEach(it => {
+        const lu = it.linked_request_usage || {};
+        const lc = it.linked_cost || {};
+        const dur = it.duration || {};
+        const ts = it.timestamp ? new Date(it.timestamp).toLocaleTimeString('ru-RU') : '';
+        const dt = dur.available ? (dur.seconds_since_previous_item >= 60 ? Math.round(dur.seconds_since_previous_item / 60) + 'm' : '+' + Math.round(dur.seconds_since_previous_item) + 's') : '';
+        const displayTitle = it.display_title_ru || it.recognized_action_ru || '—';
+        const aiLabel = it.linked_model_request_index ? '#' + it.linked_model_request_index : '—';
+        const nonCached = lu.available ? (lu.non_cached_input_tokens || 0) : 0;
+        lines.push(`| ${it.index} | ${ts} | ${displayTitle.substring(0, 50)} | ${(it.object_label || '').substring(0, 40)} | ${aiLabel} | ${lc.total_usd != null ? '$' + Number(lc.total_usd).toFixed(5) : '—'} | ${lu.available ? nf.format(nonCached) : '—'} | ${lu.available ? nf.format(lu.output_tokens || 0) : '—'} | ${dt} | ${it.confidence || it.recognition_confidence || 'low'} |`);
+      });
+      lines.push("");
+      lines.push("### Что означает AI #");
+      lines.push("");
+      lines.push("AI # — это техническое скрытое обращение Codex к модели, по которому известны токены и стоимость.");
+      lines.push("В хронологии оно используется как источник cost/usage для человеческого действия.");
+      lines.push("");
+
+      // Technical AI calls
+      const tac = aa.technical_ai_calls || {};
+      const tacItems = tac.items || [];
+      if (tacItems.length > 0) {
+        lines.push("### Технические AI-обращения");
+        lines.push("");
+        lines.push("| AI | Cost | Input | Нов. input | Output | Связан |");
+        lines.push("|---:|---:|---:|---:|---:|");
+        tacItems.forEach(ai => {
+          lines.push(`| #${ai.ai_index} | ${ai.cost_total_usd != null ? '$' + Number(ai.cost_total_usd).toFixed(5) : '—'} | ${nf.format(ai.input_tokens || 0)} | ${nf.format(ai.non_cached_input_tokens || 0)} | ${nf.format(ai.output_tokens || 0)} | ${ai.linked_to_human_item ? '✓' : '—'} |`);
+        });
+        lines.push("");
+      }
+    }
+
+    // Stages
+    const stages = aa.agent_activity_stages || [];
+    if (stages.length > 0) {
+      lines.push("### Этапы работы агента");
+      lines.push("");
+      lines.push("| Этап | Запросы | Cost | Input | Output | Уверенность |");
+      lines.push("|---|---:|---:|---:|---:|");
+      stages.forEach(s => {
+        lines.push(`| ${s.title_ru} | ${s.request_range || ''} | $${Number(s.cost_total_usd || 0).toFixed(5)} | ${nf.format(s.input_tokens || 0)} | ${nf.format(s.output_tokens || 0)} | ${s.confidence || 'low'} |`);
+      });
+      lines.push("");
+      lines.push("> Этапы построены по тексту ответа агента; точная привязка каждого внутреннего запроса не подтверждена.");
+      lines.push("");
+    }
+
+    lines.push(`### Внутренние запросы модели по времени (${rwu} запросов с usage` + (mre !== rwu ? `, ${mre} model-событий` : '') + ')');
+    lines.push("");
+    lines.push("| # | Запрос | Возможный этап | Cost | Input | Non-cached | Cached | Output | Уверенность |");
+    lines.push("|---|--------|----------------|------|-------|------------|--------|--------|------------|");
+    sia.forEach(a => {
+      const u = a.usage || {};
+      const c = a.cost || {};
+      lines.push(`| ${a.index} | ${a.title_ru || ''} | ${a.possible_stage_ru || '—'} | ${c.total_usd != null ? '$' + Number(c.total_usd).toFixed(5) : '—'} | ${nf.format(u.input_tokens || 0)} | ${nf.format(u.non_cached_input_tokens || 0)} | ${nf.format(u.cached_tokens || 0)} | ${nf.format(u.output_tokens || 0)} | ${a.stage_confidence || 'low'} |`);
+    });
+    lines.push("");
+
+    const te = aa.top_expensive_internal_actions || [];
+    if (te.length > 0) {
+      lines.push("### Самые дорогие внутренние запросы");
+      lines.push("");
+      lines.push("| # | Запрос | Возможный этап | Cost | Причина |");
+      lines.push("|---|--------|----------------|------|--------|");
+      te.slice(0, 10).forEach(a => {
+        const ac = a.cost || {};
+        lines.push(`| ${a.index} | ${(a.title_ru || '').substring(0, 50)} | ${(a.possible_stage_ru || '').substring(0, 40)} | ${ac.total_usd != null ? '$' + Number(ac.total_usd).toFixed(5) : '—'} | ${a.expensive_reason || '—'} |`);
+      });
+      lines.push("");
+    }
+  }
+
+  // Mentioned files
+  const paths = aa.important_paths || [];
+  if (paths.length) {
+    lines.push("Упомянутые / задействованные файлы:");
+    paths.slice(0, 8).forEach(p => lines.push(`- ${p}`));
+    lines.push("");
+  }
+
+  // Commands
+  const cmds = aa.important_commands || [];
+  if (cmds.length) {
+    lines.push("Команды и проверки:");
+    cmds.slice(0, 5).forEach(c => lines.push(`- \`${c}\``));
+    lines.push("");
+  }
+
+  // Technical
+  const classified = (ac.file_reads || 0) + (ac.file_writes || 0) + (ac.shell_commands || 0) +
+    (ac.git_operations || 0) + (ac.test_runs || 0) + (ac.context_compactions || 0) +
+    (ac.internal_prompts || 0) + (ac.environment_events || 0);
+  const unclassified = (aa.unclassified_raw_events || 0) + (ac.unknown_events || 0);
+  lines.push("Технические события:");
+  lines.push(`- Внутренних запросов модели: ${ac.model_requests || 0}`);
+  lines.push(`- Сырых событий: ${aa.event_range?.raw_events_count || 0}`);
+  lines.push(`- Распознано действий: ${classified}`);
+  if (unclassified > 0) lines.push(`- Нераспознано событий: ${unclassified}`);
+  lines.push("");
+
+  // Notes
+  (aa.notes_ru || []).forEach(n => lines.push(`> ${n}`));
+
+  return lines;
+}
+
+function buildStepSummaryBlock(t) {
+  const aa = t.agent_activity || {};
+  const fsc = t.full_step_cost || {};
+  const fsu = t.full_step_usage || {};
+  const lines = [];
+  lines.push(kv("полная стоимость шага", moneyOrNA(fsc.total_usd)));
+  lines.push(kv("внутренних запросов", nf.format(fsu.request_count || 0)));
+  const te = aa.top_expensive_internal_actions || [];
+  if (te.length > 0) {
+    lines.push(kv("самый дорогой", '#' + te[0].index + ' — ' + (te[0].cost && te[0].cost.total_usd ? '$' + Number(te[0].cost.total_usd).toFixed(5) : '—')));
+  }
+  const stages = aa.agent_activity_stages || [];
+  if (stages.length) lines.push(kv("этапов", nf.format(stages.length)));
+  const tl = aa.agent_timeline || {};
+  if ((tl.items || []).length) lines.push(kv("событий в хронологии", nf.format(tl.items.length)));
+  lines.push('<div class="muted xsmall" style="margin-top:4px">Нажмите «Подробно» для полной информации.</div>');
+  return lines.join("");
+}
+
+// ── v2.2: Agent activity block ──
+function buildAgentActivityBlock(t) {
+  const aa = t.agent_activity || {};
+  if (!aa.available) {
+    return kv("данные", "недоступны");
+  }
+  const ac = aa.activity_counts || {};
+  const lines = [];
+
+  // ── Summary ──
+  const summaryLines = aa.activity_summary_ru || [];
+  if (summaryLines.length) {
+    lines.push('<div class="muted" style="font-weight:600;margin-bottom:2px">Кратко:</div>');
+    summaryLines.forEach((s, i) => {
+      lines.push('<div class="muted xsmall">' + (i + 1) + '. ' + escapeHtml(s) + '</div>');
+    });
+    lines.push('<hr class="thin">');
+  }
+
+  // ── Mentioned / involved files ──
+  const paths = aa.important_paths || [];
+  if (paths.length > 0) {
+    lines.push('<div class="muted" style="font-weight:600">Упомянутые / задействованные файлы:</div>');
+    paths.slice(0, 8).forEach(p => {
+      lines.push('<div class="muted xsmall" style="font-family:monospace">' + escapeHtml(p) + '</div>');
+    });
+  }
+
+  // ── Commands and checks ──
+  const cmds = aa.important_commands || [];
+  if (cmds.length > 0) {
+    lines.push('<div class="muted" style="font-weight:600;margin-top:4px">Команды и проверки:</div>');
+    cmds.slice(0, 5).forEach(c => {
+      lines.push('<div class="muted xsmall" style="font-family:monospace">' + escapeHtml(c) + '</div>');
+    });
+  }
+
+  // ── Technical events ──
+  lines.push('<hr class="thin">');
+  lines.push('<div class="muted" style="font-weight:600">Технические события:</div>');
+  lines.push(kv("внутренних запросов модели", nf.format(ac.model_requests || 0)));
+  lines.push(kv("сырых событий", nf.format(aa.event_range?.raw_events_count || 0)));
+
+  const classified = (ac.file_reads || 0) + (ac.file_writes || 0) + (ac.shell_commands || 0) +
+    (ac.git_operations || 0) + (ac.test_runs || 0) + (ac.context_compactions || 0) +
+    (ac.internal_prompts || 0) + (ac.environment_events || 0);
+  const unclassified = (aa.unclassified_raw_events || 0) + (ac.unknown_events || 0);
+  lines.push(kv("распознано действий", nf.format(classified)));
+  if (unclassified > 0) {
+    lines.push(kv("нераспознано событий", nf.format(unclassified)));
+  }
+
+  // ── Tool breakdown ──
+  const items = aa.activity_items || [];
+  if (items.length > 0) {
+    const toolCounts = {};
+    items.forEach(it => {
+      const tn = it.tool_name || it.category || '?';
+      toolCounts[tn] = (toolCounts[tn] || 0) + 1;
+    });
+    const topTools = Object.entries(toolCounts).sort((a, b) => b[1] - a[1]).slice(0, 6);
+    if (topTools.length) {
+      lines.push('<span class="muted xsmall">Инструменты:</span>');
+      topTools.forEach(([tn, cnt]) => {
+        lines.push('<div class="muted xsmall" style="font-family:monospace">' + escapeHtml(tn) + ' ×' + cnt + '</div>');
+      });
+    }
+
+    // Collapsible detailed items
+    const detailId = 'activity-detail-' + t.step_index;
+    lines.push('<button class="small" onclick="var el=document.getElementById(\'' + detailId + '\');el.style.display=el.style.display===\'none\'?\'block\':\'none\'">Показать события (' + items.length + ')</button>');
+    lines.push('<div id="' + detailId + '" style="display:none;max-height:300px;overflow-y:auto;font-size:11px;margin-top:4px">');
+    items.forEach(it => {
+      const tn = it.tool_name ? '<b>' + escapeHtml(it.tool_name) + '</b>: ' : '';
+      const st = it.status === 'reported_by_agent' ? ' <span style="color:#888">[со слов агента]</span>' : '';
+      lines.push('<div style="padding:1px 0;border-bottom:1px solid #eee">' + tn + escapeHtml(it.detail || '') + st + '</div>');
+    });
+    lines.push('</div>');
+  }
+
+  // ── Timeline ──
+  const tl = aa.agent_timeline || {};
+  const tlItems = tl.items || [];
+  if (tlItems.length > 0) {
+    const tlId = 'tl-' + t.step_index;
+    lines.push('<hr class="thin">');
+    lines.push('<div class="muted" style="font-weight:600">Хронология работы (' + tlItems.length + ' событий)</div>');
+    lines.push('<button class="small" onclick="var el=document.getElementById(\'' + tlId + '\');el.style.display=el.style.display===\'none\'?\'block\':\'none\'">Показать</button>');
+    lines.push('<div id="' + tlId + '" style="display:none;max-height:450px;overflow:auto;font-size:10px;margin-top:4px">');
+    lines.push('<table style="width:100%;border-collapse:collapse"><thead><tr style="background:#333">');
+    lines.push('<th style="text-align:right;padding:2px 4px">#</th><th style="text-align:left;padding:2px 4px;min-width:70px">Время</th>');
+    lines.push('<th style="text-align:left;padding:2px 4px">Действие</th><th style="text-align:left;padding:2px 4px;min-width:60px">Объекты</th>');
+    lines.push('<th style="text-align:center;padding:2px 4px;min-width:30px">AI</th>');
+    lines.push('<th style="text-align:right;padding:2px 4px">Cost</th><th style="text-align:right;padding:2px 4px">Нов. input</th>');
+    lines.push('<th style="text-align:right;padding:2px 4px">Output</th><th style="text-align:right;padding:2px 4px">Δt</th>');
+    lines.push('<th style="text-align:center;padding:2px 4px">Увер.</th></tr></thead><tbody>');
+    tlItems.forEach(function(it) {
+      var lu = it.linked_request_usage || {};
+      var lc = it.linked_cost || {};
+      var dur = it.duration || {};
+      var ts = it.timestamp ? new Date(it.timestamp).toLocaleTimeString('ru-RU') : '';
+      var dt = dur.available ? (dur.seconds_since_previous_item >= 60 ? Math.round(dur.seconds_since_previous_item / 60) + 'm' : '+' + Math.round(dur.seconds_since_previous_item) + 's') : '';
+      var displayTitle = it.display_title_ru || it.recognized_action_ru || '—';
+      var aiLabel = it.linked_model_request_index ? '#' + it.linked_model_request_index : '—';
+      var nonCached = lu.available ? (lu.non_cached_input_tokens || 0) : 0;
+      var rowStyle = '';
+      if (it.row_type === 'action_only') rowStyle = 'color:#888;font-style:italic';
+      if (it.row_type === 'ai_call_only') rowStyle = 'color:#aaa;';
+      lines.push('<tr style="' + rowStyle + '">');
+      lines.push('<td style="text-align:right;padding:1px 4px">' + it.index + '</td>');
+      lines.push('<td style="padding:1px 4px;white-space:nowrap;font-size:9px">' + ts + '</td>');
+      lines.push('<td style="padding:1px 4px" title="' + escapeHtml(displayTitle) + '">' + escapeHtml(displayTitle.substring(0, 55)) + '</td>');
+      lines.push('<td style="padding:1px 4px;max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:9px" title="' + escapeHtml(it.object_label || '') + '">' + escapeHtml((it.object_label || '').substring(0, 40)) + '</td>');
+      lines.push('<td style="text-align:center;padding:1px 4px;font-weight:600;font-size:10px">' + aiLabel + '</td>');
+      lines.push('<td style="text-align:right;padding:1px 4px;font-weight:600">' + (lc.total_usd != null ? '$' + Number(lc.total_usd).toFixed(5) : '—') + '</td>');
+      lines.push('<td style="text-align:right;padding:1px 4px">' + (lu.available ? nf.format(nonCached) : '—') + '</td>');
+      lines.push('<td style="text-align:right;padding:1px 4px">' + (lu.available ? nf.format(lu.output_tokens || 0) : '—') + '</td>');
+      lines.push('<td style="text-align:right;padding:1px 4px;color:#888;font-size:9px">' + dt + '</td>');
+      lines.push('<td style="text-align:center;padding:1px 4px;font-size:9px">' + escapeHtml(it.confidence || it.recognition_confidence || 'low') + '</td>');
+      lines.push('</tr>');
+    });
+    lines.push('</tbody></table></div>');
+
+    // ── Technical AI calls table ──
+    var tac = aa.technical_ai_calls || {};
+    var tacItems = tac.items || [];
+    if (tacItems.length > 0) {
+      var tacId = 'tac-' + t.step_index;
+      lines.push('<hr class="thin">');
+      lines.push('<div class="muted" style="font-weight:600">Технические AI-обращения (' + tacItems.length + ')</div>');
+      lines.push('<button class="small" onclick="var el=document.getElementById(\'' + tacId + '\');el.style.display=el.style.display===\'none\'?\'block\':\'none\'">Показать</button>');
+      lines.push('<div id="' + tacId + '" style="display:none;max-height:350px;overflow:auto;font-size:10px;margin-top:4px">');
+      lines.push('<div class="muted xsmall" style="margin-bottom:4px">AI # — техническое скрытое обращение Codex к модели. В хронологии используется как источник cost/usage.</div>');
+      lines.push('<table style="width:100%;border-collapse:collapse"><thead><tr style="background:#333">');
+      lines.push('<th style="text-align:center;padding:2px 4px">AI</th><th style="text-align:right;padding:2px 4px">Cost</th>');
+      lines.push('<th style="text-align:right;padding:2px 4px">Input</th><th style="text-align:right;padding:2px 4px">Нов. input</th>');
+      lines.push('<th style="text-align:right;padding:2px 4px">Output</th><th style="text-align:center;padding:2px 4px">Связан</th>');
+      lines.push('</tr></thead><tbody>');
+      tacItems.forEach(function(ai) {
+        lines.push('<tr>');
+        lines.push('<td style="text-align:center;padding:1px 4px;font-weight:600">#' + ai.ai_index + '</td>');
+        lines.push('<td style="text-align:right;padding:1px 4px;font-weight:600">' + (ai.cost_total_usd != null ? '$' + Number(ai.cost_total_usd).toFixed(5) : '—') + '</td>');
+        lines.push('<td style="text-align:right;padding:1px 4px">' + nf.format(ai.input_tokens || 0) + '</td>');
+        lines.push('<td style="text-align:right;padding:1px 4px">' + nf.format(ai.non_cached_input_tokens || 0) + '</td>');
+        lines.push('<td style="text-align:right;padding:1px 4px">' + nf.format(ai.output_tokens || 0) + '</td>');
+        lines.push('<td style="text-align:center;padding:1px 4px;font-size:9px">' + (ai.linked_to_human_item ? '✓' : '—') + '</td>');
+        lines.push('</tr>');
+      });
+      lines.push('</tbody></table></div>');
+    }
+  }
+
+  // ── Stages ──
+  const stages = aa.agent_activity_stages || [];
+  if (stages.length > 0) {
+    lines.push('<hr class="thin">');
+    lines.push('<div class="muted" style="font-weight:600">Этапы работы агента (приблизительно)</div>');
+    lines.push('<table style="width:100%;border-collapse:collapse;font-size:11px;margin-top:2px"><thead><tr style="background:#333">');
+    lines.push('<th style="text-align:left;padding:2px 4px">Этап</th><th style="text-align:right;padding:2px 4px">Запросы</th>');
+    lines.push('<th style="text-align:right;padding:2px 4px">Cost</th><th style="text-align:right;padding:2px 4px">Input</th>');
+    lines.push('<th style="text-align:right;padding:2px 4px">Output</th><th style="text-align:center;padding:2px 4px">Увер.</th>');
+    lines.push('</tr></thead><tbody>');
+    stages.forEach(function(s) {
+      lines.push('<tr>');
+      lines.push('<td style="padding:1px 4px">' + escapeHtml(s.title_ru) + '</td>');
+      lines.push('<td style="text-align:right;padding:1px 4px">' + (s.request_range || '') + '</td>');
+      lines.push('<td style="text-align:right;padding:1px 4px;font-weight:600">$' + Number(s.cost_total_usd || 0).toFixed(5) + '</td>');
+      lines.push('<td style="text-align:right;padding:1px 4px">' + nf.format(s.input_tokens || 0) + '</td>');
+      lines.push('<td style="text-align:right;padding:1px 4px">' + nf.format(s.output_tokens || 0) + '</td>');
+      lines.push('<td style="text-align:center;padding:1px 4px;font-size:9px">' + escapeHtml(s.confidence || 'low') + '</td>');
+      lines.push('</tr>');
+    });
+    lines.push('</tbody></table>');
+  }
+
+  // ── Internal requests table ──
+  const sia = aa.step_internal_actions || [];
+  const rwu = aa.requests_with_usage || 0;
+  const mre = aa.model_related_events || 0;
+  if (rwu > 0) {
+    lines.push('<hr class="thin">');
+    lines.push('<div class="muted" style="font-weight:600">Внутренние запросы (' + rwu + ' с usage' + (mre !== rwu ? ', ' + mre + ' model-событий' : '') + ')</div>');
+
+    const timeTableId = 'ia-time-' + t.step_index;
+    const costTableId = 'ia-cost-' + t.step_index;
+    lines.push('<button class="small" onclick="document.getElementById(\'' + timeTableId + '\').style.display=\'block\';document.getElementById(\'' + costTableId + '\').style.display=\'none\'" style="margin-right:4px">По времени</button>');
+    lines.push('<button class="small" onclick="document.getElementById(\'' + costTableId + '\').style.display=\'block\';document.getElementById(\'' + timeTableId + '\').style.display=\'none\'">По расходу</button>');
+
+    function buildIaTable(items, id) {
+      var h = '<div id="' + id + '" style="' + (id === timeTableId ? '' : 'display:none;') + 'max-height:450px;overflow:auto;font-size:10px;margin-top:4px">';
+      h += '<table style="width:100%;border-collapse:collapse"><thead><tr style="background:#333">';
+      h += '<th style="text-align:right;padding:2px 4px">#</th>';
+      h += '<th style="text-align:left;padding:2px 4px">Запрос</th>';
+      h += '<th style="text-align:left;padding:2px 4px;min-width:120px">Возможный этап</th>';
+      h += '<th style="text-align:right;padding:2px 4px">Cost</th>';
+      h += '<th style="text-align:right;padding:2px 4px">Input</th>';
+      h += '<th style="text-align:right;padding:2px 4px">Non-cached</th>';
+      h += '<th style="text-align:right;padding:2px 4px">Cached</th>';
+      h += '<th style="text-align:right;padding:2px 4px">Output</th>';
+      h += '<th style="text-align:center;padding:2px 4px">Увер.</th>';
+      h += '</tr></thead><tbody>';
+      items.forEach(function(a) {
+        var u = a.usage || {};
+        var c = a.cost || {};
+        var er = a.expensive_reason || '';
+        h += '<tr>';
+        h += '<td style="text-align:right;padding:1px 4px">' + a.index + '</td>';
+        h += '<td style="padding:1px 4px;white-space:nowrap" title="' + escapeHtml(a.title_ru || '') + '">' + escapeHtml((a.title_ru || '').substring(0, 50)) + '</td>';
+        h += '<td style="padding:1px 4px;color:#888;font-size:9px">' + escapeHtml((a.possible_stage_ru || '').substring(0, 60)) + '</td>';
+        h += '<td style="text-align:right;padding:1px 4px;font-weight:600">' + (c.total_usd != null ? '$' + Number(c.total_usd).toFixed(5) : '—') + '</td>';
+        h += '<td style="text-align:right;padding:1px 4px">' + nf.format(u.input_tokens || 0) + '</td>';
+        h += '<td style="text-align:right;padding:1px 4px">' + nf.format(u.non_cached_input_tokens || 0) + (er ? '<br><span style="color:#c09853;font-size:8px">' + escapeHtml(er) + '</span>' : '') + '</td>';
+        h += '<td style="text-align:right;padding:1px 4px;color:#888">' + nf.format(u.cached_tokens || 0) + '</td>';
+        h += '<td style="text-align:right;padding:1px 4px">' + nf.format(u.output_tokens || 0) + '</td>';
+        h += '<td style="text-align:center;padding:1px 4px;font-size:9px">' + escapeHtml(a.stage_confidence || a.confidence || 'low') + '</td>';
+        h += '</tr>';
+      });
+      h += '</tbody></table></div>';
+      return h;
+    }
+
+    lines.push(buildIaTable(sia, timeTableId));
+    var costSorted = [...sia].sort(function(a, b) { return (b.cost.total_usd || 0) - (a.cost.total_usd || 0); });
+    lines.push(buildIaTable(costSorted, costTableId));
+  }
+
+  // ── Note ──
+  const notes = aa.notes_ru || [];
+  if (notes.length > 0) {
+    lines.push('<hr class="thin">');
+    notes.forEach(n => {
+      lines.push('<div class="muted xsmall" style="font-style:italic">' + escapeHtml(n) + '</div>');
+    });
+  }
+
+  return lines.join("");
+}
+
+// ── v2.1: Step cost block (full step cost vs request cost) ──
+function buildStepCostBlock(t) {
+  const fsu = t.full_step_usage || {};
+  const fsc = t.full_step_cost || {};
+  const cd = t.cumulative_delta || {};
+  const ud = t.unattributed_delta || {};
+  const cs = t.cost_scope || {};
+  const er = t.event_range || {};
+  const reqCount = fsu.request_count || 0;
+
+  const lines = [];
+  if (reqCount === 0) {
+    lines.push(kv("внутренних запросов", "0"));
+    lines.push(kv("полная стоимость шага", "не рассчитана"));
+    lines.push(kv("причина", "нет last_token_usage внутри шага"));
+  } else if (reqCount === 1) {
+    lines.push(kv("внутренних запросов модели", "1"));
+    lines.push(kv("полная стоимость шага", moneyOrNA(fsc.total_usd)));
+    lines.push('<div class="muted xsmall">Стоимость request-а совпадает с полной стоимостью шага.</div>');
+    lines.push(kv("input (полный шаг)", numOrNA(fsu.input_tokens)));
+    lines.push(kv("cached input", numOrNA(fsu.cached_tokens)));
+    lines.push(kv("output", numOrNA(fsu.output_tokens)));
+    lines.push(kv("reasoning", numOrNA(fsu.reasoning_tokens)));
+  } else {
+    lines.push(kv("внутренних запросов модели", nf.format(reqCount)));
+    lines.push(kv("полная стоимость шага", moneyOrNA(fsc.total_usd)));
+    lines.push('<div class="muted xsmall">Полная стоимость = сумма ' + reqCount + ' внутренних запросов.</div>');
+    lines.push(kv("input (полный шаг)", numOrNA(fsu.input_tokens)));
+    lines.push(kv("cached input", numOrNA(fsu.cached_tokens)));
+    lines.push(kv("output", numOrNA(fsu.output_tokens)));
+    lines.push(kv("reasoning", numOrNA(fsu.reasoning_tokens)));
+    lines.push('<hr class="thin">');
+    lines.push('<span class="muted xsmall">Для сравнения:</span>');
+    lines.push(kv("стоимость осн. request-а", moneyOrNA(usageMoney(t.usage || {}, "estimated_total_cost_usd"))));
+  }
+
+  // Cumulative delta
+  if (cd.available) {
+    lines.push('<hr class="thin">');
+    lines.push(kv("прирост счётчика (Δ)", numOrNA(cd.input_tokens) + " input"));
+  }
+
+  // Unattributed delta
+  if (ud.available) {
+    const udInput = ud.input_tokens;
+    if (udInput != null && udInput !== 0) {
+      lines.push(kv("неразнесённая разница", numWithSign(udInput) + " input"));
+    } else {
+      lines.push(kv("неразнесённая разница", "0 (всё разнесено)"));
+    }
+  }
+
+  // Event range
+  if (er.start_event_index) {
+    lines.push(kv("диапазон событий", er.start_event_index + "–" + er.end_event_index + " (" + er.raw_events_count + ")"));
+  }
+
+  // Confidence
+  lines.push(kv("scope", cs.current_displayed_cost_scope || "—"));
+  lines.push(kv("confidence", cs.mapping_confidence || "—"));
+
+  return lines.join("");
+}
+
 function buildStepExportData(step, session) {
   const usage = step?.usage || {};
   const environment = step?.environment || {};
@@ -817,7 +1306,20 @@ function buildStepExportData(step, session) {
       input_usd: usage.estimated_input_cost_usd ?? null,
       cached_input_usd: usage.estimated_cached_input_cost_usd ?? null,
       output_usd: usage.estimated_output_cost_usd ?? null,
+      note: "request-level cost (primary_request_usage); for full visible step cost see full_step_cost",
     },
+    // v2.1: full step cost fields
+    event_range: step.event_range || {},
+    request_usage_items: step.request_usage_items || [],
+    full_step_usage: step.full_step_usage || {},
+    full_step_cost: step.full_step_cost || {},
+    primary_request_usage: step.primary_request_usage || {},
+    cumulative_before_step: step.cumulative_before_step || {},
+    cumulative_after_step: step.cumulative_after_step || {},
+    cumulative_delta: step.cumulative_delta || {},
+    unattributed_delta: step.unattributed_delta || {},
+    cost_scope: step.cost_scope || {},
+    agent_activity: step.agent_activity || {},
     environment: {
       thread_id: environment.thread_id || "",
       cwd: environment.cwd || "",
@@ -895,6 +1397,10 @@ function buildSessionExportMarkdown(session, steps, title) {
     `- Total reasoning: ${summary.total_reasoning_tokens ?? "не подтверждено"}`,
     `- Usage basis: ${summary.usage_basis || "—"}`,
     `- Step usage basis: ${summary.step_usage_basis || "—"}`,
+    `- Visible steps: ${summary.visible_steps_count ?? summary.turn_count ?? "—"}`,
+    `- Raw model requests: ${summary.raw_model_requests_count ?? "—"}`,
+    `- Visible step full usage sum (input): ${summary.visible_step_full_usage_sum?.input_tokens ?? "—"}`,
+    `- Unmapped/internal usage (input): ${summary.unmapped_or_internal_usage?.input_tokens ?? "—"}`,
     "",
     "## Warnings",
     ...(data.warnings.length ? data.warnings.map(w => `- ${w}`) : ["- none"]),
@@ -911,7 +1417,10 @@ function buildSessionExportMarkdown(session, steps, title) {
       `- Usage confirmation: ${step.usage.confirmation_label}`,
       `- Usage source: ${step.usage.source || "—"}`,
       `- Usage note: ${step.usage.note || "—"}`,
-      `- Cost confirmed: ${step.cost_breakdown.confirmed ? "yes" : "no"}`,
+      `- Request cost (primary request): ${step.cost_breakdown.total_usd == null ? "не подтверждено" : money(step.cost_breakdown.total_usd)}`,
+      `- Full step cost: ${step.full_step_cost.total_usd == null ? "не рассчитано" : money(step.full_step_cost.total_usd)}`,
+      `- Internal requests count: ${step.full_step_usage.request_count || 0}`,
+      `- Cost scope: ${step.cost_scope.current_displayed_cost_scope || "—"} (confidence: ${step.cost_scope.mapping_confidence || "—"})`,
       "",
       "### Prompt",
       step.prompt.available ? step.prompt.text : "не доступен в источнике",
@@ -928,11 +1437,26 @@ function buildSessionExportMarkdown(session, steps, title) {
       `- Reasoning: ${step.usage.reasoning_tokens ?? "не подтверждено"}`,
       `- Tools: ${step.usage.tool_tokens ?? "не подтверждено"}`,
       "",
-      "### Cost breakdown",
-      `- Total: ${step.cost_breakdown.total_usd == null ? "не подтверждено" : money(step.cost_breakdown.total_usd)}`,
-      `- Input: ${step.cost_breakdown.input_usd == null ? "не подтверждено" : money(step.cost_breakdown.input_usd)}`,
-      `- Cached input: ${step.cost_breakdown.cached_input_usd == null ? "не подтверждено" : money(step.cost_breakdown.cached_input_usd)}`,
-      `- Output: ${step.cost_breakdown.output_usd == null ? "не подтверждено" : money(step.cost_breakdown.output_usd)}`,
+      "### Cost breakdown (request-level)",
+      `- Total (request): ${step.cost_breakdown.total_usd == null ? "не подтверждено" : money(step.cost_breakdown.total_usd)}`,
+      `- Input (request): ${step.cost_breakdown.input_usd == null ? "не подтверждено" : money(step.cost_breakdown.input_usd)}`,
+      `- Cached input (request): ${step.cost_breakdown.cached_input_usd == null ? "не подтверждено" : money(step.cost_breakdown.cached_input_usd)}`,
+      `- Output (request): ${step.cost_breakdown.output_usd == null ? "не подтверждено" : money(step.cost_breakdown.output_usd)}`,
+      "",
+      "### Full step cost",
+      `- Internal requests: ${step.full_step_usage.request_count || 0}`,
+      `- Full step total: ${step.full_step_cost.total_usd == null ? "не рассчитано" : money(step.full_step_cost.total_usd)}`,
+      `- Full step input: ${step.full_step_usage.input_tokens == null ? "—" : nf.format(step.full_step_usage.input_tokens)}`,
+      `- Full step cached: ${step.full_step_usage.cached_tokens == null ? "—" : nf.format(step.full_step_usage.cached_tokens)}`,
+      `- Full step output: ${step.full_step_usage.output_tokens == null ? "—" : nf.format(step.full_step_usage.output_tokens)}`,
+      `- Cost scope: ${step.cost_scope.current_displayed_cost_scope || "—"}`,
+      `- Mapping confidence: ${step.cost_scope.mapping_confidence || "—"}`,
+      `- Event range: ${step.event_range.start_event_index || 0}–${step.event_range.end_event_index || 0}`,
+      `- Cumulative delta input: ${step.cumulative_delta.available ? (step.cumulative_delta.input_tokens != null ? nf.format(step.cumulative_delta.input_tokens) : "—") : "не доступен"}`,
+      `- Unattributed delta input: ${step.unattributed_delta.available ? (step.unattributed_delta.input_tokens != null ? nf.format(step.unattributed_delta.input_tokens) : "—") : "не доступен"}`,
+      "",
+      "### Что делал агент",
+      ...buildAgentActivityMarkdown(step),
       "",
       "### Environment",
       `- Thread ID: ${step.environment.thread_id || "—"}`,
@@ -972,6 +1496,217 @@ function copyStepSummary(i) {
   const step = s.steps.find(t => t.step_index === i);
   if (!step) return;
   copyText(buildStepExportText(step, s));
+}
+
+let popupTab = 'timeline';
+
+function openStepPopup(i) {
+  const s = sessionDetailCache;
+  if (!s || !s.steps) return;
+  const step = s.steps.find(t => t.step_index === i);
+  if (!step) return;
+  const aa = step.agent_activity || {};
+  const u = step.usage || {};
+  const fsc = step.full_step_cost || {};
+
+  const tabs = ['timeline','stages','expensive','requests','filescmds','tech'];
+  const labels = {'timeline':'Хронология','stages':'Этапы','expensive':'Дорогие','requests':'Скрытые обращения к AI','filescmds':'Файлы и команды','tech':'Техника'};
+
+  function tabBtn(t) {
+    return '<button class="small" onclick="popupTab=\''+t+'\';openStepPopup('+i+')" style="'+(popupTab===t?'font-weight:bold;background:#3a3a3a;color:#fff':'color:#aaa')+'">'+labels[t]+'</button>';
+  }
+
+  var body = '<div style="max-height:70vh;overflow:auto">';
+
+  if (popupTab === 'timeline') {
+    body += buildPopupTimeline(aa);
+  } else if (popupTab === 'stages') {
+    body += buildPopupStages(aa);
+  } else if (popupTab === 'expensive') {
+    body += buildPopupExpensive(aa, step);
+  } else if (popupTab === 'requests') {
+    body += buildPopupRequests(step);
+  } else if (popupTab === 'filescmds') {
+    body += buildPopupFilesCmds(aa);
+  } else {
+    body += buildPopupTech(aa, step);
+  }
+  body += '</div>';
+
+  var html = '<div id="stepPopupOverlay" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:9999;display:flex;align-items:center;justify-content:center" onclick="if(event.target===this)closeStepPopup()">';
+  html += '<div style="background:#1e1e1e;color:#d4d4d4;border-radius:8px;width:95vw;max-width:1200px;max-height:90vh;padding:16px;box-shadow:0 4px 24px rgba(0,0,0,0.6);display:flex;flex-direction:column">';
+  html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">';
+  html += '<div><b>Step '+i+'</b> — '+escapeHtml(step.model)+' / '+escapeHtml(step.reasoning_effort)+'</div>';
+  html += '<div style="font-weight:600">Полная стоимость: '+(fsc.total_usd!=null?'$'+Number(fsc.total_usd).toFixed(5):'—')+' | Запросов: '+(step.full_step_usage?.request_count||0)+'</div>';
+  html += '<button onclick="closeStepPopup()" style="font-size:20px;border:none;background:none;cursor:pointer">✕</button>';
+  html += '</div>';
+  html += '<div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:8px;border-bottom:1px solid #444;padding-bottom:8px">';
+  tabs.forEach(function(t) { html += tabBtn(t); });
+  html += '</div>';
+  html += body;
+  html += '</div></div>';
+
+  var old = document.getElementById('stepPopupOverlay');
+  if (old) old.remove();
+  var div = document.createElement('div');
+  div.innerHTML = html;
+  document.body.appendChild(div.firstElementChild);
+}
+
+function closeStepPopup() {
+  var el = document.getElementById('stepPopupOverlay');
+  if (el) el.remove();
+}
+
+function buildPopupTimeline(aa) {
+  var tl = aa.agent_timeline || {};
+  var items = tl.items || [];
+  if (!items.length) return '<div class="muted">Нет данных хронологии</div>';
+
+  // Split: AI calls vs actions
+  var aiCalls = items.filter(function(it) { return it.row_type === 'ai_call'; });
+  var actions = items.filter(function(it) { return it.row_type === 'action_only'; });
+
+  var h = '<div style="margin-bottom:12px;color:#aaa;font-size:11px">Скрытое обращение Codex к AI — это внутренний запрос к модели внутри одного вашего видимого шага. Деньги и токены считаются по этим обращениям. Действия без подтверждённой стоимости показаны отдельно.</div>';
+
+  // AI calls table
+  h += '<div style="font-weight:600;margin-bottom:4px">Скрытые обращения Codex к AI ('+aiCalls.length+')</div>';
+  h += '<table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr style="background:#333">';
+  h += '<th style="text-align:right;padding:4px">#</th><th style="text-align:left;padding:4px">Время</th><th style="text-align:left;padding:4px">Что, вероятно, делал Codex</th>';
+  h += '<th style="text-align:right;padding:4px">Cost</th><th style="text-align:right;padding:4px">Input</th><th style="text-align:right;padding:4px">Новый input</th><th style="text-align:right;padding:4px">Переисп.</th><th style="text-align:right;padding:4px">Output</th><th style="text-align:right;padding:4px">Δt</th><th style="text-align:center;padding:4px">Увер.</th>';
+  h += '</tr></thead><tbody>';
+  aiCalls.forEach(function(it) {
+    var lu = it.linked_request_usage || {};
+    var lc = it.linked_cost || {};
+    var dur = it.duration || {};
+    var ts = it.timestamp ? new Date(it.timestamp).toLocaleTimeString('ru-RU') : '';
+    var dt = dur.available ? (dur.seconds_since_previous_item >= 60 ? Math.round(dur.seconds_since_previous_item/60)+'m' : '+' + Math.round(dur.seconds_since_previous_item)+'s') : '';
+    var title = it.display_title_ru || it.action_title_ru || '';
+    var recognized = it.recognized_action_ru || '';
+    var label = recognized ? recognized : title;
+    h += '<tr>';
+    h += '<td style="text-align:right;padding:2px 4px">'+it.index+'</td>';
+    h += '<td style="padding:2px 4px;white-space:nowrap;font-size:11px">'+ts+'</td>';
+    h += '<td style="padding:2px 4px">'+escapeHtml(label.substring(0,80))+'</td>';
+    h += '<td style="text-align:right;padding:2px 4px;font-weight:600">'+(lc.total_usd!=null?'$'+Number(lc.total_usd).toFixed(5):'—')+'</td>';
+    h += '<td style="text-align:right;padding:2px 4px">'+(lu.available?nf.format(lu.input_tokens||0):'—')+'</td>';
+    h += '<td style="text-align:right;padding:2px 4px">'+(lu.available?nf.format(lu.non_cached_input_tokens||0):'—')+'</td>';
+    h += '<td style="text-align:right;padding:2px 4px;color:#888">'+(lu.available?nf.format(lu.cached_tokens||0):'—')+'</td>';
+    h += '<td style="text-align:right;padding:2px 4px">'+(lu.available?nf.format(lu.output_tokens||0):'—')+'</td>';
+    h += '<td style="text-align:right;padding:2px 4px;color:#888;font-size:11px">'+dt+'</td>';
+    h += '<td style="text-align:center;padding:2px 4px;font-size:10px">'+escapeHtml(it.recognition_confidence||it.confidence||'low')+'</td>';
+    h += '</tr>';
+  });
+  h += '</tbody></table>';
+
+  // Actions without cost
+  if (actions.length > 0) {
+    h += '<div style="font-weight:600;margin-top:12px;margin-bottom:4px">Действия без подтверждённой стоимости ('+actions.length+')</div>';
+    h += '<table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr style="background:#333">';
+    h += '<th style="text-align:left;padding:4px">Действие</th><th style="text-align:left;padding:4px">Объект</th><th style="text-align:left;padding:4px">Источник</th><th style="text-align:center;padding:4px">Увер.</th>';
+    h += '</tr></thead><tbody>';
+    actions.forEach(function(it) {
+      h += '<tr>';
+      h += '<td style="padding:2px 4px">'+escapeHtml((it.display_title_ru||it.action_title_ru||'').substring(0,60))+'</td>';
+      h += '<td style="padding:2px 4px;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px">'+escapeHtml((it.object_label||'').substring(0,40))+'</td>';
+      h += '<td style="padding:2px 4px;color:#888;font-size:10px">'+escapeHtml(it.recognition_source||'text')+'</td>';
+      h += '<td style="text-align:center;padding:2px 4px;font-size:10px">'+escapeHtml(it.recognition_confidence||it.confidence||'low')+'</td>';
+      h += '</tr>';
+    });
+    h += '</tbody></table>';
+  }
+  return h;
+}
+
+function buildPopupStages(aa) {
+  var stages = aa.agent_activity_stages || [];
+  if (!stages.length) return '<div class="muted">Нет данных этапов</div>';
+  var h = '<table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr style="background:#333">';
+  h += '<th style="text-align:left;padding:4px">Этап</th><th style="text-align:right;padding:4px">Запросы</th><th style="text-align:right;padding:4px">Cost</th><th style="text-align:right;padding:4px">Input</th><th style="text-align:right;padding:4px">Output</th><th style="text-align:center;padding:4px">Увер.</th>';
+  h += '</tr></thead><tbody>';
+  stages.forEach(function(s) {
+    h += '<tr><td style="padding:2px 4px">'+escapeHtml(s.title_ru)+'</td><td style="text-align:right;padding:2px 4px">'+(s.request_range||'')+'</td>';
+    h += '<td style="text-align:right;padding:2px 4px;font-weight:600">$'+Number(s.cost_total_usd||0).toFixed(5)+'</td>';
+    h += '<td style="text-align:right;padding:2px 4px">'+nf.format(s.input_tokens||0)+'</td>';
+    h += '<td style="text-align:right;padding:2px 4px">'+nf.format(s.output_tokens||0)+'</td>';
+    h += '<td style="text-align:center;padding:2px 4px;font-size:10px">'+escapeHtml(s.confidence||'low')+'</td></tr>';
+  });
+  h += '</tbody></table>';
+  return h;
+}
+
+function buildPopupExpensive(aa, step) {
+  var sia = aa.step_internal_actions || [];
+  var costSorted = [...sia].sort(function(a,b){return (b.cost.total_usd||0)-(a.cost.total_usd||0);}).slice(0,15);
+  if (!costSorted.length) return '<div class="muted">Нет данных</div>';
+  var h = '<table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr style="background:#333">';
+  h += '<th style="text-align:right;padding:4px">#</th><th style="text-align:left;padding:4px">Запрос</th><th style="text-align:left;padding:4px">Возможный этап</th><th style="text-align:right;padding:4px">Cost</th><th style="text-align:left;padding:4px">Почему дорого</th>';
+  h += '</tr></thead><tbody>';
+  costSorted.forEach(function(a) {
+    var c = a.cost || {};
+    h += '<tr><td style="text-align:right;padding:2px 4px">'+a.index+'</td>';
+    h += '<td style="padding:2px 4px">'+escapeHtml((a.title_ru||'').substring(0,60))+'</td>';
+    h += '<td style="padding:2px 4px;color:#888;font-size:11px">'+escapeHtml((a.possible_stage_ru||'').substring(0,50))+'</td>';
+    h += '<td style="text-align:right;padding:2px 4px;font-weight:600">'+(c.total_usd!=null?'$'+Number(c.total_usd).toFixed(5):'—')+'</td>';
+    h += '<td style="padding:2px 4px;font-size:11px">'+escapeHtml(a.expensive_reason||'—')+'</td></tr>';
+  });
+  h += '</tbody></table>';
+  return h;
+}
+
+function buildPopupRequests(step) {
+  var sia = step.step_internal_actions || [];
+  if (!sia.length) return '<div class="muted">Нет данных</div>';
+  var h = '<table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr style="background:#333">';
+  h += '<th style="text-align:right;padding:4px">#</th><th style="text-align:left;padding:4px">Запрос</th><th style="text-align:left;padding:4px">Этап</th><th style="text-align:right;padding:4px">Cost</th><th style="text-align:right;padding:4px">Input</th><th style="text-align:right;padding:4px">Non-cached</th><th style="text-align:right;padding:4px">Cached</th><th style="text-align:right;padding:4px">Output</th>';
+  h += '</tr></thead><tbody>';
+  sia.forEach(function(a) {
+    var u = a.usage || {};
+    var c = a.cost || {};
+    h += '<tr><td style="text-align:right;padding:1px 4px">'+a.index+'</td>';
+    h += '<td style="padding:1px 4px">'+escapeHtml((a.title_ru||'').substring(0,50))+'</td>';
+    h += '<td style="padding:1px 4px;color:#888;font-size:10px">'+escapeHtml((a.possible_stage_ru||'').substring(0,40))+'</td>';
+    h += '<td style="text-align:right;padding:1px 4px;font-weight:600">'+(c.total_usd!=null?'$'+Number(c.total_usd).toFixed(5):'—')+'</td>';
+    h += '<td style="text-align:right;padding:1px 4px">'+nf.format(u.input_tokens||0)+'</td>';
+    h += '<td style="text-align:right;padding:1px 4px">'+nf.format(u.non_cached_input_tokens||0)+'</td>';
+    h += '<td style="text-align:right;padding:1px 4px;color:#888">'+nf.format(u.cached_tokens||0)+'</td>';
+    h += '<td style="text-align:right;padding:1px 4px">'+nf.format(u.output_tokens||0)+'</td></tr>';
+  });
+  h += '</tbody></table>';
+  return h;
+}
+
+function buildPopupFilesCmds(aa) {
+  var paths = aa.important_paths || [];
+  var cmds = aa.important_commands || [];
+  var h = '';
+  if (paths.length) {
+    h += '<div style="font-weight:600;margin-bottom:4px">Файлы:</div><table style="width:100%;font-size:12px">';
+    paths.forEach(function(p) { h += '<tr><td style="padding:2px 4px;font-family:monospace">'+escapeHtml(p)+'</td></tr>'; });
+    h += '</table>';
+  }
+  if (cmds.length) {
+    h += '<div style="font-weight:600;margin-top:12px;margin-bottom:4px">Команды:</div><table style="width:100%;font-size:12px">';
+    cmds.forEach(function(c) { h += '<tr><td style="padding:2px 4px;font-family:monospace">'+escapeHtml(c)+'</td></tr>'; });
+    h += '</table>';
+  }
+  if (!paths.length && !cmds.length) h = '<div class="muted">Нет данных</div>';
+  return h;
+}
+
+function buildPopupTech(aa, step) {
+  var ac = aa.activity_counts || {};
+  var er = aa.event_range || {};
+  var h = '<table style="font-size:12px">';
+  h += '<tr><td style="padding:2px 8px">Внутренних запросов с usage:</td><td><b>'+nf.format(aa.requests_with_usage||0)+'</b></td></tr>';
+  h += '<tr><td style="padding:2px 8px">Model-событий:</td><td><b>'+nf.format(aa.model_related_events||0)+'</b></td></tr>';
+  h += '<tr><td style="padding:2px 8px">Сырых событий в шаге:</td><td><b>'+nf.format(er.raw_events_count||0)+'</b></td></tr>';
+  h += '<tr><td style="padding:2px 8px">Диапазон событий:</td><td><b>'+(er.start_event_index||0)+'–'+(er.end_event_index||0)+'</b></td></tr>';
+  h += '<tr><td style="padding:2px 8px">Распознано действий:</td><td><b>'+nf.format((ac.file_reads||0)+(ac.file_writes||0)+(ac.shell_commands||0)+(ac.git_operations||0)+(ac.test_runs||0)+(ac.context_compactions||0))+'</b></td></tr>';
+  h += '<tr><td style="padding:2px 8px">Нераспознано:</td><td><b>'+nf.format(aa.unclassified_raw_events||0)+'</b></td></tr>';
+  h += '<tr><td style="padding:2px 8px">Confidence:</td><td><b>'+escapeHtml(aa.confidence||'—')+'</b></td></tr>';
+  h += '</table>';
+  return h;
 }
 
 function copySessionSummary() {
@@ -1172,10 +1907,78 @@ function renderAuditPanel() {
           <span class="pill red">❌ ${failCount}</span>
         </div>
         ${findingsHtml}
+        ${buildCumulativeAccountingHtml(r)}
         ${r.report_path ? `<div class="audit-path mono xsmall">Отчёт: ${escapeHtml(r.report_path)}</div>` : ""}
       </div>
       ${auditButtonsHtml}
     </div>`;
+}
+
+function buildCumulativeAccountingHtml(r) {
+  const rows = r.cumulative_accounting_rows || [];
+  const sca = r.session_cumulative_accounting;
+  if (!rows.length && !sca) return "";
+
+  let html = '<div class="audit-cumulative">';
+  html += '<div class="audit-section-title">📊 Cumulative Accounting</div>';
+
+  if (rows.length) {
+    html += '<table class="audit-table"><thead><tr><th>Step</th><th>request_usage</th><th>cumulative_after</th><th>cumulative_delta</th><th>unattributed_delta</th></tr></thead><tbody>';
+    rows.forEach(row => {
+      const req = fmtTokenDictShort(row.request_usage || {});
+      const cum = fmtTokenDictShort(row.cumulative_usage_after_step || {});
+      const delta = fmtTokenDictShort(row.cumulative_delta_since_previous_visible_step || {});
+      const unattrib = fmtTokenDictShort(row.unattributed_delta || {});
+      html += `<tr>
+        <td>${row.step_index || "?"}</td>
+        <td class="mono xsmall">${escapeHtml(req)}</td>
+        <td class="mono xsmall">${escapeHtml(cum)}</td>
+        <td class="mono xsmall">${escapeHtml(delta)}</td>
+        <td class="mono xsmall">${escapeHtml(unattrib)}</td>
+      </tr>`;
+    });
+    html += '</tbody></table>';
+  }
+
+  if (sca) {
+    html += '<div class="audit-section-title xsmall">Session-Level</div>';
+    html += `<div class="mono xsmall">session_total_usage: ${fmtTokenDictShort(sca.session_total_usage || {})}</div>`;
+    html += `<div class="mono xsmall">request_usage_sum: ${fmtTokenDictShort(sca.visible_steps_request_usage_sum || {})}</div>`;
+    html += `<div class="mono xsmall">delta_sum: ${fmtTokenDictShort(sca.visible_steps_cumulative_delta_sum || {})}</div>`;
+    html += `<div class="mono xsmall">unattributed: ${fmtTokenDictShort(sca.unattributed_session_usage || {})}</div>`;
+    if (sca.includes_hidden_context_possible) {
+      html += '<div class="warning xsmall">⚠️ Видимые шаги покрывают менее 50% session total — возможен скрытый контекст</div>';
+    }
+  }
+
+  html += '</div>';
+  return html;
+}
+
+function buildCumulativeCostMetric(u) {
+  const cumUsage = u.cumulative_usage_after_step || {};
+  if (!cumUsage.available) return "";
+  const cumCost = u.estimated_cumulative_cost_usd;
+  if (cumCost == null) return "";
+  return `<span class="metric"><span class="label" title="Cumulative cost after this step (total_token_usage)">Cumul. $</span><b>$${cumCost.toFixed(4)}</b></span>`;
+}
+
+function buildCumulativeInputMetric(u) {
+  const cumUsage = u.cumulative_usage_after_step || {};
+  if (!cumUsage.available) return "";
+  const cumInput = cumUsage.input_tokens;
+  if (cumInput == null || cumInput === 0) return "";
+  return `<span class="metric"><span class="label" title="Cumulative input tokens after this step">Cumul. in</span><b>${nf.format(cumInput)}</b></span>`;
+}
+
+function fmtTokenDictShort(d) {
+  if (!d || Object.keys(d).length === 0) return "—";
+  const parts = [];
+  for (const [k, v] of Object.entries(d)) {
+    if (v === null || v === undefined) continue;
+    if (typeof v === 'number') parts.push(`${k}=${v.toLocaleString()}`);
+  }
+  return parts.length ? parts.join(", ") : "—";
 }
 
 function toggleAuditCollapse() {
@@ -1310,6 +2113,8 @@ function renderSessions() {
     el.onclick = async () => {
       currentSessionId = s.id;
       selected.clear();
+      expandedSteps.clear();
+      openTextBlocks.clear();
       sessionDetailCache = null;
       sessionDetailLoading = true;
       renderAll();
@@ -1422,6 +2227,7 @@ function renderSteps() {
           </div>
         </div>
         <div class="row-actions">
+          <button class="icon" onclick="event.stopPropagation();openStepPopup(${idx})">Подробно</button>
           <button class="icon" onclick="event.stopPropagation();copyStepSummary(${idx})">Copy</button>
         </div>
       </div>
@@ -1575,7 +2381,9 @@ function renderSteps() {
           </div>
           <div class="metrics">
             ${metric("Cost", usageMoney(u, "estimated_total_cost_usd"))}
+            ${buildCumulativeCostMetric(u)}
             ${metric("Input", usageNumber(u, "input_tokens"))}
+            ${buildCumulativeInputMetric(u)}
             ${metric("Cached", usageNumber(u, "cached_tokens"))}
             ${metric("Non-cached", usageNumber(u, "non_cached_input_tokens"))}
             ${metric("Cache", usagePercent(u, "cached_ratio"))}
@@ -1595,12 +2403,14 @@ function renderSteps() {
           </div>
         </div>
         <div class="row-actions">
+          <button class="icon" onclick="event.stopPropagation();openStepPopup(${idx})">Подробно</button>
           <button class="icon" onclick="event.stopPropagation();copyStepSummary(${idx})">Copy</button>
         </div>
       </div>
       <div class="detail">
         ${textBlock(t.user_prompt.kind === 'system_composed' ? "System prompt (composed)" : "User prompt", "prompt", t.user_prompt.available, t.user_prompt.text, idx)}
         ${textBlock("Assistant answer", "answer", t.assistant_answer.available, t.assistant_answer.text, idx)}
+        ${wideBlock("Сводка", "summary", buildStepSummaryBlock(t), idx)}
         <div class="detail-grid">
           <div class="box">
             <h3>Tokens${usageNote}</h3>
@@ -1611,6 +2421,11 @@ function renderSteps() {
             ${kv("output_tokens", usageNumber(u, "output_tokens"))}
             ${kv("reasoning_tokens", usageNumber(u, "reasoning_tokens"))}
             ${kv("tool_tokens", usageNumber(u, "tool_tokens"))}
+            <hr class="thin">
+            ${kv("cumul_input", usageNumber((u.cumulative_usage_after_step || {}), "input_tokens"))}
+            ${kv("cumul_cached", usageNumber((u.cumulative_usage_after_step || {}), "cached_tokens"))}
+            ${kv("cumul_output", usageNumber((u.cumulative_usage_after_step || {}), "output_tokens"))}
+            <hr class="thin">
             ${kv("confirmation", usageConfirmationLabel(u))}
             ${kv("source", u.source || "—")}
           </div>
@@ -1620,6 +2435,7 @@ function renderSteps() {
             ${kv("cached_cost", usageMoney(u, "estimated_cached_input_cost_usd"))}
             ${kv("output_cost", usageMoney(u, "estimated_output_cost_usd"))}
             ${kv("total_cost", usageMoney(u, "estimated_total_cost_usd"))}
+            ${kv("cumulative_cost", usageMoney(u, "estimated_cumulative_cost_usd"))}
             ${kv("pricing", "config/token_pricing.json")}
           </div>
           <div class="box">
@@ -1648,6 +2464,17 @@ function renderSteps() {
       wrap.innerHTML = renderTimelineEvent(evt);
       root.appendChild(wrap.firstElementChild);
     });
+  });
+
+  // Restore expanded step details after re-render (auto-refresh)
+  expandedSteps.forEach(i => {
+    const el = document.getElementById("step-" + i);
+    if (el) el.classList.add("open");
+  });
+  // Restore open text blocks (prompt, answer, stepcost, activity)
+  openTextBlocks.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.classList.add("open");
   });
 }
 

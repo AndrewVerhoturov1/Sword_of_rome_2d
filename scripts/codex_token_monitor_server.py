@@ -831,6 +831,27 @@ def build_live_session_detail(source: dict[str, Any], session_id: str) -> dict[s
             "message": "Per-step usage для live-шага берётся из request-level last_token_usage, если он есть в rollout.",
         })
 
+    # v2.1: compute visible_step_full_usage_sum and unmapped_or_internal_usage
+    visible_step_full_usage_sum: dict[str, int] = {
+        "input_tokens": 0, "cached_tokens": 0, "output_tokens": 0,
+        "reasoning_tokens": 0, "tool_tokens": 0,
+    }
+    raw_model_requests_count = 0
+    for step in steps:
+        fsu = step.get("full_step_usage", {})
+        if isinstance(fsu, dict):
+            for fld in visible_step_full_usage_sum:
+                visible_step_full_usage_sum[fld] += to_int(fsu.get(fld, 0))
+            raw_model_requests_count += to_int(fsu.get("request_count", 0))
+    unmapped_or_internal_usage: dict[str, int] = {
+        "input_tokens": total_input - visible_step_full_usage_sum["input_tokens"],
+        "cached_tokens": total_cached - visible_step_full_usage_sum["cached_tokens"],
+        "output_tokens": total_output - visible_step_full_usage_sum["output_tokens"],
+        "reasoning_tokens": total_reasoning - visible_step_full_usage_sum["reasoning_tokens"],
+        "tool_tokens": total_tool - visible_step_full_usage_sum["tool_tokens"],
+        "available": bool(total_input or total_output),
+    }
+
     return {
         "id": session_id,
         "title": title,
@@ -853,9 +874,120 @@ def build_live_session_detail(source: dict[str, Any], session_id: str) -> dict[s
             "total_tool_tokens": total_tool,
             "estimated_total_cost_usd": total_cost,
             "warnings": summary_warnings,
+            "visible_steps_count": len(steps),
+            "raw_model_requests_count": raw_model_requests_count,
+            "visible_step_full_usage_sum": visible_step_full_usage_sum,
+            "unmapped_or_internal_usage": unmapped_or_internal_usage,
+            "session_activity_summary": _compute_session_activity_summary(steps),
         },
         "timeline_events": timeline_events,
         "steps": steps,
+    }
+
+
+def _classify_shell_command(command: str) -> dict[str, Any]:
+    """Classify a shell command string into a human-readable action.
+
+    Returns dict with classified_action, title_ru, action_type, and optional target_path.
+    """
+    cmd_lower = command.strip().lower() if command else ""
+
+    # ── file read patterns ──
+    if "get-content" in cmd_lower:
+        import re as _re_sc
+        path_m = _re_sc.search(r"""['"]([^'"]+)['"]""", command)
+        target = path_m.group(1) if path_m else ""
+        basename_lower = target.split("\\")[-1].split("/")[-1].lower() if target else ""
+        # Batch candidate: core project context files read together
+        batch_keywords = ("readme", "navigation", "project_state", "handoff", "agents",
+                          "context", "language_policy", "bug_journal", "agreements")
+        if any(kw in basename_lower for kw in batch_keywords):
+            return {
+                "classified_action": "file_read",
+                "action_type": "file_read_batch",
+                "title_ru": "Прочитал контекст проекта",
+                "target_path": target,
+                "is_batch_candidate": True,
+                "batch_group": "project_context",
+            }
+        return {
+            "classified_action": "file_read",
+            "action_type": "file_read",
+            "title_ru": "Прочитал файл",
+            "target_path": target,
+            "is_batch_candidate": True,
+            "batch_group": "file_read",
+        }
+
+    # ── code search patterns ──
+    if any(kw in cmd_lower for kw in ("rg ", "select-string", "findstr", "grep ")):
+        return {
+            "classified_action": "code_search",
+            "action_type": "code_search",
+            "title_ru": "Искал по коду",
+            "target_path": "",
+            "is_batch_candidate": False,
+            "batch_group": "",
+        }
+
+    # ── test run patterns ──
+    if any(kw in cmd_lower for kw in ("python -m unittest", "pytest", "npm test", "npm run test")):
+        return {
+            "classified_action": "test_run",
+            "action_type": "test_run",
+            "title_ru": "Запустил тесты",
+            "target_path": "",
+            "is_batch_candidate": False,
+            "batch_group": "",
+        }
+
+    # ── node syntax check ──
+    if "node --check" in cmd_lower or "node -c" in cmd_lower:
+        return {
+            "classified_action": "syntax_check",
+            "action_type": "syntax_check",
+            "title_ru": "Проверил JavaScript синтаксис",
+            "target_path": "",
+            "is_batch_candidate": False,
+            "batch_group": "",
+        }
+
+    # ── git operations ──
+    if any(kw in cmd_lower for kw in ("git status", "git diff", "git log", "git branch", "git add", "git commit")):
+        if "git status" in cmd_lower:
+            title = "Проверил Git status"
+        elif "git diff" in cmd_lower:
+            title = "Проверил изменения в Git"
+        else:
+            title = "Git-операция"
+        return {
+            "classified_action": "git_operation",
+            "action_type": "git_operation",
+            "title_ru": title,
+            "target_path": "",
+            "is_batch_candidate": False,
+            "batch_group": "",
+        }
+
+    # ── python diagnostic script ──
+    if "python " in cmd_lower:
+        return {
+            "classified_action": "diagnostic_script",
+            "action_type": "diagnostic_script",
+            "title_ru": "Запустил диагностический скрипт",
+            "target_path": "",
+            "is_batch_candidate": False,
+            "batch_group": "",
+        }
+
+    # ── fallback ──
+    return {
+        "classified_action": "shell_command",
+        "action_type": "shell_command",
+        "title_ru": "Выполнил команду",
+        "target_path": "",
+        "is_batch_candidate": False,
+        "batch_group": "",
     }
 
 
@@ -865,7 +997,16 @@ def _build_live_steps(events: list[dict[str, Any]], thread_id: str) -> tuple[lis
     Real rollout schema:
       {type: "turn_context", payload: {model, effort, turn_id, ...}}
       {type: "response_item", payload: {role: "user"|"assistant", content: [{text}]}}
+      {type: "response_item", payload: {type: "function_call", name, arguments, call_id}}
+      {type: "response_item", payload: {type: "function_call_output", call_id, output}}
       {type: "event_msg", payload: {info: {total_token_usage: {input_tokens, ...}}}}
+
+    v2.1: Collects ALL last_token_usage checkpoints inside each visible step,
+    computes full_step_usage as sum, and full_step_cost from full_step_usage.
+    Tracks event_range (start_event_index..end_event_index) for auditability.
+
+    v2.5: Captures function_call/function_call_output as live_tool_events
+    and builds human_timeline from real tool evidence.
     """
     steps: list[dict[str, Any]] = []
     timeline_events: list[dict[str, Any]] = []
@@ -878,9 +1019,976 @@ def _build_live_steps(events: list[dict[str, Any]], thread_id: str) -> tuple[lis
     last_visible_step_index = 0
     active_task_turn_id = ""
     current_turn_context: dict[str, Any] = {}
+    # v2.1: global event index for event_range tracking
+    global_event_index = 0
+    # v2.1: carry cumulative_after from previous visible step for cumulative_before
+    prev_step_cumulative_after: dict[str, Any] | None = None
+
+    def _classify_event(ev: dict[str, Any], ev_idx: int) -> dict[str, Any] | None:
+        """Classify a single raw rollout event into an activity item.
+        Returns None if the event doesn't represent a meaningful activity."""
+        outer_type = ev.get("type", "")
+        pl = ev.get("payload", {})
+        if not isinstance(pl, dict):
+            pl = {}
+        ts = str(ev.get("timestamp", ""))
+
+        # ── context_compacted ──
+        if outer_type == "event_msg" and str(pl.get("type", "")) == "context_compacted":
+            return {
+                "event_index": ev_idx, "timestamp": ts,
+                "category": "context_compaction",
+                "title_ru": "Сжатие контекста",
+                "detail": "Codex сжал контекст после этого хода",
+                "path": "", "command": "", "status": "ok", "tags": [],
+                "token_usage": {"available": False},
+            }
+
+        # ── task_started / task_complete ──
+        if outer_type == "event_msg":
+            etype = str(pl.get("type", ""))
+            if etype in ("task_started", "task_complete"):
+                return {
+                    "event_index": ev_idx, "timestamp": ts,
+                    "category": "environment_event",
+                    "title_ru": "Задача начата" if etype == "task_started" else "Задача завершена",
+                    "detail": f"turn_id={pl.get('turn_id', '')}",
+                    "path": "", "command": "", "status": "ok", "tags": [],
+                    "token_usage": {"available": False},
+                }
+
+        # ── response_item (assistant) ──
+        if outer_type == "response_item" and pl.get("role") == "assistant":
+            content = pl.get("content", [])
+            if not isinstance(content, list):
+                return None
+            items: list[dict[str, Any]] = []
+            for block in content:
+                if not isinstance(block, dict):
+                    continue
+                block_type = block.get("type", "")
+                if block_type == "tool_use":
+                    items.extend(_classify_tool_use(block, ev_idx, ts))
+                elif block_type == "text":
+                    txt = str(block.get("text", ""))
+                    if txt.strip():
+                        items.extend(_classify_text_activity(txt, ev_idx, ts))
+            return items[0] if len(items) == 1 else (items if items else None)
+
+        # ── response_item (user) ──
+        if outer_type == "response_item" and pl.get("role") == "user":
+            content = pl.get("content", [])
+            if not isinstance(content, list):
+                return None
+            txt = _extract_content_text(content)
+            if txt and not _is_internal_live_user_prompt(txt):
+                return {
+                    "event_index": ev_idx, "timestamp": ts,
+                    "category": "model_request",
+                    "title_ru": "Запрос пользователя",
+                    "detail": txt[:200],
+                    "path": "", "command": "", "status": "ok", "tags": [],
+                    "token_usage": {"available": False},
+                }
+            elif txt and _is_internal_live_user_prompt(txt):
+                return {
+                    "event_index": ev_idx, "timestamp": ts,
+                    "category": "internal_prompt",
+                    "title_ru": "Внутренний промпт",
+                    "detail": txt[:200],
+                    "path": "", "command": "", "status": "ok", "tags": [],
+                    "token_usage": {"available": False},
+                }
+
+        # ── token_count events → model_request (only last_token_usage, NEVER cumulative) ──
+        if outer_type == "event_msg":
+            info = pl.get("info", {})
+            if isinstance(info, dict) and info.get("last_token_usage"):
+                ltu = info["last_token_usage"]
+                if isinstance(ltu, dict):
+                    inp = to_int(ltu.get("input_tokens", 0))
+                    cached = to_int(ltu.get("cached_input_tokens", 0))
+                    out = to_int(ltu.get("output_tokens", 0))
+                    has_tok = any(v > 0 for v in (inp, out))
+                    return {
+                        "event_index": ev_idx, "timestamp": ts,
+                        "category": "model_request",
+                        "title_ru": "Запрос к модели",
+                        "detail": f"input={inp}, cached={cached}, output={out}",
+                        "path": "", "command": "", "status": "ok", "tags": [],
+                        "token_usage": {
+                            "available": has_tok,
+                            "input_tokens": inp,
+                            "cached_tokens": cached,
+                            "output_tokens": out,
+                        },
+                    }
+
+        return None
+
+    def _classify_tool_use(block: dict[str, Any], ev_idx: int, ts: str) -> list[dict[str, Any]]:
+        """Classify a tool_use content block into activity items."""
+        tool_name = str(block.get("name", "")).lower()
+        tool_input = block.get("input", {})
+        if not isinstance(tool_input, dict):
+            tool_input = {}
+
+        result: list[dict[str, Any]] = []
+        tags: list[str] = []
+
+        # Extract path and command from common input patterns
+        file_path = str(tool_input.get("path", tool_input.get("file_path", tool_input.get("filePath", ""))))
+        cmd_text = str(tool_input.get("command", tool_input.get("cmd", "")))
+
+        def _make_item(category: str, title_ru: str, detail: str, path: str = "", command: str = "", status: str = "ok", extra_tags: list[str] | None = None) -> dict[str, Any]:
+            return {
+                "event_index": ev_idx, "timestamp": ts,
+                "category": category,
+                "tool_name": tool_name,
+                "title_ru": title_ru,
+                "detail": detail,
+                "path": path, "command": command, "status": status,
+                "tags": (tags + (extra_tags or [])),
+                "token_usage": {"available": False},
+            }
+
+        if tool_name in ("read_file", "read", "open_file"):
+            result.append(_make_item("file_read", f"read_file", file_path or tool_name, path=file_path))
+        elif tool_name in ("write_to_file", "write_file", "create_file"):
+            result.append(_make_item("file_write", f"write_to_file", file_path or tool_name, path=file_path))
+        elif tool_name in ("edit_file", "apply_diff", "apply_patch", "replace_in_file"):
+            result.append(_make_item("file_write", f"edit_file", file_path or tool_name, path=file_path))
+        elif tool_name in ("execute_command", "run_command", "shell", "exec", "terminal"):
+            detail_text = cmd_text[:200]
+            is_git = any(kw in cmd_text.lower() for kw in (
+                "git status", "git add", "git commit", "git push", "git diff", "git log",
+                "git branch", "git checkout", "git merge", "git pull", "git fetch",
+            ))
+            is_push = "git push" in cmd_text.lower()
+            is_test = any(kw in cmd_text.lower() for kw in (
+                "python -m unittest", "pytest", "node --check", "npm test", "npm run test",
+            ))
+            if is_git:
+                cat = "git_operation"
+                extra = ["network_or_publish_action"] if is_push else None
+            elif is_test:
+                cat = "test_run"
+                extra = None
+            else:
+                cat = "shell_command"
+                extra = None
+            result.append(_make_item(cat, f"execute_command", detail_text or cmd_text[:200], command=cmd_text[:500], extra_tags=extra))
+        elif tool_name in ("list_files", "search_files", "search_content", "grep", "find_files"):
+            result.append(_make_item("file_read", f"list_files / search",
+                str(tool_input.get("path", tool_input.get("target_directory", ""))),
+                path=str(tool_input.get("path", ""))))
+        elif tool_name in ("web_search", "web_fetch", "tavily_search", "tavily_extract", "fetch_url"):
+            result.append(_make_item("network_or_publish_action", f"web_search",
+                str(tool_input.get("query", tool_input.get("url", "")))[:200],
+                extra_tags=["network"]))
+        else:
+            result.append(_make_item("unknown", f"Инструмент: {tool_name}",
+                str(tool_input)[:200], status="unknown"))
+
+        return result
+
+    def _classify_text_activity(text: str, ev_idx: int, ts: str) -> list[dict[str, Any]]:
+        """Heuristic classification from assistant text mention patterns.
+        Extracts file paths and command mentions."""
+        items: list[dict[str, Any]] = []
+        lower = text.lower()
+
+        # Detect git mentions
+        git_keywords = ["git status", "git add", "git commit", "git push", "git diff", "git log"]
+        for kw in git_keywords:
+            if kw in lower:
+                items.append({
+                    "event_index": ev_idx, "timestamp": ts,
+                    "category": "git_operation",
+                    "title_ru": "Git-действие",
+                    "detail": kw,
+                    "path": "", "command": kw, "status": "ok",
+                    "tags": ["network_or_publish_action"] if "push" in kw else [],
+                    "token_usage": {"available": False},
+                })
+
+        # Detect test mentions
+        test_kw = ["python -m unittest", "pytest", "node --check", "npm test", "npm run test"]
+        for kw in test_kw:
+            if kw in lower:
+                items.append({
+                    "event_index": ev_idx, "timestamp": ts,
+                    "category": "test_run",
+                    "title_ru": "Запуск тестов",
+                    "detail": kw,
+                    "path": "", "command": kw, "status": "ok", "tags": [],
+                    "token_usage": {"available": False},
+                })
+
+        # Extract file paths from text (simplistic: look for .py, .js, .md, .json, .ts extensions)
+        import re as _re
+        path_pattern = _re.compile(r'[\w/\\.-]+\.(?:py|js|ts|tsx|jsx|md|json|yaml|yml|css|html|bat|txt)')
+        seen = set()
+        for m in path_pattern.finditer(text):
+            p = m.group(0)
+            if p not in seen and len(p) > 3:
+                seen.add(p)
+                items.append({
+                    "event_index": ev_idx, "timestamp": ts,
+                    "category": "file_read",
+                    "title_ru": "Упомянул файл",
+                    "detail": p,
+                    "path": p, "command": "", "status": "ok", "tags": [],
+                    "token_usage": {"available": False},
+                })
+
+        return items
+
+    def _make_request_usage_item(req: dict[str, Any], model: str) -> dict[str, Any]:
+        """Build a single request_usage_item dict from raw last_token_usage."""
+        inp = to_int(req.get("input_tokens"), 0)
+        cached = to_int(req.get("cached_tokens"), 0)
+        out = to_int(req.get("output_tokens"), 0)
+        reas = to_int(req.get("reasoning_tokens"), 0)
+        tool = to_int(req.get("tool_tokens"), 0)
+        non_cached = max(inp - cached, 0)
+        req_costs = _estimate_usage_costs(model, inp, cached, out)
+        return {
+            "event_index": req.get("event_index", 0),
+            "timestamp": str(req.get("timestamp", "")),
+            "source": "live_last_token_usage",
+            "input_tokens": inp,
+            "cached_tokens": cached,
+            "non_cached_input_tokens": non_cached,
+            "output_tokens": out,
+            "reasoning_tokens": reas,
+            "tool_tokens": tool,
+            "estimated_cost": {
+                "total_usd": req_costs.get("estimated_total_cost_usd"),
+                "input_usd": req_costs.get("estimated_input_cost_usd"),
+                "cached_input_usd": req_costs.get("estimated_cached_input_cost_usd"),
+                "output_usd": req_costs.get("estimated_output_cost_usd"),
+            },
+        }
+
+    def _sum_usage_items(items: list[dict[str, Any]]) -> dict[str, Any]:
+        """Sum token fields across a list of usage dicts."""
+        result: dict[str, Any] = {
+            "source": "sum_last_token_usage_inside_visible_step",
+            "request_count": len(items),
+            "input_tokens": 0,
+            "cached_tokens": 0,
+            "non_cached_input_tokens": 0,
+            "output_tokens": 0,
+            "reasoning_tokens": 0,
+            "tool_tokens": 0,
+        }
+        for it in items:
+            for fld in ("input_tokens", "cached_tokens", "output_tokens", "reasoning_tokens", "tool_tokens"):
+                result[fld] = to_int(result.get(fld, 0)) + to_int(it.get(fld, 0))
+        result["non_cached_input_tokens"] = max(result["input_tokens"] - result["cached_tokens"], 0)
+        return result
+
+    def _make_cumulative_dict(snapshot: dict[str, Any] | None) -> dict[str, Any]:
+        """Convert a raw total_token_usage snapshot to a cumulative dict."""
+        if not isinstance(snapshot, dict):
+            return {"available": False}
+        inp = to_int(snapshot.get("input_tokens"), 0)
+        out = to_int(snapshot.get("output_tokens"), 0)
+        has_cum = any(v > 0 for v in (inp, out))
+        return {
+            "available": has_cum,
+            "input_tokens": inp if has_cum else 0,
+            "cached_tokens": to_int(snapshot.get("cached_tokens"), 0) if has_cum else 0,
+            "output_tokens": out if has_cum else 0,
+            "reasoning_tokens": to_int(snapshot.get("reasoning_tokens"), 0) if has_cum else 0,
+            "tool_tokens": to_int(snapshot.get("tool_tokens"), 0) if has_cum else 0,
+        }
+
+    def _delta_cumulative(after: dict[str, Any], before: dict[str, Any]) -> dict[str, Any]:
+        """Compute delta between two cumulative dicts."""
+        if not after.get("available") or not before.get("available"):
+            return {"available": False}
+        return {
+            "available": True,
+            "input_tokens": to_int(after.get("input_tokens"), 0) - to_int(before.get("input_tokens"), 0),
+            "cached_tokens": to_int(after.get("cached_tokens"), 0) - to_int(before.get("cached_tokens"), 0),
+            "output_tokens": to_int(after.get("output_tokens"), 0) - to_int(before.get("output_tokens"), 0),
+            "reasoning_tokens": to_int(after.get("reasoning_tokens"), 0) - to_int(before.get("reasoning_tokens"), 0),
+            "tool_tokens": to_int(after.get("tool_tokens"), 0) - to_int(before.get("tool_tokens"), 0),
+        }
+
+    def _delta_unattributed(cum_delta: dict[str, Any], full_usage: dict[str, Any]) -> dict[str, Any]:
+        """Compute unattributed_delta = cumulative_delta - full_step_usage."""
+        if not cum_delta.get("available") or full_usage.get("request_count", 0) == 0:
+            return {"available": False}
+        return {
+            "available": True,
+            "input_tokens": to_int(cum_delta.get("input_tokens"), 0) - to_int(full_usage.get("input_tokens"), 0),
+            "cached_tokens": to_int(cum_delta.get("cached_tokens"), 0) - to_int(full_usage.get("cached_tokens"), 0),
+            "output_tokens": to_int(cum_delta.get("output_tokens"), 0) - to_int(full_usage.get("output_tokens"), 0),
+            "reasoning_tokens": to_int(cum_delta.get("reasoning_tokens"), 0) - to_int(full_usage.get("reasoning_tokens"), 0),
+            "tool_tokens": to_int(cum_delta.get("tool_tokens"), 0) - to_int(full_usage.get("tool_tokens"), 0),
+            "interpretation": "cumulative growth not explained by summed request usage inside visible step",
+        }
+
+    def _build_cost_scope(request_count: int) -> dict[str, Any]:
+        """Build cost_scope metadata for a step."""
+        if request_count == 0:
+            return {
+                "current_displayed_cost_scope": "unknown",
+                "full_step_cost_available": False,
+                "request_cost_available": False,
+                "mapping_confidence": "not_verified",
+            }
+        if request_count == 1:
+            return {
+                "current_displayed_cost_scope": "single_request",
+                "full_step_cost_available": True,
+                "request_cost_available": True,
+                "mapping_confidence": "high",
+            }
+        return {
+            "current_displayed_cost_scope": "full_visible_step",
+            "full_step_cost_available": True,
+            "request_cost_available": True,
+            "mapping_confidence": "high",
+        }
+
+    def _extract_text_activity_items(text: str, source_label: str) -> list[dict[str, Any]]:
+        """Extract activity items from Russian/English prose text (answer or prompt)."""
+        if not text or not text.strip():
+            return []
+        items: list[dict[str, Any]] = []
+        lower = text.lower()
+
+        # ── Russian action phrase patterns ──
+        ACTION_PATTERNS = [
+            # (regex_or_substring, category, title_ru)
+            (r"читаю|прочитал|прочитаю|собираю контекст|соберу контекст|изучаю|изучил|смотрю|посмотрел|проверяю текущ|проверил текущ|проверяю реализацию|добрал|поднял фактическ|сверяю|сверил|анализирую|проанализировал", "file_read", "Изучал контекст / читал файлы"),
+            (r"пишу тесты|добавил тест|добавил тесты|добавляю тест|правлю тесты|пишу test|добавил test|обновил тесты|обновляю тесты", "file_write", "Писал / обновлял тесты"),
+            (r"правлю |внёс правки|внесены правки|добавил |добавлены |обновил |исправил |исправлено|переписал|переделал|меняю |изменил |поменял ", "file_write", "Вносил правки в код / export"),
+            (r"тесты зелёные|тесты прошли|тесты проходят|прогоняю тесты|прогнал тесты|запустил тесты|запускаю тесты|прогнал проверку|прогоняю проверку", "test_run", "Запускал проверки и тесты"),
+            (r"node --check|python -m unittest|pytest|npm test|npm run test|прогнал unittest|прогнал node.*check", "test_run", "Запускал проверки и тесты"),
+            (r"commit|закоммитил|git push|запушил|git status|git diff|git branch|origin/main|ветк[аиу]|сделал push|сделал commit", "git_operation", "Git-действия"),
+            (r"сжатие контекста|compaction|контекст сжат|сжат контекст", "context_compaction", "Сжатие контекста"),
+            (r"проверяю.*rollout|проверил.*rollout|смотрю.*rollout|raw rollout|live thread|живую сессию|live session", "file_read", "Проверял raw rollout / live thread"),
+            (r"проверяю.*monitor|проверил.*monitor|смотрю.*monitor|monitor.*код|monitor.*code|codex.token.monitor", "file_read", "Проверял код monitor"),
+            (r"handoff|ограничени[ея] задач|hard constraint|читаю handoff|прочитал handoff", "file_read", "Читал handoff и ограничения"),
+            (r"bug.journal|bug_journal|баги|bug", "file_read", "Проверял bug journal"),
+            (r"export|экспорт|copy.*step|copy.*session|session.*json|session.*md", "file_write", "Обновлял export/copy"),
+            (r"ui|фронтенд|app\.js|index\.html|styles\.css|карточк[ауи] шага|step card", "file_write", "Правил UI / фронтенд"),
+            (r"audit|аудит", "file_write", "Обновлял audit"),
+            (r"verification|проверк[ауи]|verify|верифик", "test_run", "Делал verification"),
+        ]
+
+        for pattern, category, title_ru in ACTION_PATTERNS:
+            import re as _re2
+            if _re2.search(pattern, text):
+                # Find the matching context snippet
+                m = _re2.search(pattern, text)
+                snippet = text[max(0, m.start() - 30):m.end() + 30] if m else pattern
+                items.append({
+                    "event_index": 0, "timestamp": "",
+                    "category": category,
+                    "tool_name": f"text:{source_label}",
+                    "title_ru": title_ru,
+                    "detail": snippet.strip()[:200],
+                    "path": "", "command": "", "status": "reported_by_agent",
+                    "tags": [],
+                    "token_usage": {"available": False},
+                })
+
+        # ── Extract file paths from text ──
+        import re as _re3
+        path_pattern = _re3.compile(
+            r'(?:scripts|static|tests|config|canon|docs|references|ideas|\.ai)/[\w/\-\.]+\.(?:py|js|ts|tsx|jsx|md|json|yaml|yml|css|html|bat|txt)'
+            r'|[\w_\-]+\.(?:py|js|md|json|css|html)'
+        )
+        seen_paths = set()
+        for m in path_pattern.finditer(text):
+            p = m.group(0)
+            if p not in seen_paths and len(p) > 4 and not p.startswith("http"):
+                seen_paths.add(p)
+                items.append({
+                    "event_index": 0, "timestamp": "",
+                    "category": "file_read",
+                    "tool_name": f"text:{source_label}",
+                    "title_ru": "Упомянутый файл",
+                    "detail": p,
+                    "path": p, "command": "", "status": "reported_by_agent",
+                    "tags": [],
+                    "token_usage": {"available": False},
+                })
+
+        # ── Extract command mentions ──
+        cmd_pattern = _re3.compile(
+            r'(?:python\s+-m\s+unittest[\s\w\.\-]+)'
+            r'|(?:node\s+--check[\s\w\.\-/]+)'
+            r'|(?:git\s+(?:push|commit|status|diff|log|branch)[\s\w\.\-/]*)'
+            r'|(?:npm\s+(?:test|run\s+test)[\s\w\.\-/]*)'
+            r'|(?:pytest[\s\w\.\-/]*)'
+        )
+        for m in cmd_pattern.finditer(text):
+            c = m.group(0).strip()
+            items.append({
+                "event_index": 0, "timestamp": "",
+                "category": "shell_command",
+                "tool_name": f"text:{source_label}",
+                "title_ru": "Команда",
+                "detail": c,
+                "path": "", "command": c, "status": "reported_by_agent",
+                "tags": [],
+                "token_usage": {"available": False},
+            })
+
+        return items
+
+    def _build_agent_activity(
+        step: dict[str, Any],
+        raw_items: list[dict[str, Any]],
+        full_step_usage: dict[str, Any],
+        event_range: dict[str, Any],
+        request_usage_items: list[dict[str, Any]],
+        live_tool_events: list[dict[str, Any]] | None = None,
+    ) -> None:
+        """Build agent_activity from raw events + prompt/answer text mining + live tool events.
+
+        v2.5: Uses live_tool_events to build human_timeline with real tool evidence.
+        """
+        prompt_text = (step.get("user_prompt") or {}).get("text", "")
+        answer_text = (step.get("assistant_answer") or {}).get("text", "")
+
+        # Extract from text
+        prompt_items = _extract_text_activity_items(prompt_text, "prompt")
+        answer_items = _extract_text_activity_items(answer_text, "answer")
+
+        # Merge: raw events first, then answer text, then prompt text
+        all_items: list[dict[str, Any]] = list(raw_items) if raw_items else []
+        all_items.extend(answer_items)
+        all_items.extend(prompt_items)
+
+        if not all_items:
+            step["agent_activity"] = {
+                "available": False,
+                "activity_sources": {"raw_events_used": bool(raw_items), "answer_text_used": False, "prompt_text_used": False},
+            }
+            return
+
+        # Count by category
+        counts: dict[str, int] = {
+            "model_requests": 0, "file_reads": 0, "file_writes": 0,
+            "shell_commands": 0, "git_operations": 0, "test_runs": 0,
+            "network_or_publish_actions": 0, "context_compactions": 0,
+            "internal_prompts": 0, "environment_events": 0, "unknown_events": 0,
+        }
+        category_map = {
+            "model_request": "model_requests", "file_read": "file_reads",
+            "file_write": "file_writes", "shell_command": "shell_commands",
+            "git_operation": "git_operations", "test_run": "test_runs",
+            "network_or_publish_action": "network_or_publish_actions",
+            "context_compaction": "context_compactions",
+            "internal_prompt": "internal_prompts",
+            "environment_event": "environment_events",
+        }
+        for item in all_items:
+            key = category_map.get(item.get("category", "unknown"), "unknown_events")
+            counts[key] = counts.get(key, 0) + 1
+
+        # Count raw events that weren't classified by event-based extractor
+        raw_count = event_range.get("raw_events_count", 0)
+        event_classified_raw = sum(1 for it in raw_items if it.get("category") != "unknown")
+        unclassified_raw = max(0, raw_count - len(raw_items)) if raw_items else raw_count
+
+        # Summary lines
+        summary_lines: list[str] = []
+        answer_summary = [it for it in answer_items if it["category"] not in ("file_read",)]
+        prompt_summary = [it for it in prompt_items if it["category"] not in ("file_read",)]
+        seen_summaries: set[str] = set()
+        for it in answer_summary + prompt_summary:
+            t = it["title_ru"]
+            if t not in seen_summaries:
+                seen_summaries.add(t)
+                summary_lines.append(t)
+        if not summary_lines:
+            if counts["file_writes"]:
+                summary_lines.append(f"Вносил правки в код")
+            if counts["test_runs"]:
+                summary_lines.append("Запускал проверки и тесты")
+            if counts["file_reads"]:
+                summary_lines.append("Изучал контекст и код")
+        if not summary_lines:
+            summary_lines.append("Активность частично детализирована по тексту ответа")
+
+        # Paths and commands
+        paths: list[str] = []
+        cmds: list[str] = []
+        for it in all_items:
+            p = it.get("path", "").strip()
+            if p and p not in paths:
+                paths.append(p)
+            c = it.get("command", "").strip()
+            if c and c not in cmds:
+                cmds.append(c)
+
+        confidence = "medium"
+        if raw_items:
+            confidence = "medium"
+        else:
+            confidence = "low"
+
+        # ── v2.3: step_internal_actions — neutral titles, possible_stage_ru ──
+        step_internal_actions: list[dict[str, Any]] = []
+        meaningful_text = [ti for ti in (prompt_items + answer_items)
+                          if ti.get("category") != "context_compaction"]
+        all_text = prompt_items + answer_items
+        rui_paths: list[str] = []
+        rui_cmds: list[str] = []
+        for ti in all_text:
+            tp = ti.get("path", "").strip()
+            if tp and tp not in rui_paths:
+                rui_paths.append(tp)
+            tc = ti.get("command", "").strip()
+            if tc and tc not in rui_cmds:
+                rui_cmds.append(tc)
+
+        # Build stages from answer text — group by unique activity patterns
+        stages: list[dict[str, Any]] = []
+        seen_titles: list[str] = []
+        for ti in meaningful_text:
+            t = ti.get("title_ru", "")
+            if t and t not in seen_titles:
+                seen_titles.append(t)
+        if seen_titles:
+            # Create approximate stage grouping
+            stage_map: dict[int, dict[str, Any]] = {}
+            for idx, rui in enumerate(request_usage_items):
+                # Assign request to nearest stage by proportional split
+                stage_idx = min(len(seen_titles) - 1, int(idx * len(seen_titles) / max(1, len(request_usage_items))))
+                if stage_idx not in stage_map:
+                    stage_map[stage_idx] = {
+                        "stage_index": stage_idx + 1,
+                        "title_ru": seen_titles[stage_idx],
+                        "request_indices": [],
+                        "input_tokens": 0, "cached_tokens": 0,
+                        "non_cached_input_tokens": 0, "output_tokens": 0,
+                        "cost_total_usd": 0.0,
+                    }
+                sm = stage_map[stage_idx]
+                sm["request_indices"].append(idx + 1)
+                sm["input_tokens"] += rui.get("input_tokens", 0)
+                sm["cached_tokens"] += rui.get("cached_tokens", 0)
+                sm["output_tokens"] += rui.get("output_tokens", 0)
+                ce = rui.get("estimated_cost", {})
+                if isinstance(ce, dict) and ce.get("total_usd"):
+                    sm["cost_total_usd"] += float(ce["total_usd"])
+            for si in sorted(stage_map):
+                sm = stage_map[si]
+                ri = sm["request_indices"]
+                sm["non_cached_input_tokens"] = max(0, sm["input_tokens"] - sm["cached_tokens"])
+                sm["request_range"] = f"{ri[0]}-{ri[-1]}" if len(ri) > 1 else str(ri[0])
+                sm["confidence"] = "low"
+                sm["source"] = "answer_text_inferred"
+                sm["notes_ru"] = ["Этапы построены по тексту ответа агента; точная привязка каждого внутреннего запроса не подтверждена."]
+                stages.append(sm)
+
+        fallback_titles = [
+            "Внутренний запрос модели",
+            "Промежуточный запрос модели",
+        ]
+
+        for idx, rui in enumerate(request_usage_items):
+            inp = rui.get("input_tokens", 0)
+            cached = rui.get("cached_tokens", 0)
+            out = rui.get("output_tokens", 0)
+            nc = max(inp - cached, 0)
+
+            # Neutral title — NEVER use guessed text for low-confidence
+            title = f"{fallback_titles[idx % len(fallback_titles)]} #{idx + 1}"
+
+            # Find possible stage
+            possible_stage = ""
+            stage_conf = "not_verified"
+            for s in stages:
+                if (idx + 1) in s["request_indices"]:
+                    possible_stage = s["title_ru"]
+                    stage_conf = s.get("confidence", "low")
+                    break
+
+            # Expensive reason
+            exp_reason = ""
+            if nc > 50000:
+                exp_reason = f"высокий non-cached input ({nc:,})"
+            elif out > 5000:
+                exp_reason = f"высокий output ({out:,})"
+            elif inp > 200000:
+                exp_reason = f"большой input ({inp:,})"
+
+            cost_est = rui.get("estimated_cost", {})
+            if not isinstance(cost_est, dict):
+                cost_est = {}
+
+            step_internal_actions.append({
+                "index": idx + 1,
+                "event_index": rui.get("event_index", 0),
+                "timestamp": rui.get("timestamp", ""),
+                "title_ru": title,
+                "possible_stage_ru": possible_stage,
+                "title_confidence": "not_verified",
+                "stage_confidence": stage_conf,
+                "action_category": "model_request",
+                "source": "raw_event",
+                "confidence": "low",
+                "is_context_compaction": False,
+                "usage": {
+                    "available": True,
+                    "input_tokens": inp,
+                    "cached_tokens": cached,
+                    "non_cached_input_tokens": nc,
+                    "output_tokens": out,
+                    "reasoning_tokens": rui.get("reasoning_tokens", 0),
+                },
+                "cost": {
+                    "available": cost_est.get("total_usd") is not None,
+                    "total_usd": cost_est.get("total_usd"),
+                    "input_usd": cost_est.get("input_usd"),
+                    "cached_input_usd": cost_est.get("cached_input_usd"),
+                    "output_usd": cost_est.get("output_usd"),
+                },
+                "expensive_reason": exp_reason,
+                "related_files": rui_paths[:5],
+                "related_commands": rui_cmds[:3],
+                "notes_ru": [],
+            })
+
+        top_expensive = sorted(
+            [a for a in step_internal_actions if a["cost"]["total_usd"] is not None],
+            key=lambda a: a["cost"]["total_usd"], reverse=True,
+        )[:10]
+
+        model_events_count = counts.get("model_requests", 0) + counts.get("internal_prompts", 0)
+        requests_with_usage = len(request_usage_items)
+
+        # ── v2.5: human_timeline from real tool evidence ──
+        lte = live_tool_events if live_tool_events else []
+        human_timeline_items: list[dict[str, Any]] = []
+
+        # 1. Group tool events into batches before each AI call
+        # For each AI call (request_usage_item), find preceding tool_events
+        # that haven't been assigned to an earlier AI call.
+
+        # First, build tool event groups: batch consecutive batch_candidate events
+        # with same batch_group into one group
+        tool_groups: list[dict[str, Any]] = []
+        current_group: dict[str, Any] | None = None
+        for te in lte:
+            is_batch = te.get("is_batch_candidate", False)
+            bg = te.get("batch_group", "")
+
+            if current_group and is_batch and current_group.get("batch_group") == bg:
+                # Extend existing batch group
+                current_group["tool_events"].append(te)
+                current_group["event_indices"].append(te.get("event_index", 0))
+                if te.get("target_path") and te["target_path"] not in current_group["target_paths"]:
+                    current_group["target_paths"].append(te["target_path"])
+                if te.get("command") and te["command"] not in current_group["commands"]:
+                    current_group["commands"].append(te["command"])
+            else:
+                # Start new group
+                current_group = {
+                    "batch_group": bg if is_batch else "",
+                    "is_batch": is_batch,
+                    "action_type": te.get("action_type", ""),
+                    "classified_action": te.get("classified_action", ""),
+                    "title_ru": te.get("title_ru", ""),
+                    "tool_events": [te],
+                    "event_indices": [te.get("event_index", 0)],
+                    "first_event_index": te.get("event_index", 0),
+                    "last_event_index": te.get("event_index", 0),
+                    "timestamp": te.get("timestamp", ""),
+                    "target_paths": [te.get("target_path", "")] if te.get("target_path") else [],
+                    "commands": [te.get("command", "")] if te.get("command") and not is_batch else [],
+                    "batch_objects": [],
+                }
+                tool_groups.append(current_group)
+
+        # Extract batch objects (filenames) from batch groups
+        for tg in tool_groups:
+            if tg["is_batch"] and tg["target_paths"]:
+                tg["batch_objects"] = [
+                    p.split("\\")[-1].split("/")[-1] for p in tg["target_paths"] if p
+                ][:10]
+
+        # Track which tool groups have been assigned (for cost-linking)
+        assigned_group_indices: set[int] = set()
+
+        # 2. For each request_usage_item, find nearest preceding / encompassing tool group
+        for rui_idx, rui in enumerate(request_usage_items):
+            rui_ev = rui.get("event_index", 0)
+
+            # Find tool groups whose last_event_index < rui_ev and not yet assigned
+            best_group_idx = -1
+            best_group_dist = 999999
+            for gi, tg in enumerate(tool_groups):
+                if gi in assigned_group_indices:
+                    continue
+                if tg["last_event_index"] < rui_ev:
+                    dist = rui_ev - tg["last_event_index"]
+                    if dist < best_group_dist:
+                        best_group_dist = dist
+                        best_group_idx = gi
+
+            rui_cost = rui.get("estimated_cost", {})
+            if not isinstance(rui_cost, dict):
+                rui_cost = {}
+
+            if best_group_idx >= 0:
+                tg = tool_groups[best_group_idx]
+                assigned_group_indices.add(best_group_idx)
+                # Build human timeline item linked to tool evidence
+                title = tg["title_ru"] if tg["title_ru"] else "Работал с инструментами"
+
+                # Determine objects label
+                objects_label = ""
+                if tg["is_batch"] and tg.get("batch_objects"):
+                    objects_label = "Файлы: " + ", ".join(tg["batch_objects"][:5])
+                    if len(tg.get("batch_objects", [])) > 5:
+                        objects_label += f" + ещё {len(tg['batch_objects']) - 5}"
+                    title = "Прочитал первичный контекст проекта"
+                elif tg.get("target_paths"):
+                    objects_label = tg["target_paths"][0].split("\\")[-1].split("/")[-1][:80]
+                elif tg.get("commands"):
+                    objects_label = tg["commands"][0][:120]
+
+                timeline_item = {
+                    "row_type": "tool_with_cost",
+                    "event_index": tg["first_event_index"],
+                    "timestamp": tg["timestamp"],
+                    "action_type": tg["action_type"],
+                    "display_title_ru": title,
+                    "recognized_action_ru": tg["title_ru"],
+                    "recognition_confidence": "high",
+                    "recognition_source": "live_tool_events",
+                    "object_label": objects_label,
+                    "linked_model_request_index": rui_idx + 1,
+                    "cost_available": True,
+                    "linked_request_usage": {
+                        "available": True,
+                        "input_tokens": rui.get("input_tokens", 0),
+                        "cached_tokens": rui.get("cached_tokens", 0),
+                        "non_cached_input_tokens": max(0, rui.get("input_tokens", 0) - rui.get("cached_tokens", 0)),
+                        "output_tokens": rui.get("output_tokens", 0),
+                        "reasoning_tokens": rui.get("reasoning_tokens", 0),
+                    },
+                    "linked_cost": {
+                        "available": rui_cost.get("total_usd") is not None,
+                        "total_usd": rui_cost.get("total_usd"),
+                    },
+                    "tool_evidence": {
+                        "available": True,
+                        "event_indices": tg["event_indices"],
+                        "tool_count": len(tg["tool_events"]),
+                        "is_batch": tg["is_batch"],
+                        "batch_objects": tg.get("batch_objects", [])[:10],
+                    },
+                    "path": tg["target_paths"][0] if tg["target_paths"] else "",
+                    "command": tg["commands"][0] if tg["commands"] else "",
+                    "confidence": "high",
+                    "notes_ru": [
+                        "Действие подтверждено raw function_call событиями из rollout.",
+                        "Стоимость относится к AI-осмыслению результатов, а не к самому выполнению команды.",
+                    ] if not tg["is_batch"] else [
+                        "Несколько чтений файлов объединены в batch перед одним AI-обращением.",
+                        "Стоимость относится к AI-осмыслению результатов, а не к чтению файлов.",
+                        "Стоимость не дублируется — одна на весь batch.",
+                    ],
+                }
+                human_timeline_items.append(timeline_item)
+            else:
+                # AI call without tool evidence — fallback
+                title = "Осмыслил промежуточный контекст"
+                human_timeline_items.append({
+                    "row_type": "ai_call_only",
+                    "event_index": rui_ev,
+                    "timestamp": rui.get("timestamp", ""),
+                    "action_type": "model_request",
+                    "display_title_ru": title,
+                    "recognized_action_ru": "",
+                    "recognition_confidence": "not_verified",
+                    "recognition_source": "none",
+                    "object_label": f"AI #{rui_idx + 1}",
+                    "linked_model_request_index": rui_idx + 1,
+                    "cost_available": True,
+                    "linked_request_usage": {
+                        "available": True,
+                        "input_tokens": rui.get("input_tokens", 0),
+                        "cached_tokens": rui.get("cached_tokens", 0),
+                        "non_cached_input_tokens": max(0, rui.get("input_tokens", 0) - rui.get("cached_tokens", 0)),
+                        "output_tokens": rui.get("output_tokens", 0),
+                        "reasoning_tokens": rui.get("reasoning_tokens", 0),
+                    },
+                    "linked_cost": {
+                        "available": rui_cost.get("total_usd") is not None,
+                        "total_usd": rui_cost.get("total_usd"),
+                    },
+                    "tool_evidence": {"available": False},
+                    "path": "",
+                    "command": "",
+                    "confidence": "medium",
+                    "notes_ru": [
+                        f"Нет подтверждённых tool-событий перед AI-обращением #{rui_idx + 1}.",
+                        "Действие реконструировано по факту AI-обращения.",
+                    ],
+                })
+
+        # 3. Add unassigned tool groups as action-only rows (no cost)
+        for gi, tg in enumerate(tool_groups):
+            if gi in assigned_group_indices:
+                continue
+            human_timeline_items.append({
+                "row_type": "action_only",
+                "event_index": tg["first_event_index"],
+                "timestamp": tg["timestamp"],
+                "action_type": tg["action_type"],
+                "display_title_ru": tg["title_ru"] if tg["title_ru"] else "Работал с инструментами",
+                "recognized_action_ru": tg["title_ru"],
+                "recognition_confidence": "high",
+                "recognition_source": "live_tool_events",
+                "object_label": tg["commands"][0][:120] if tg["commands"] else (tg["target_paths"][0][:120] if tg["target_paths"] else ""),
+                "linked_model_request_index": None,
+                "cost_available": False,
+                "linked_request_usage": None,
+                "linked_cost": None,
+                "tool_evidence": {
+                    "available": True,
+                    "event_indices": tg["event_indices"],
+                    "tool_count": len(tg["tool_events"]),
+                    "is_batch": tg["is_batch"],
+                },
+                "path": tg["target_paths"][0] if tg["target_paths"] else "",
+                "command": tg["commands"][0] if tg["commands"] else "",
+                "confidence": "high",
+                "notes_ru": [
+                    "Tool-событие без связанного AI-обращения.",
+                    "Возможно, следующее AI-обращение не зафиксировано в rollout, или это orphan tool event.",
+                ],
+            })
+
+        # Sort by event_index
+        human_timeline_items.sort(key=lambda x: x.get("event_index", 0))
+
+        # Compute duration for items with timestamps
+        prev_ts: float | None = None
+        for item in human_timeline_items:
+            ts_str = item.get("timestamp", "")
+            cur_ts = None
+            if ts_str:
+                try:
+                    from datetime import datetime as _dt2
+                    cur_ts = _dt2.fromisoformat(ts_str.replace("Z", "+00:00")).timestamp()
+                except (ValueError, TypeError):
+                    pass
+            if prev_ts is not None and cur_ts is not None:
+                item["duration"] = {
+                    "available": True,
+                    "seconds_since_previous_item": round(cur_ts - prev_ts, 3),
+                }
+            else:
+                item["duration"] = {"available": False}
+            if cur_ts is not None:
+                prev_ts = cur_ts
+
+        # Re-index
+        for i, item in enumerate(human_timeline_items):
+            item["index"] = i + 1
+
+        human_timeline_summary = {
+            "items_count": len(human_timeline_items),
+            "tool_with_cost_count": sum(1 for it in human_timeline_items if it["row_type"] == "tool_with_cost"),
+            "ai_call_only_count": sum(1 for it in human_timeline_items if it["row_type"] == "ai_call_only"),
+            "action_only_count": sum(1 for it in human_timeline_items if it["row_type"] == "action_only"),
+            "total_linked_cost_usd": sum(
+                (it.get("linked_cost") or {}).get("total_usd") or 0
+                for it in human_timeline_items if it.get("cost_available")
+            ),
+            "tool_events_total": len(lte),
+            "tool_events_with_cost": sum(
+                1 for it in human_timeline_items if it.get("tool_evidence", {}).get("available")
+                and it.get("cost_available")
+            ),
+        }
+
+        # ── Technical AI calls table (separate from human timeline) ──
+        technical_ai_calls: list[dict[str, Any]] = []
+        for idx, rui in enumerate(request_usage_items):
+            rui_cost = rui.get("estimated_cost", {})
+            if not isinstance(rui_cost, dict):
+                rui_cost = {}
+            technical_ai_calls.append({
+                "ai_index": idx + 1,
+                "event_index": rui.get("event_index", 0),
+                "timestamp": rui.get("timestamp", ""),
+                "display_title_ru": f"AI #{idx + 1}",
+                "input_tokens": rui.get("input_tokens", 0),
+                "cached_tokens": rui.get("cached_tokens", 0),
+                "non_cached_input_tokens": max(0, rui.get("input_tokens", 0) - rui.get("cached_tokens", 0)),
+                "output_tokens": rui.get("output_tokens", 0),
+                "reasoning_tokens": rui.get("reasoning_tokens", 0),
+                "cost_total_usd": rui_cost.get("total_usd"),
+                "linked_to_human_item": any(
+                    it.get("linked_model_request_index") == idx + 1 and it["row_type"] == "tool_with_cost"
+                    for it in human_timeline_items
+                ),
+            })
+
+        step["agent_activity"] = {
+            "available": True,
+            "activity_sources": {
+                "raw_events_used": bool(raw_items),
+                "answer_text_used": bool(answer_items),
+                "prompt_text_used": bool(prompt_items),
+                "live_tool_events_used": bool(lte),
+            },
+            "event_range": {
+                "start_event_index": event_range.get("start_event_index", 0),
+                "end_event_index": event_range.get("end_event_index", 0),
+                "raw_events_count": raw_count,
+            },
+            "activity_counts": counts,
+            "activity_items": all_items,
+            "unclassified_raw_events": unclassified_raw,
+            "activity_summary_ru": summary_lines,
+            "important_paths": paths[:20],
+            "important_commands": cmds[:20],
+            "confidence": confidence,
+            "agent_timeline": {
+                "available": True,
+                "source": "live_tool_events" if lte else "raw_events_and_text",
+                "confidence": "high" if lte else "medium",
+                "items": human_timeline_items,
+                "summary": human_timeline_summary,
+            },
+            "technical_ai_calls": {
+                "available": True,
+                "items": technical_ai_calls,
+                "note_ru": "Техническая таблица всех AI-обращений Codex. В хронологии работы используется как источник cost/usage для человеческих действий.",
+            },
+            "step_internal_actions": step_internal_actions,
+            "agent_activity_stages": stages,
+            "top_expensive_internal_actions": top_expensive,
+            "requests_with_usage": requests_with_usage,
+            "model_related_events": model_events_count,
+            "notes_ru": [
+                "Резюме действий построено по live_tool_events (function_call/function_call_output из rollout) и тексту ответа агента; оно объясняет работу шага, но не используется для расчёта стоимости.",
+                "Хронология работы использует реальные tool-события, где они доступны.",
+                "AI # — техническое обращение Codex к модели; в хронологии оно источник cost/usage для человеческого действия.",
+                "Файлы из prompt/answer — упомянутые, не обязательно все были прочитаны.",
+                "Команды из текста — reported_by_agent, не обязательно все были выполнены.",
+            ],
+        }
 
     def finalize_current_step(reason: str = "next_user") -> None:
-        nonlocal current_step, pending_text, last_visible_step_index
+        nonlocal current_step, pending_text, last_visible_step_index, prev_step_cumulative_after
         if not current_step:
             pending_text = []
             return
@@ -889,71 +1997,191 @@ def _build_live_steps(events: list[dict[str, Any]], thread_id: str) -> tuple[lis
         pending_text = []
 
         usage = current_step.get("usage", {})
-        last_usage = current_step.pop("_last_request_usage", None)
-        if isinstance(usage, dict) and isinstance(last_usage, dict):
-            input_tokens = to_int(last_usage.get("input_tokens"), 0)
-            cached_tokens = to_int(last_usage.get("cached_tokens"), 0)
-            output_tokens = to_int(last_usage.get("output_tokens"), 0)
-            reasoning_tokens = to_int(last_usage.get("reasoning_tokens"), 0)
-            tool_tokens = to_int(last_usage.get("tool_tokens"), 0)
-            non_cached_tokens = max(input_tokens - cached_tokens, 0)
-            has_nonzero_usage = any(
-                value > 0
-                for value in (
-                    input_tokens,
-                    cached_tokens,
-                    output_tokens,
-                    reasoning_tokens,
-                    tool_tokens,
-                )
-            )
-            usage.update(
-                {
-                    "input_tokens": input_tokens if has_nonzero_usage else 0,
-                    "cached_tokens": cached_tokens if has_nonzero_usage else 0,
-                    "non_cached_input_tokens": non_cached_tokens if has_nonzero_usage else 0,
-                    "cached_ratio": (cached_tokens / input_tokens) if has_nonzero_usage and input_tokens > 0 else 0,
-                    "output_tokens": output_tokens if has_nonzero_usage else 0,
-                    "reasoning_tokens": reasoning_tokens if has_nonzero_usage else 0,
-                    "tool_tokens": tool_tokens if has_nonzero_usage else 0,
-                    "available": has_nonzero_usage,
-                    "confirmation_status": "confirmed_request_usage" if has_nonzero_usage else "missing_request_usage",
-                    "source": "live_last_token_usage" if has_nonzero_usage else "missing",
-                    "note": "" if has_nonzero_usage else "no confirmed last_token_usage for this step",
-                    **(
-                        _estimate_usage_costs(
-                            str(current_step.get("model") or "unknown"),
-                            input_tokens,
-                            cached_tokens,
-                            output_tokens,
-                        )
-                        if has_nonzero_usage
-                        else {
-                            "estimated_total_cost_usd": None,
-                            "estimated_input_cost_usd": None,
-                            "estimated_cached_input_cost_usd": None,
-                            "estimated_output_cost_usd": None,
-                        }
-                    ),
-                }
-            )
-        elif isinstance(usage, dict):
+        step_model = str(current_step.get("model") or "unknown")
+
+        # ── v2.1: collect ALL request usages and total snapshots from this step ──
+        all_request_usages: list[dict[str, Any]] = current_step.pop("_all_request_usages", [])
+        all_total_snapshots: list[dict[str, Any]] = current_step.pop("_all_total_snapshots", [])
+        start_event_index = current_step.pop("_start_event_index", None)
+        end_event_index = current_step.pop("_end_event_index", None)
+
+        # Build request_usage_items array
+        request_usage_items = [_make_request_usage_item(r, step_model) for r in all_request_usages]
+
+        # full_step_usage = sum of all request_usage_items
+        full_step_usage = _sum_usage_items(request_usage_items)
+
+        # full_step_cost from full_step_usage
+        fsu = full_step_usage
+        fsc_est = _estimate_usage_costs(step_model, fsu["input_tokens"], fsu["cached_tokens"], fsu["output_tokens"])
+        full_step_cost = {
+            "source": "estimated_from_full_step_usage",
+            "total_usd": fsc_est.get("estimated_total_cost_usd"),
+            "input_usd": fsc_est.get("estimated_input_cost_usd"),
+            "cached_input_usd": fsc_est.get("estimated_cached_input_cost_usd"),
+            "output_usd": fsc_est.get("estimated_output_cost_usd"),
+            "confidence": "estimated_from_local_pricing_config",
+        }
+
+        # primary_request_usage = last request in the step (for backwards comparison)
+        primary_request_usage = None
+        last_req = request_usage_items[-1] if request_usage_items else None
+        if last_req:
+            primary_request_usage = {
+                "source": "live_last_token_usage",
+                "input_tokens": last_req["input_tokens"],
+                "cached_tokens": last_req["cached_tokens"],
+                "output_tokens": last_req["output_tokens"],
+                "reasoning_tokens": last_req["reasoning_tokens"],
+                "tool_tokens": last_req["tool_tokens"],
+            }
+
+        # Populate legacy usage block from primary_request_usage (backwards compat)
+        if isinstance(usage, dict) and primary_request_usage:
+            inp = primary_request_usage["input_tokens"]
+            cached = primary_request_usage["cached_tokens"]
+            out = primary_request_usage["output_tokens"]
+            reas = primary_request_usage["reasoning_tokens"]
+            tool = primary_request_usage["tool_tokens"]
+            nc = max(inp - cached, 0)
+            has_nz = any(v > 0 for v in (inp, cached, out, reas, tool))
+            usage.update({
+                "input_tokens": inp if has_nz else 0,
+                "cached_tokens": cached if has_nz else 0,
+                "non_cached_input_tokens": nc if has_nz else 0,
+                "cached_ratio": (cached / inp) if has_nz and inp > 0 else 0,
+                "output_tokens": out if has_nz else 0,
+                "reasoning_tokens": reas if has_nz else 0,
+                "tool_tokens": tool if has_nz else 0,
+                "available": has_nz,
+                "confirmation_status": "confirmed_request_usage" if has_nz else "missing_request_usage",
+                "source": "live_last_token_usage" if has_nz else "missing",
+                "note": "" if has_nz else "no confirmed last_token_usage for this step",
+                **(
+                    _estimate_usage_costs(step_model, inp, cached, out)
+                    if has_nz
+                    else {"estimated_total_cost_usd": None, "estimated_input_cost_usd": None,
+                          "estimated_cached_input_cost_usd": None, "estimated_output_cost_usd": None}
+                ),
+            })
+
+        # cumulative_after_step from last total_token_usage snapshot
+        last_total = all_total_snapshots[-1] if all_total_snapshots else None
+        cumulative_after_step = _make_cumulative_dict(last_total)
+        usage["cumulative_usage_after_step"] = cumulative_after_step
+
+        # cumulative cost
+        if isinstance(last_total, dict) and cumulative_after_step.get("available"):
+            cum_costs = _estimate_usage_costs(step_model,
+                to_int(last_total.get("input_tokens"), 0),
+                to_int(last_total.get("cached_tokens"), 0),
+                to_int(last_total.get("output_tokens"), 0))
+            usage["estimated_cumulative_cost_usd"] = cum_costs.get("estimated_total_cost_usd")
+        else:
+            usage["estimated_cumulative_cost_usd"] = None
+
+        # cumulative_before_step from previous visible step
+        cumulative_before_step = ({"available": True, **{k: v for k, v in prev_step_cumulative_after.items() if k != "available"}}
+                                 if prev_step_cumulative_after and prev_step_cumulative_after.get("available")
+                                 else {"available": False})
+
+        # cumulative_delta = after - before
+        cumulative_delta = _delta_cumulative(cumulative_after_step, cumulative_before_step)
+
+        # unattributed_delta = cumulative_delta - full_step_usage
+        unattributed_delta = _delta_unattributed(cumulative_delta, full_step_usage)
+
+        # cost_scope
+        cost_scope = _build_cost_scope(len(request_usage_items))
+
+        # event_range
+        si = start_event_index if start_event_index is not None else 0
+        ei = end_event_index if end_event_index is not None else 0
+        event_range = {
+            "start_event_index": si,
+            "end_event_index": ei,
+            "raw_events_count": (ei - si + 1) if (si is not None and ei is not None) else 0,
+        }
+
+        # ── write v2.1 fields into step ──
+        current_step["request_usage_items"] = request_usage_items
+        current_step["full_step_usage"] = full_step_usage
+        current_step["full_step_cost"] = full_step_cost
+        if primary_request_usage:
+            current_step["primary_request_usage"] = primary_request_usage
+        current_step["cumulative_before_step"] = cumulative_before_step
+        current_step["cumulative_after_step"] = cumulative_after_step
+        current_step["cumulative_delta"] = cumulative_delta
+        current_step["unattributed_delta"] = unattributed_delta
+        current_step["cost_scope"] = cost_scope
+        current_step["event_range"] = event_range
+
+        # ── v2.2: build agent_activity from classified events ──
+        raw_activity_items: list[dict[str, Any]] = current_step.pop("_activity_items", [])
+        live_tool_events_raw: list[dict[str, Any]] = current_step.pop("_live_tool_events", [])
+
+        # ── v2.5: process live_tool_events — link tool_call ↔ tool_output by call_id ──
+        processed_tool_events: list[dict[str, Any]] = []
+        # Index tool_outputs by call_id
+        outputs_by_call_id: dict[str, dict[str, Any]] = {}
+        for te in live_tool_events_raw:
+            if te.get("kind") == "tool_output":
+                cid = te.get("call_id", "")
+                if cid:
+                    outputs_by_call_id[cid] = te
+
+        for te in live_tool_events_raw:
+            if te.get("kind") == "tool_call":
+                cid = te.get("call_id", "")
+                linked_output = outputs_by_call_id.get(cid)
+                te_copy = dict(te)
+                if linked_output:
+                    te_copy["output_found"] = True
+                    te_copy["output_event_index"] = linked_output.get("event_index", 0)
+                    te_copy["output_exit_code"] = linked_output.get("exit_code", 0)
+                    te_copy["output_preview"] = linked_output.get("output_preview", "")
+                    te_copy["output_length"] = linked_output.get("output_length", 0)
+                else:
+                    te_copy["output_found"] = False
+                    te_copy["output_event_index"] = None
+                    te_copy["output_exit_code"] = None
+                    te_copy["output_preview"] = ""
+                    te_copy["output_length"] = 0
+                processed_tool_events.append(te_copy)
+            elif te.get("kind") == "tool_output":
+                # Only include outputs that don't have matching calls (orphans)
+                cid = te.get("call_id", "")
+                if cid not in {t.get("call_id", "") for t in live_tool_events_raw if t.get("kind") == "tool_call"}:
+                    processed_tool_events.append(dict(te))
+
+        # Sort by event_index
+        processed_tool_events.sort(key=lambda x: x.get("event_index", 0))
+
+        current_step["live_tool_events"] = processed_tool_events
+
+        # Build human_timeline from live_tool_events + request_usage_items
+        _build_agent_activity(current_step, raw_activity_items, full_step_usage, event_range, request_usage_items, processed_tool_events)
+
+        # Fallback: no request usage at all
+        if not primary_request_usage and isinstance(usage, dict):
             usage["available"] = False
             usage["confirmation_status"] = "missing_request_usage"
             usage["source"] = "missing"
-            if reason == "next_user":
-                usage["note"] = "next turn started before token checkpoint for this step"
-            elif reason == "task_complete":
-                usage["note"] = "task completed without last_token_usage checkpoint"
-            elif reason == "session_end":
-                usage["note"] = "session ended without last_token_usage checkpoint"
-            else:
-                usage["note"] = "no confirmed last_token_usage for this step"
+            notes = {"next_user": "next turn started before token checkpoint for this step",
+                     "task_complete": "task completed without last_token_usage checkpoint",
+                     "session_end": "session ended without last_token_usage checkpoint"}
+            usage["note"] = notes.get(reason, "no confirmed last_token_usage for this step")
+
+        # Update prev_step_cumulative_after for next step
+        if cumulative_after_step.get("available"):
+            prev_step_cumulative_after = cumulative_after_step
+
         steps.append(current_step)
         last_visible_step_index = to_int(current_step.get("step_index"), last_visible_step_index)
         current_step = None
 
     for ev in events:
+        global_event_index += 1
         outer_type = ev.get("type", "")
         pl = ev.get("payload", {})
         if not isinstance(pl, dict):
@@ -998,11 +2226,13 @@ def _build_live_steps(events: list[dict[str, Any]], thread_id: str) -> tuple[lis
 
         # token_count in event_msg: prefer payload.info.last_token_usage for per-step live usage
         token_count = None
+        total_token_snapshot = None
         model_context_window = 0
         if outer_type == "event_msg":
             info = pl.get("info", {})
             if isinstance(info, dict):
                 token_count = info.get("last_token_usage") or info.get("total_token_usage")
+                total_token_snapshot = info.get("total_token_usage")
                 model_context_window = to_int(info.get("model_context_window"), 0)
 
         if is_user:
@@ -1079,7 +2309,87 @@ def _build_live_steps(events: list[dict[str, Any]], thread_id: str) -> tuple[lis
                 },
                 "warnings": [],
                 "post_step_badges": [],
+                # v2.1: track all usages and event range
+                "_all_request_usages": [],
+                "_all_total_snapshots": [],
+                "_start_event_index": global_event_index,
+                "_end_event_index": global_event_index,
+                # v2.2: agent activity items
+                "_activity_items": [],
+                # v2.5: live_tool_events from raw function_call/function_call_output
+                "_live_tool_events": [],
             }
+
+        # ── v2.5: capture function_call / function_call_output ──
+        is_function_call = (outer_type == "response_item" and pl.get("type") == "function_call")
+        is_function_output = (outer_type == "response_item" and pl.get("type") == "function_call_output")
+
+        if current_step and (is_function_call or is_function_output):
+            tool_event: dict[str, Any] = {
+                "event_index": global_event_index,
+                "timestamp": str(ev.get("timestamp", "")),
+            }
+            if is_function_call:
+                tool_name = str(pl.get("name", ""))
+                call_id = str(pl.get("call_id", ""))
+                args_str = str(pl.get("arguments", "{}"))
+                # Parse arguments JSON string
+                args: dict[str, Any] = {}
+                try:
+                    args = json.loads(args_str) if args_str and args_str.startswith("{") else {}
+                except (json.JSONDecodeError, TypeError):
+                    args = {}
+                command = str(args.get("command", ""))
+                workdir = str(args.get("workdir", ""))
+                timeout_ms = args.get("timeout_ms", 0)
+                classification = _classify_shell_command(command) if command else {
+                    "classified_action": tool_name,
+                    "action_type": tool_name,
+                    "title_ru": f"Инструмент: {tool_name}",
+                    "target_path": "",
+                    "is_batch_candidate": False,
+                    "batch_group": "",
+                }
+                tool_event.update({
+                    "kind": "tool_call",
+                    "payload_type": "function_call",
+                    "tool_name": tool_name,
+                    "call_id": call_id,
+                    "command": command,
+                    "workdir": workdir,
+                    "timeout_ms": timeout_ms,
+                    "classified_action": classification["classified_action"],
+                    "action_type": classification["action_type"],
+                    "title_ru": classification["title_ru"],
+                    "target_path": classification.get("target_path", ""),
+                    "is_batch_candidate": classification.get("is_batch_candidate", False),
+                    "batch_group": classification.get("batch_group", ""),
+                    "raw_arguments_preview": args_str[:300],
+                })
+            else:  # function_call_output
+                call_id = str(pl.get("call_id", ""))
+                output_text = str(pl.get("output", pl.get("text", pl.get("result", ""))))
+                exit_code = pl.get("exit_code", pl.get("exitCode", 0))
+                if isinstance(exit_code, (int, float)):
+                    exit_code = int(exit_code)
+                else:
+                    exit_code = 0
+                tool_event.update({
+                    "kind": "tool_output",
+                    "payload_type": "function_call_output",
+                    "call_id": call_id,
+                    "exit_code": exit_code,
+                    "output_preview": output_text[:300] if output_text else "",
+                    "output_length": len(output_text) if output_text else 0,
+                    "classified_action": "tool_output",
+                    "action_type": "tool_output",
+                    "title_ru": "",
+                    "target_path": "",
+                    "is_batch_candidate": False,
+                    "batch_group": "",
+                    "raw_arguments_preview": "",
+                })
+            current_step["_live_tool_events"].append(tool_event)
 
         elif is_assistant:
             content_parts = pl.get("content", [])
@@ -1091,14 +2401,40 @@ def _build_live_steps(events: list[dict[str, Any]], thread_id: str) -> tuple[lis
                             pending_text.append(str(txt))
 
         if token_count and isinstance(token_count, dict) and current_step:
-            current_step["_last_request_usage"] = {
+            current_step.setdefault("_all_request_usages", []).append({
+                "event_index": global_event_index,
+                "timestamp": str(ev.get("timestamp", "")),
                 "input_tokens": to_int(token_count.get("input_tokens", token_count.get("input_token_count", 0))),
                 "cached_tokens": to_int(token_count.get("cached_input_tokens", token_count.get("cached_input_token_count", 0))),
                 "output_tokens": to_int(token_count.get("output_tokens", token_count.get("output_token_count", 0))),
                 "reasoning_tokens": to_int(token_count.get("reasoning_output_tokens", token_count.get("reasoning_token_count", 0))),
                 "tool_tokens": to_int(token_count.get("tool_tokens", token_count.get("tool_token_count", 0))),
-            }
+            })
             current_step.setdefault("environment", {})["model_context_window"] = model_context_window
+
+        if total_token_snapshot and isinstance(total_token_snapshot, dict) and current_step:
+            current_step.setdefault("_all_total_snapshots", []).append({
+                "event_index": global_event_index,
+                "timestamp": str(ev.get("timestamp", "")),
+                "input_tokens": to_int(total_token_snapshot.get("input_tokens", total_token_snapshot.get("input_token_count", 0))),
+                "cached_tokens": to_int(total_token_snapshot.get("cached_input_tokens", total_token_snapshot.get("cached_input_token_count", 0))),
+                "output_tokens": to_int(total_token_snapshot.get("output_tokens", total_token_snapshot.get("output_token_count", 0))),
+                "reasoning_tokens": to_int(total_token_snapshot.get("reasoning_output_tokens", total_token_snapshot.get("reasoning_token_count", 0))),
+                "tool_tokens": to_int(total_token_snapshot.get("tool_tokens", total_token_snapshot.get("tool_token_count", 0))),
+            })
+
+        # v2.2: classify raw event for agent activity breakdown
+        if current_step:
+            classified = _classify_event(ev, global_event_index)
+            if classified:
+                if isinstance(classified, list):
+                    current_step["_activity_items"].extend(classified)
+                else:
+                    current_step["_activity_items"].append(classified)
+
+        # v2.1: update _end_event_index for current step
+        if current_step:
+            current_step["_end_event_index"] = global_event_index
 
     finalize_current_step("session_end")
 
@@ -1111,6 +2447,82 @@ def _load_pricing() -> dict[str, dict[str, float]]:
     if data:
         return data.get("prices_per_1m", {})
     return {}
+
+
+def _compute_session_activity_summary(steps: list[dict[str, Any]]) -> dict[str, Any]:
+    """Compute session-level activity summary by aggregating across all visible steps."""
+    totals: dict[str, int] = {
+        "visible_steps": len(steps),
+        "raw_model_requests": 0, "raw_events": 0,
+        "file_reads": 0, "file_writes": 0, "shell_commands": 0,
+        "git_operations": 0, "test_runs": 0, "context_compactions": 0,
+        "unknown_events": 0,
+    }
+    top_expensive: list[dict[str, Any]] = []
+
+    for step in steps:
+        aa = step.get("agent_activity", {})
+        if not isinstance(aa, dict) or not aa.get("available"):
+            continue
+        er = aa.get("event_range", {})
+        totals["raw_events"] += er.get("raw_events_count", 0)
+        counts = aa.get("activity_counts", {})
+        if isinstance(counts, dict):
+            totals["raw_model_requests"] += counts.get("model_requests", 0)
+            totals["file_reads"] += counts.get("file_reads", 0)
+            totals["file_writes"] += counts.get("file_writes", 0)
+            totals["shell_commands"] += counts.get("shell_commands", 0)
+            totals["git_operations"] += counts.get("git_operations", 0)
+            totals["test_runs"] += counts.get("test_runs", 0)
+            totals["context_compactions"] += counts.get("context_compactions", 0)
+            totals["unknown_events"] += counts.get("unknown_events", 0)
+
+        fsc = step.get("full_step_cost", {})
+        if isinstance(fsc, dict) and fsc.get("total_usd") is not None:
+            top_expensive.append({
+                "step_index": step.get("step_index", 0),
+                "full_step_cost_usd": fsc["total_usd"],
+                "internal_requests": step.get("full_step_usage", {}).get("request_count", 0),
+                "main_activity_ru": "; ".join(aa.get("activity_summary_ru", [])[:3]),
+            })
+
+    top_expensive.sort(key=lambda x: x["full_step_cost_usd"], reverse=True)
+
+    # Collect top expensive internal actions across all steps
+    all_internal: list[dict[str, Any]] = []
+    for step in steps:
+        aa = step.get("agent_activity", {})
+        sia = aa.get("step_internal_actions", []) if isinstance(aa, dict) else []
+        for a in sia:
+            if a.get("cost", {}).get("total_usd") is not None:
+                all_internal.append({
+                    "step_index": step.get("step_index", 0),
+                    "action_index": a.get("index", 0),
+                    "action_title_ru": a.get("title_ru", "") or f"Внутренний запрос модели #{a.get('index', 0)}",
+                    "possible_stage_ru": a.get("possible_stage_ru", ""),
+                    "confidence": a.get("stage_confidence", "low"),
+                    "input_tokens": a.get("usage", {}).get("input_tokens", 0),
+                    "non_cached_input_tokens": a.get("usage", {}).get("non_cached_input_tokens", 0),
+                    "output_tokens": a.get("usage", {}).get("output_tokens", 0),
+                    "cost_usd": a["cost"]["total_usd"],
+                    "expensive_reason_ru": a.get("expensive_reason", ""),
+                })
+    all_internal.sort(key=lambda x: x["cost_usd"], reverse=True)
+
+    return {
+        "visible_steps": totals["visible_steps"],
+        "raw_model_requests": totals["raw_model_requests"],
+        "raw_events": totals["raw_events"],
+        "file_reads": totals["file_reads"],
+        "file_writes": totals["file_writes"],
+        "shell_commands": totals["shell_commands"],
+        "git_operations": totals["git_operations"],
+        "test_runs": totals["test_runs"],
+        "context_compactions": totals["context_compactions"],
+        "unknown_events": totals["unknown_events"],
+        "top_expensive_steps": top_expensive[:5],
+        "top_expensive_internal_actions": all_internal[:10],
+    }
 
 
 def _estimate_usage_costs(
@@ -1502,6 +2914,15 @@ class MonitorHandler(SimpleHTTPRequestHandler):
             self._error(500, f"failed to load audit module: {exc}")
             return
 
+        # Determine rollout path for cumulative accounting (live only)
+        rollout_path = None
+        if kind == "live":
+            rollout_dir = Path(source.get("rollout_dir", ""))
+            if rollout_dir.exists():
+                candidate = rollout_dir / f"{session_id}.jsonl"
+                if candidate.exists():
+                    rollout_path = candidate
+
         result = audit_mod.run_audit(
             detail,
             source_kind=kind,
@@ -1509,6 +2930,7 @@ class MonitorHandler(SimpleHTTPRequestHandler):
             session_id=session_id,
             selected_step_indices=selected_step_indices,
             upstream_evidence_available=upstream_evidence,
+            rollout_path=rollout_path,
         )
 
         # Generate artifacts
@@ -1541,6 +2963,8 @@ class MonitorHandler(SimpleHTTPRequestHandler):
                 }
                 for sf in result.get("step_findings", [])
             ],
+            "cumulative_accounting_rows": result.get("cumulative_accounting_rows", []),
+            "session_cumulative_accounting": result.get("session_cumulative_accounting"),
             "summary_path": str(summary_path.relative_to(REPO_ROOT)),
             "report_path": str(report_path.relative_to(REPO_ROOT)),
             "source_kind": kind,
