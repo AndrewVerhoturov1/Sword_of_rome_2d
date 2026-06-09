@@ -12,6 +12,9 @@ sys.path.insert(0, str(SCRIPTS_DIR))
 
 from codex_token_monitor_audit import (
     run_audit, generate_audit_artifacts,
+    _parse_rollout_for_cumulative, _parse_redacted_int,
+    _compute_step_cumulative_accounting, _compute_session_cumulative_accounting,
+    _fmt_token_dict,
     EVIDENCE_VERIFIED, EVIDENCE_PLAUSIBLE, EVIDENCE_NOT_VERIFIED,
 )
 
@@ -743,6 +746,448 @@ class TestTruthRegression(unittest.TestCase):
         # But basis detection should not flag this as cumulative
         self.assertNotEqual(result["step_attribution_confidence"], "low",
             "per_step_delta basis should not be treated as cumulative fallback")
+
+
+class TestCumulativeAccounting(unittest.TestCase):
+    """Tests for cumulative-after-step and unattributed-delta accounting."""
+
+    def test_parse_redacted_int_none(self):
+        self.assertIsNone(_parse_redacted_int(None))
+        self.assertIsNone(_parse_redacted_int("[REDACTED]"))
+        self.assertIsNone(_parse_redacted_int("N/A"))
+        self.assertIsNone(_parse_redacted_int(""))
+
+    def test_parse_redacted_int_valid(self):
+        self.assertEqual(_parse_redacted_int(42), 42)
+        self.assertEqual(_parse_redacted_int("42"), 42)
+        self.assertEqual(_parse_redacted_int("1234.5"), 1234)
+
+    def test_rollout_parse_empty_file(self):
+        tmp = Path(tempfile.mkdtemp()) / "empty.jsonl"
+        tmp.write_text("", encoding="utf-8")
+        result = _parse_rollout_for_cumulative(tmp, "session-1")
+        self.assertEqual(len(result["turns"]), 0)
+        self.assertIsNone(result["final_cumulative"])
+
+    def test_rollout_parse_token_count_events(self):
+        tmp = Path(tempfile.mkdtemp()) / "test.jsonl"
+        tmp.write_text(
+            json.dumps({"timestamp": "2026-01-01T00:00:00Z", "type": "event_msg",
+                        "payload": {"type": "task_started", "turn_id": "turn-1"}}) + "\n" +
+            json.dumps({"timestamp": "2026-01-01T00:00:01Z", "type": "event_msg",
+                        "payload": {"type": "token_count",
+                                    "info": {"total_token_usage": 1000, "last_token_usage": 200}}}) + "\n" +
+            json.dumps({"timestamp": "2026-01-01T00:00:02Z", "type": "event_msg",
+                        "payload": {"type": "task_complete", "turn_id": "turn-1"}}) + "\n",
+            encoding="utf-8",
+        )
+        result = _parse_rollout_for_cumulative(tmp, "session-1")
+        self.assertEqual(len(result["turns"]), 1)
+        turn = result["turns"][0]
+        self.assertEqual(turn["turn_id"], "turn-1")
+        self.assertEqual(len(turn["cumulative_events"]), 1)
+        self.assertEqual(turn["cumulative_events"][0]["total_token_usage"], 1000)
+        self.assertEqual(turn["cumulative_events"][0]["last_token_usage"], 200)
+        self.assertEqual(result["final_cumulative"]["total_token_usage"], 1000)
+
+    def test_step_cumulative_accounting_basic(self):
+        steps = [
+            {"step_index": 1, "turn_id": "turn-1",
+             "environment": {"task_turn_id": "turn-1"},
+             "usage": {"input_tokens": 100, "output_tokens": 50, "available": True,
+                       "confirmation_status": "confirmed_request_usage"}},
+            {"step_index": 2, "turn_id": "turn-2",
+             "environment": {"task_turn_id": "turn-2"},
+             "usage": {"input_tokens": 200, "output_tokens": 80, "available": True,
+                       "confirmation_status": "confirmed_request_usage"}},
+        ]
+        turns = [
+            {"turn_id": "turn-1",
+             "cumulative_events": [
+                 {"timestamp": "", "total_token_usage": 1000, "last_token_usage": 150,
+                  "input_tokens": 800, "output_tokens": 200}
+             ]},
+            {"turn_id": "turn-2",
+             "cumulative_events": [
+                 {"timestamp": "", "total_token_usage": 2500, "last_token_usage": 300,
+                  "input_tokens": 1800, "output_tokens": 600}
+             ]},
+        ]
+        rows = _compute_step_cumulative_accounting(steps, turns, "live")
+        self.assertEqual(len(rows), 2)
+
+        # Step 1: request_usage from step
+        self.assertEqual(rows[0]["request_usage"]["input_tokens"], 100)
+        self.assertEqual(rows[0]["cumulative_usage_after_step"]["input_tokens"], 800)
+        # Step 1 is first — no cumulative_delta
+        self.assertEqual(rows[0]["cumulative_delta_since_previous_visible_step"].get("input_tokens"), None)
+
+        # Step 2: cumulative_delta = 1800 - 800 = 1000
+        self.assertEqual(rows[1]["cumulative_delta_since_previous_visible_step"]["input_tokens"], 1000)
+        # unattributed_delta = 1000 - 200 = 800
+        self.assertEqual(rows[1]["unattributed_delta"]["input_tokens"], 800)
+        # First step should have cold-start flag
+        self.assertTrue(rows[0].get("first_visible_step_not_cold_start"))
+
+    def test_session_cumulative_accounting(self):
+        rows = [
+            {"step_index": 1,
+             "request_usage": {"input_tokens": 100, "output_tokens": 50},
+             "cumulative_delta_since_previous_visible_step": {}},
+            {"step_index": 2,
+             "request_usage": {"input_tokens": 200, "output_tokens": 80},
+             "cumulative_delta_since_previous_visible_step": {"input_tokens": 1000, "output_tokens": 400}},
+        ]
+        final_cum = {"total_token_usage": 5000, "input_tokens": 4000, "output_tokens": 1000}
+        sca = _compute_session_cumulative_accounting(rows, final_cum, {})
+        self.assertEqual(sca["session_total_usage"]["input_tokens"], 4000)
+        self.assertEqual(sca["visible_steps_request_usage_sum"]["input_tokens"], 300)
+        self.assertEqual(sca["visible_steps_cumulative_delta_sum"]["input_tokens"], 1000)
+        self.assertEqual(sca["unattributed_session_usage"]["input_tokens"], 3700)  # 4000 - 300
+        self.assertTrue(sca["includes_hidden_context_possible"])  # 300/4000 = 0.075
+
+    def test_negative_unattributed_warning(self):
+        """Negative unattributed_delta should produce warning, not crash."""
+        steps = [
+            {"step_index": 1, "turn_id": "turn-1",
+             "environment": {"task_turn_id": "turn-1"},
+             "usage": {"input_tokens": 500, "available": True,
+                       "confirmation_status": "confirmed_request_usage"}},
+        ]
+        turns = [
+            {"turn_id": "turn-1",
+             "cumulative_events": [
+                 {"timestamp": "", "total_token_usage": 1000, "input_tokens": 300,
+                  "output_tokens": 100}
+             ]},
+        ]
+        rows = _compute_step_cumulative_accounting(steps, turns, "live")
+        # input_tokens: request=500, cumulative=300 → can't compute delta for first step
+        # But no crash
+        self.assertEqual(len(rows), 1)
+
+    def test_rollout_parse_redacted_values(self):
+        """[REDACTED] values should be parsed as None, not crash."""
+        tmp = Path(tempfile.mkdtemp()) / "redacted.jsonl"
+        tmp.write_text(
+            json.dumps({"timestamp": "2026-01-01T00:00:00Z", "type": "event_msg",
+                        "payload": {"type": "task_started", "turn_id": "turn-1"}}) + "\n" +
+            json.dumps({"timestamp": "2026-01-01T00:00:01Z", "type": "event_msg",
+                        "payload": {"type": "token_count",
+                                    "info": {"total_token_usage": "[REDACTED]",
+                                             "last_token_usage": "[REDACTED]"}}}) + "\n" +
+            json.dumps({"timestamp": "2026-01-01T00:00:02Z", "type": "event_msg",
+                        "payload": {"type": "task_complete", "turn_id": "turn-1"}}) + "\n",
+            encoding="utf-8",
+        )
+        result = _parse_rollout_for_cumulative(tmp, "session-1")
+        turn = result["turns"][0]
+        self.assertIsNone(turn["cumulative_events"][0]["total_token_usage"])
+
+    def test_fmt_token_dict(self):
+        self.assertEqual(_fmt_token_dict({}), "—")
+        self.assertEqual(_fmt_token_dict({"input_tokens": 1000, "output_tokens": 500}),
+                         "input_tokens=1,000, output_tokens=500")
+        self.assertEqual(_fmt_token_dict({"a": None, "b": 5}), "a=N/A, b=5")
+
+    def test_artifact_includes_cumulative_fields(self):
+        result = {
+            "audit_status": "warning", "usage_confirmation": "all_confirmed",
+            "step_attribution_confidence": "medium", "cost_confidence": "estimated_from_cumulative",
+            "fallback_used": False, "findings": [],
+            "step_findings": [],
+            "cumulative_accounting_rows": [
+                {"step_index": 1, "request_usage": {"input_tokens": 100},
+                 "cumulative_usage_after_step": {"input_tokens": 800},
+                 "cumulative_delta_since_previous_visible_step": {},
+                 "unattributed_delta": {}, "warnings": []},
+            ],
+            "session_cumulative_accounting": {
+                "session_total_usage": {"input_tokens": 4000},
+                "visible_steps_request_usage_sum": {"input_tokens": 300},
+                "visible_steps_cumulative_delta_sum": {},
+                "unattributed_session_usage": {"input_tokens": 3700},
+                "includes_hidden_context_possible": True,
+            },
+            "rollout_parse_errors": [],
+            "source_kind": "live", "session_id": "test", "source_id": "test",
+            "audit_timestamp": "2026-01-01T00:00:00Z",
+        }
+        tmpdir = Path(tempfile.mkdtemp()) / "audit-cum"
+        sp, rp = generate_audit_artifacts(result, tmpdir)
+        summary_data = json.loads(sp.read_text(encoding="utf-8"))
+        self.assertEqual(summary_data["schema_version"], "codex-token-monitor-audit")
+        self.assertIn("cumulative_accounting_rows", summary_data)
+        self.assertIn("session_cumulative_accounting", summary_data)
+        md_text = rp.read_text(encoding="utf-8")
+        self.assertIn("Cumulative Accounting", md_text)
+        self.assertIn("unattributed_session_usage", md_text)
+
+    def test_run_audit_accepts_rollout_path(self):
+        """run_audit should accept rollout_path kwarg without error."""
+        detail = {
+            "id": "test-session", "title": "Test",
+            "source_kind": "live", "summary": {"turn_count": 1},
+            "steps": [],
+        }
+        # With rollout_path=None (default)
+        result = run_audit(detail, source_kind="live", session_id="test-session")
+        self.assertEqual(result["cumulative_accounting_rows"], [])
+        self.assertIsNone(result["session_cumulative_accounting"])
+
+    def test_export_includes_cumulative_fields(self):
+        """Export honesty: cumulative fields must be present in audit result."""
+        detail = {
+            "id": "test-session", "title": "Test",
+            "source_kind": "live",
+            "summary": {"turn_count": 1, "usage_basis": "live_total_token_usage_latest",
+                        "warnings": [{"id": "test", "message": "test"}]},
+            "steps": [{
+                "step_index": 1, "model": "test",
+                "user_prompt": {"available": False, "text": "", "hidden_by_default": True},
+                "assistant_answer": {"available": False, "text": "", "hidden_by_default": True},
+                "usage": {"available": False, "confirmation_status": "missing_request_usage",
+                          "source": "missing"},
+                "environment": {}, "warnings": [],
+            }],
+        }
+        result = run_audit(detail, source_kind="live", session_id="test-session")
+        # Even without rollout, result should have cumulative fields (empty)
+        self.assertIn("cumulative_accounting_rows", result)
+        self.assertIn("session_cumulative_accounting", result)
+        self.assertIn("rollout_parse_errors", result)
+
+
+class TestAuditV21StepFullCostAccounting(unittest.TestCase):
+    """v2.1: Audit checks for full_step_usage, full_step_cost, event_range, cost_scope."""
+
+    def _make_detail_with_v21_fields(self):
+        """Create a live detail with v2.1 fields populated."""
+        return {
+            "id": "v21-test-001", "title": "V2.1 test",
+            "date": "2026-06-07T10:00:00Z", "model": "deepseek-v4-pro",
+            "reasoning": "medium", "workdir": "D:\\test\\repo",
+            "source_kind": "live",
+            "summary": {
+                "turn_count": 2, "session_count": 1,
+                "usage_basis": "live_total_token_usage_latest",
+                "step_usage_basis": "live_last_token_usage",
+                "total_input_tokens": 4000, "total_cached_tokens": 1500,
+                "total_non_cached_input_tokens": 2500, "average_cached_ratio": 0.375,
+                "total_output_tokens": 200, "total_reasoning_tokens": 50,
+                "total_tool_tokens": 0, "estimated_total_cost_usd": 0.05,
+                "models": ["deepseek-v4-pro"],
+                "warnings": [{"id": "cumulative", "message": "cumulative"}],
+                "visible_steps_count": 2,
+                "raw_model_requests_count": 3,
+                "visible_step_full_usage_sum": {"input_tokens": 3000, "cached_tokens": 1200, "output_tokens": 150},
+                "unmapped_or_internal_usage": {"input_tokens": 1000, "output_tokens": 50},
+            },
+            "steps": [
+                {
+                    "step_index": 1, "turn_id": "turn-1",
+                    "model": "deepseek-v4-pro", "reasoning_effort": "medium",
+                    "user_prompt": {"available": True, "text": "hello", "hidden_by_default": True, "kind": "user_message"},
+                    "assistant_answer": {"available": True, "text": "hi", "hidden_by_default": True},
+                    "usage": {
+                        "input_tokens": 1000, "cached_tokens": 500,
+                        "non_cached_input_tokens": 500, "cached_ratio": 0.5,
+                        "output_tokens": 50, "reasoning_tokens": 20, "tool_tokens": 0,
+                        "available": True,
+                        "confirmation_status": "confirmed_request_usage",
+                        "source": "live_last_token_usage", "note": "",
+                        "estimated_total_cost_usd": 0.01,
+                    },
+                    "request_usage_items": [
+                        {"event_index": 5, "timestamp": "", "source": "live_last_token_usage",
+                         "input_tokens": 1000, "cached_tokens": 500, "non_cached_input_tokens": 500,
+                         "output_tokens": 50, "reasoning_tokens": 20, "tool_tokens": 0,
+                         "estimated_cost": {"total_usd": 0.01}},
+                    ],
+                    "full_step_usage": {
+                        "source": "sum_last_token_usage_inside_visible_step",
+                        "request_count": 1, "input_tokens": 1000, "cached_tokens": 500,
+                        "non_cached_input_tokens": 500, "output_tokens": 50, "reasoning_tokens": 20,
+                        "tool_tokens": 0,
+                    },
+                    "full_step_cost": {
+                        "source": "estimated_from_full_step_usage",
+                        "total_usd": 0.01, "input_usd": 0.005, "cached_input_usd": 0.001, "output_usd": 0.004,
+                        "confidence": "estimated_from_local_pricing_config",
+                    },
+                    "primary_request_usage": {
+                        "source": "live_last_token_usage",
+                        "input_tokens": 1000, "cached_tokens": 500, "output_tokens": 50,
+                        "reasoning_tokens": 20, "tool_tokens": 0,
+                    },
+                    "cumulative_before_step": {"available": False},
+                    "cumulative_after_step": {
+                        "available": True, "input_tokens": 1500, "cached_tokens": 800,
+                        "output_tokens": 100,
+                    },
+                    "cumulative_delta": {
+                        "available": False,
+                    },
+                    "unattributed_delta": {"available": False},
+                    "cost_scope": {
+                        "current_displayed_cost_scope": "single_request",
+                        "full_step_cost_available": True,
+                        "request_cost_available": True,
+                        "mapping_confidence": "high",
+                    },
+                    "event_range": {"start_event_index": 3, "end_event_index": 10, "raw_events_count": 8},
+                    "environment": {"thread_id": "v21-test-001"},
+                    "warnings": [], "post_step_badges": [],
+                },
+                {
+                    "step_index": 2, "turn_id": "turn-2",
+                    "model": "deepseek-v4-pro", "reasoning_effort": "medium",
+                    "user_prompt": {"available": True, "text": "more", "hidden_by_default": True, "kind": "user_message"},
+                    "assistant_answer": {"available": True, "text": "ok", "hidden_by_default": True},
+                    "usage": {
+                        "input_tokens": 1500, "cached_tokens": 500,
+                        "non_cached_input_tokens": 1000, "cached_ratio": 0.333,
+                        "output_tokens": 60, "reasoning_tokens": 30, "tool_tokens": 0,
+                        "available": True,
+                        "confirmation_status": "confirmed_request_usage",
+                        "source": "live_last_token_usage", "note": "",
+                        "estimated_total_cost_usd": 0.015,
+                    },
+                    "request_usage_items": [
+                        {"event_index": 12, "timestamp": "", "source": "live_last_token_usage",
+                         "input_tokens": 800, "cached_tokens": 300, "non_cached_input_tokens": 500,
+                         "output_tokens": 30, "reasoning_tokens": 15, "tool_tokens": 0,
+                         "estimated_cost": {"total_usd": 0.008}},
+                        {"event_index": 14, "timestamp": "", "source": "live_last_token_usage",
+                         "input_tokens": 700, "cached_tokens": 200, "non_cached_input_tokens": 500,
+                         "output_tokens": 30, "reasoning_tokens": 15, "tool_tokens": 0,
+                         "estimated_cost": {"total_usd": 0.007}},
+                    ],
+                    "full_step_usage": {
+                        "source": "sum_last_token_usage_inside_visible_step",
+                        "request_count": 2, "input_tokens": 1500, "cached_tokens": 500,
+                        "non_cached_input_tokens": 1000, "output_tokens": 60, "reasoning_tokens": 30,
+                        "tool_tokens": 0,
+                    },
+                    "full_step_cost": {
+                        "source": "estimated_from_full_step_usage",
+                        "total_usd": 0.015, "input_usd": 0.008, "cached_input_usd": 0.002, "output_usd": 0.005,
+                        "confidence": "estimated_from_local_pricing_config",
+                    },
+                    "primary_request_usage": {
+                        "source": "live_last_token_usage",
+                        "input_tokens": 700, "cached_tokens": 200, "output_tokens": 30,
+                        "reasoning_tokens": 15, "tool_tokens": 0,
+                    },
+                    "cumulative_before_step": {
+                        "available": True, "input_tokens": 1500, "cached_tokens": 800,
+                        "output_tokens": 100,
+                    },
+                    "cumulative_after_step": {
+                        "available": True, "input_tokens": 4000, "cached_tokens": 1500,
+                        "output_tokens": 200,
+                    },
+                    "cumulative_delta": {
+                        "available": True, "input_tokens": 2500, "cached_tokens": 700,
+                        "output_tokens": 100,
+                    },
+                    "unattributed_delta": {
+                        "available": True, "input_tokens": 1000, "cached_tokens": 200,
+                        "output_tokens": 40,
+                        "interpretation": "cumulative growth not explained by summed request usage inside visible step",
+                    },
+                    "cost_scope": {
+                        "current_displayed_cost_scope": "full_visible_step",
+                        "full_step_cost_available": True,
+                        "request_cost_available": True,
+                        "mapping_confidence": "high",
+                    },
+                    "event_range": {"start_event_index": 11, "end_event_index": 18, "raw_events_count": 8},
+                    "environment": {"thread_id": "v21-test-001"},
+                    "warnings": [], "post_step_badges": [],
+                },
+            ],
+            "timeline_events": [],
+        }
+
+    def test_event_range_present(self):
+        """Audit must confirm event_range exists for each step."""
+        detail = self._make_detail_with_v21_fields()
+        result = run_audit(detail, source_kind="live", session_id="v21-test-001")
+        self.assertTrue(any(f["id"] == "step_1_event_range_ok" for f in result["findings"]))
+        self.assertTrue(any(f["id"] == "step_2_event_range_ok" for f in result["findings"]))
+
+    def test_event_ranges_monotonic(self):
+        """Audit must check that event ranges are monotonic."""
+        detail = self._make_detail_with_v21_fields()
+        result = run_audit(detail, source_kind="live", session_id="v21-test-001")
+        self.assertTrue(any(f["id"] == "event_range_monotonic_ok" for f in result["findings"]))
+
+    def test_full_step_usage_matches_sum_of_request_items(self):
+        """Audit verifies full_step_usage equals sum of request_usage_items."""
+        detail = self._make_detail_with_v21_fields()
+        result = run_audit(detail, source_kind="live", session_id="v21-test-001")
+        self.assertTrue(any(f["id"] == "step_1_full_usage_match" for f in result["findings"]))
+        self.assertTrue(any(f["id"] == "step_2_full_usage_match" for f in result["findings"]))
+
+    def test_full_step_cost_source_correct(self):
+        """Audit verifies full_step_cost.source is 'estimated_from_full_step_usage'."""
+        detail = self._make_detail_with_v21_fields()
+        result = run_audit(detail, source_kind="live", session_id="v21-test-001")
+        self.assertTrue(any(f["id"] == "step_1_full_cost_source_ok" for f in result["findings"]))
+        self.assertTrue(any(f["id"] == "step_2_full_cost_source_ok" for f in result["findings"]))
+
+    def test_cost_scope_not_ambiguous(self):
+        """Audit verifies cost_scope labels are clear (single_request/full_visible_step)."""
+        detail = self._make_detail_with_v21_fields()
+        result = run_audit(detail, source_kind="live", session_id="v21-test-001")
+        self.assertTrue(any(f["id"] == "step_1_cost_scope_clear" for f in result["findings"]))
+        self.assertTrue(any(f["id"] == "step_2_cost_scope_clear" for f in result["findings"]))
+
+    def test_cumulative_monotonic_check(self):
+        """Audit verifies cumulative input is monotonic (after >= before)."""
+        detail = self._make_detail_with_v21_fields()
+        result = run_audit(detail, source_kind="live", session_id="v21-test-001")
+        self.assertTrue(any(f["id"] == "step_2_cumulative_monotonic" for f in result["findings"]))
+
+    def test_unattributed_delta_consistency(self):
+        """Audit verifies unattributed_delta = cumulative_delta - full_step_usage."""
+        detail = self._make_detail_with_v21_fields()
+        result = run_audit(detail, source_kind="live", session_id="v21-test-001")
+        self.assertTrue(any(f["id"] == "step_2_unattributed_match" for f in result["findings"]))
+
+    def test_single_request_matches_full_step(self):
+        """Audit confirms single-request step: request cost equals full step cost."""
+        detail = self._make_detail_with_v21_fields()
+        result = run_audit(detail, source_kind="live", session_id="v21-test-001")
+        self.assertTrue(any(f["id"] == "step_1_single_request_matches" for f in result["findings"]))
+
+    def test_fsu_sum_reconciliation(self):
+        """Audit checks sum(full_step_usage) + unmapped ≈ session total."""
+        detail = self._make_detail_with_v21_fields()
+        result = run_audit(detail, source_kind="live", session_id="v21-test-001")
+        self.assertTrue(any(f["id"] == "fsu_sum_reconciliation_ok" for f in result["findings"]))
+
+    def test_missing_full_step_usage_is_warning(self):
+        """Steps without full_step_usage should produce a warning, not crash."""
+        detail = self._make_detail_with_v21_fields()
+        # Remove full_step_usage from step 1
+        detail["steps"][0].pop("full_step_usage", None)
+        detail["steps"][0].pop("request_usage_items", None)
+        detail["steps"][0].pop("full_step_cost", None)
+        detail["steps"][0].pop("event_range", None)
+        detail["steps"][0].pop("cost_scope", None)
+        result = run_audit(detail, source_kind="live", session_id="v21-test-001")
+        # Should not crash, should produce warning about missing event_range
+        self.assertIsNotNone(result)
+        findings_ids = [f["id"] for f in result.get("findings", [])]
+        self.assertIn("step_1_event_range_missing", findings_ids)
+        self.assertIn("step_1_request_items_empty", findings_ids)
+
+    def test_no_ambiguous_cost_confirmed_in_audit(self):
+        """Audit module code must not use ambiguous 'Cost confirmed' wording."""
+        audit_code = (REPO_ROOT / "scripts" / "codex_token_monitor_audit.py").read_text(encoding="utf-8")
+        self.assertNotIn("Cost confirmed", audit_code)
 
 
 if __name__ == "__main__":

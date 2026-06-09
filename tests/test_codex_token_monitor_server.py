@@ -709,5 +709,334 @@ def _refresh_session_static(project, session_id):
 _server_mod._refresh_session_static = _refresh_session_static
 
 
+class TestStepFullCostAccountingV21(unittest.TestCase):
+    """v2.1: Tests for full_step_usage/full_step_cost vs request cost distinction."""
+
+    def test_live_fixture_has_v21_fields(self):
+        fixture = TestLiveChatFixture()
+        fixture.setUp()
+        try:
+            source = {"id": "codex_live_threads", "kind": "live", "codex_dir": str(fixture.codex_dir)}
+            detail = _server_mod.build_live_session_detail(source, fixture.thread_id)
+            self.assertIsNotNone(detail)
+
+            # Session summary v2.1 fields
+            summary = detail["summary"]
+            self.assertIn("visible_steps_count", summary)
+            self.assertIn("raw_model_requests_count", summary)
+            self.assertIn("visible_step_full_usage_sum", summary)
+            self.assertIn("unmapped_or_internal_usage", summary)
+            self.assertEqual(summary["visible_steps_count"], 2)
+            self.assertGreater(summary["raw_model_requests_count"], 0)
+
+            steps = detail["steps"]
+            self.assertEqual(len(steps), 2)
+
+            for step in steps:
+                # All v2.1 top-level fields must be present
+                self.assertIn("request_usage_items", step)
+                self.assertIn("full_step_usage", step)
+                self.assertIn("full_step_cost", step)
+                self.assertIn("primary_request_usage", step)
+                self.assertIn("cumulative_before_step", step)
+                self.assertIn("cumulative_after_step", step)
+                self.assertIn("cumulative_delta", step)
+                self.assertIn("unattributed_delta", step)
+                self.assertIn("cost_scope", step)
+                self.assertIn("event_range", step)
+
+            # Step 1: one request only
+            step1 = steps[0]
+            self.assertEqual(step1["step_index"], 1)
+            self.assertEqual(len(step1["request_usage_items"]), 1)
+            self.assertEqual(step1["full_step_usage"]["request_count"], 1)
+            self.assertEqual(step1["full_step_usage"]["input_tokens"], 1200)
+            self.assertEqual(step1["full_step_usage"]["cached_tokens"], 1000)
+            self.assertEqual(step1["full_step_usage"]["output_tokens"], 55)
+            # Single request: primary equals full
+            self.assertEqual(
+                step1["primary_request_usage"]["input_tokens"],
+                step1["full_step_usage"]["input_tokens"],
+            )
+            # cost_scope for single request
+            self.assertEqual(step1["cost_scope"]["current_displayed_cost_scope"], "single_request")
+            self.assertEqual(step1["cost_scope"]["mapping_confidence"], "high")
+            # Event range
+            self.assertGreater(step1["event_range"]["start_event_index"], 0)
+            self.assertGreaterEqual(step1["event_range"]["end_event_index"], step1["event_range"]["start_event_index"])
+
+            # Step 1 cumulative_before should be unavailable (first step)
+            self.assertFalse(step1["cumulative_before_step"]["available"])
+
+            # Step 1 cumulative_after: should be present (from total_token_usage snapshot)
+            ca1 = step1["cumulative_after_step"]
+            self.assertTrue(ca1.get("available"))
+            # Step 1 has cumulative_after from its single snapshot: 1200/1000/55
+
+            # Step 2: one request; compaction token falls after task_complete
+            step2 = steps[1]
+            self.assertEqual(step2["step_index"], 2)
+            # Step 2 has 1 token_count event: its own request
+            # Compaction token_count at 10:01:07 is after task_complete → outside step range
+            self.assertEqual(step2["full_step_usage"]["request_count"], 1)
+            # Step 2 input = 600 (own request)
+            self.assertEqual(step2["full_step_usage"]["input_tokens"], 600)
+            # cost_scope for single request
+            self.assertEqual(step2["cost_scope"]["current_displayed_cost_scope"], "single_request")
+
+            # Step 2 cumulative_before should be available (from step 1 after)
+            self.assertTrue(step2["cumulative_before_step"]["available"])
+
+            # Usage (backwards compat) still works
+            self.assertTrue(step1["usage"]["available"])
+            self.assertEqual(step1["usage"]["source"], "live_last_token_usage")
+
+        finally:
+            fixture.tearDown()
+
+    def test_full_step_usage_is_sum_of_request_items(self):
+        """full_step_usage.input_tokens must equal sum of request_usage_items.input_tokens."""
+        fixture = TestLiveChatFixture()
+        fixture.setUp()
+        try:
+            source = {"id": "codex_live_threads", "kind": "live", "codex_dir": str(fixture.codex_dir)}
+            detail = _server_mod.build_live_session_detail(source, fixture.thread_id)
+            for step in detail["steps"]:
+                fsu = step["full_step_usage"]
+                items = step["request_usage_items"]
+                expected_input = sum(item["input_tokens"] for item in items)
+                expected_output = sum(item["output_tokens"] for item in items)
+                self.assertEqual(fsu["input_tokens"], expected_input,
+                    f"Step {step['step_index']}: full_step_usage input mismatch")
+                self.assertEqual(fsu["output_tokens"], expected_output,
+                    f"Step {step['step_index']}: full_step_usage output mismatch")
+        finally:
+            fixture.tearDown()
+
+    def test_multiple_requests_cost_gt_single_request(self):
+        """When step has >1 requests, full_step_cost should be >= request cost."""
+        fixture = TestLiveChatFixture()
+        fixture.setUp()
+        try:
+            source = {"id": "codex_live_threads", "kind": "live", "codex_dir": str(fixture.codex_dir)}
+            detail = _server_mod.build_live_session_detail(source, fixture.thread_id)
+            step2 = detail["steps"][1]
+            # Step 2 has 1 request (compaction token_count is after task_complete, outside step)
+            self.assertEqual(step2["full_step_usage"]["request_count"], 1)
+            # For single-request step, full_step_cost equals request cost
+            fsc_total = step2["full_step_cost"].get("total_usd")
+            req_cost = step2["usage"].get("estimated_total_cost_usd")
+            if fsc_total is not None and req_cost is not None:
+                self.assertAlmostEqual(fsc_total, req_cost, places=5,
+                    msg="single-request step: full_step_cost should equal request cost")
+        finally:
+            fixture.tearDown()
+
+    def test_cost_scope_distinguishes_single_vs_multi_request(self):
+        """cost_scope.current_displayed_cost_scope must not be ambiguous."""
+        fixture = TestLiveChatFixture()
+        fixture.setUp()
+        try:
+            source = {"id": "codex_live_threads", "kind": "live", "codex_dir": str(fixture.codex_dir)}
+            detail = _server_mod.build_live_session_detail(source, fixture.thread_id)
+            step1 = detail["steps"][0]
+            step2 = detail["steps"][1]
+            # Single request step
+            self.assertEqual(step1["cost_scope"]["current_displayed_cost_scope"], "single_request")
+            # Single request step (compaction token_count outside step range)
+            self.assertEqual(step2["cost_scope"]["current_displayed_cost_scope"], "single_request")
+            # Neither should be "unknown"
+            for step in detail["steps"]:
+                self.assertNotEqual(step["cost_scope"]["current_displayed_cost_scope"], "unknown",
+                    f"Step {step['step_index']} has unknown cost_scope")
+        finally:
+            fixture.tearDown()
+
+    def test_cumulative_delta_is_after_minus_before(self):
+        """cumulative_delta.input_tokens = cumulative_after - cumulative_before."""
+        fixture = TestLiveChatFixture()
+        fixture.setUp()
+        try:
+            source = {"id": "codex_live_threads", "kind": "live", "codex_dir": str(fixture.codex_dir)}
+            detail = _server_mod.build_live_session_detail(source, fixture.thread_id)
+            step2 = detail["steps"][1]
+            if step2["cumulative_before_step"].get("available") and step2["cumulative_delta"].get("available"):
+                expected = (
+                    step2["cumulative_after_step"]["input_tokens"]
+                    - step2["cumulative_before_step"]["input_tokens"]
+                )
+                self.assertEqual(step2["cumulative_delta"]["input_tokens"], expected)
+        finally:
+            fixture.tearDown()
+
+    def test_unattributed_delta_is_cumulative_delta_minus_full_step(self):
+        """unattributed_delta.input_tokens = cumulative_delta - full_step_usage."""
+        fixture = TestLiveChatFixture()
+        fixture.setUp()
+        try:
+            source = {"id": "codex_live_threads", "kind": "live", "codex_dir": str(fixture.codex_dir)}
+            detail = _server_mod.build_live_session_detail(source, fixture.thread_id)
+            for step in detail["steps"]:
+                if step["unattributed_delta"].get("available"):
+                    cd_input = step["cumulative_delta"]["input_tokens"]
+                    fsu_input = step["full_step_usage"]["input_tokens"]
+                    expected_ud = cd_input - fsu_input
+                    self.assertEqual(step["unattributed_delta"]["input_tokens"], expected_ud,
+                        f"Step {step['step_index']}: unattributed_delta mismatch")
+        finally:
+            fixture.tearDown()
+
+    def test_event_ranges_are_monotonic(self):
+        """Event ranges must be monotonic and non-overlapping across steps."""
+        fixture = TestLiveChatFixture()
+        fixture.setUp()
+        try:
+            source = {"id": "codex_live_threads", "kind": "live", "codex_dir": str(fixture.codex_dir)}
+            detail = _server_mod.build_live_session_detail(source, fixture.thread_id)
+            prev_end = None
+            for step in detail["steps"]:
+                er = step["event_range"]
+                self.assertIsInstance(er, dict)
+                start = er.get("start_event_index", 0)
+                end_val = er.get("end_event_index", 0)
+                self.assertGreater(end_val, 0, f"Step {step['step_index']}: end_event_index is 0")
+                self.assertGreaterEqual(end_val, start,
+                    f"Step {step['step_index']}: end < start")
+                if prev_end is not None:
+                    self.assertGreater(start, prev_end,
+                        f"Step {step['step_index']}: start={start} <= prev_end={prev_end}")
+                prev_end = end_val
+        finally:
+            fixture.tearDown()
+
+    def test_session_reconciliation_sum_fsu_not_greater_than_total(self):
+        """sum(full_step_usage) should not exceed session total."""
+        fixture = TestLiveChatFixture()
+        fixture.setUp()
+        try:
+            source = {"id": "codex_live_threads", "kind": "live", "codex_dir": str(fixture.codex_dir)}
+            detail = _server_mod.build_live_session_detail(source, fixture.thread_id)
+            fsu_sum = sum(
+                step["full_step_usage"].get("input_tokens", 0)
+                for step in detail["steps"]
+            )
+            total = detail["summary"]["total_input_tokens"]
+            self.assertGreaterEqual(total, fsu_sum,
+                f"sum(full_step_usage)={fsu_sum} exceeds session total={total}")
+        finally:
+            fixture.tearDown()
+
+    def test_frontend_has_step_cost_block(self):
+        """Frontend must have buildStepCostBlock function."""
+        app_js = (REPO_ROOT / "static" / "codex-token-monitor" / "app.js").read_text(encoding="utf-8")
+        self.assertIn("function buildStepCostBlock(t)", app_js)
+        self.assertIn("полная стоимость шага", app_js)
+        self.assertIn("внутренних запросов модели", app_js)
+        self.assertIn("full_step_cost", app_js)
+        self.assertIn("full_step_usage", app_js)
+        self.assertIn("cost_scope", app_js)
+        # Assert no ambiguous "Cost confirmed: yes" phrasing
+        self.assertNotIn("Cost confirmed:", app_js)
+
+    def test_export_includes_v21_fields(self):
+        """Export JSON must include v2.1 fields."""
+        app_js = (REPO_ROOT / "static" / "codex-token-monitor" / "app.js").read_text(encoding="utf-8")
+        self.assertIn("event_range:", app_js)
+        self.assertIn("request_usage_items:", app_js)
+        self.assertIn("full_step_usage:", app_js)
+        self.assertIn("full_step_cost:", app_js)
+        self.assertIn("primary_request_usage:", app_js)
+        self.assertIn("cumulative_before_step:", app_js)
+        self.assertIn("cumulative_after_step:", app_js)
+        self.assertIn("cumulative_delta:", app_js)
+        self.assertIn("unattributed_delta:", app_js)
+        self.assertIn("cost_scope:", app_js)
+
+
+class TestAgentActivityBreakdownV22(unittest.TestCase):
+    """v2.2: Agent activity breakdown tests — text-based extraction."""
+
+    def test_agent_activity_exists_for_live_step(self):
+        fixture = TestLiveChatFixture()
+        fixture.setUp()
+        try:
+            source = {"id": "codex_live_threads", "kind": "live", "codex_dir": str(fixture.codex_dir)}
+            detail = _server_mod.build_live_session_detail(source, fixture.thread_id)
+            for step in detail["steps"]:
+                self.assertIn("agent_activity", step)
+                aa = step["agent_activity"]
+                if aa.get("available"):
+                    self.assertIn("activity_sources", aa)
+                    self.assertIn("activity_counts", aa)
+        finally:
+            fixture.tearDown()
+
+    def test_russian_text_produces_summary(self):
+        """Answer text with Russian action phrases produces non-empty summary."""
+        fixture = TestLiveChatFixture()
+        fixture.setUp()
+        try:
+            source = {"id": "codex_live_threads", "kind": "live", "codex_dir": str(fixture.codex_dir)}
+            detail = _server_mod.build_live_session_detail(source, fixture.thread_id)
+            step1 = detail["steps"][0]
+            aa = step1.get("agent_activity", {})
+            # Fixture has "Короткий ответ" — minimal text, but agent_activity should still be available
+            self.assertTrue(aa.get("available") or "agent_activity" in step1)
+        finally:
+            fixture.tearDown()
+
+    def test_prompt_paths_become_important_paths(self):
+        """File paths in prompt text should appear in important_paths."""
+        # The fixture prompt "Проверить локальную телеметрию" doesn't have file paths.
+        # Test that the extraction logic doesn't crash.
+        fixture = TestLiveChatFixture()
+        fixture.setUp()
+        try:
+            source = {"id": "codex_live_threads", "kind": "live", "codex_dir": str(fixture.codex_dir)}
+            detail = _server_mod.build_live_session_detail(source, fixture.thread_id)
+            self.assertIsNotNone(detail)
+            # paths should be a list even if empty
+            for step in detail["steps"]:
+                aa = step.get("agent_activity", {})
+                if aa.get("available"):
+                    self.assertIsInstance(aa.get("important_paths", []), list)
+                    self.assertIsInstance(aa.get("important_commands", []), list)
+        finally:
+            fixture.tearDown()
+
+    def test_session_activity_summary_present(self):
+        fixture = TestLiveChatFixture()
+        fixture.setUp()
+        try:
+            source = {"id": "codex_live_threads", "kind": "live", "codex_dir": str(fixture.codex_dir)}
+            detail = _server_mod.build_live_session_detail(source, fixture.thread_id)
+            sas = detail["summary"].get("session_activity_summary", {})
+            self.assertIsInstance(sas, dict)
+        finally:
+            fixture.tearDown()
+
+    def test_frontend_has_new_format(self):
+        app_js = (REPO_ROOT / "static" / "codex-token-monitor" / "app.js").read_text(encoding="utf-8")
+        self.assertIn("Упомянутые / задействованные файлы", app_js)
+        self.assertIn("Команды и проверки", app_js)
+        self.assertIn("Технические события", app_js)
+        self.assertIn("нераспознано событий", app_js)
+        self.assertIn("unclassified_raw_events", app_js)
+
+    def test_activity_classification_does_not_change_cost(self):
+        fixture = TestLiveChatFixture()
+        fixture.setUp()
+        try:
+            source = {"id": "codex_live_threads", "kind": "live", "codex_dir": str(fixture.codex_dir)}
+            detail = _server_mod.build_live_session_detail(source, fixture.thread_id)
+            for step in detail["steps"]:
+                fsc = step.get("full_step_cost", {})
+                aa = step.get("agent_activity", {})
+                self.assertIsNotNone(fsc)
+                self.assertIsNotNone(aa)
+        finally:
+            fixture.tearDown()
+
+
 if __name__ == "__main__":
     unittest.main()

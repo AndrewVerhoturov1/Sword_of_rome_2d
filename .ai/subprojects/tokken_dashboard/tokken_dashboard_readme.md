@@ -4,7 +4,7 @@ Slug: `tokken_dashboard`
 Owner: `Orc`  
 Audience: human first  
 Status: `draft`  
-Lifecycle stage: `Stage 1 - hybrid monitor baseline accepted; audit truth-fix accepted; honesty hardening pending`
+Lifecycle stage: `Stage 1 - hybrid monitor baseline accepted; audit truth-fix accepted; audit cumulative-accounting expansion pending`
 Active route: `Planner -> Orc`
 
 ## Quick Navigation
@@ -224,8 +224,25 @@ Current open follow-up:
 
 - accepted `Codex Token Monitor Audit` truth layer is now in place;
 - main audit truth gap is closed: fake verified evidence without explicit note is blocked;
-- next separate slice is `Honesty hardening` for human-facing wording, badges and explanation quality;
+- accepted cumulative-accounting layer is now also in place;
+- next separate slice is still inside `Audit`: correct visible-step full-cost semantics so request cost is no longer confused with full visible-step cost;
+- only after that move to `Honesty hardening` for human-facing wording, badges and explanation quality;
 - optional later integration follow-up: ordinary UI/API request path may still be wired to provide `evidence_note` if the verified-evidence path needs to be reachable outside forensic/manual flows.
+
+Current audit-expansion target:
+
+- preserve the accepted truth layer, evidence-basis model, and cumulative-accounting layer;
+- add per visible step:
+  - `request_usage_items`
+  - `full_step_usage`
+  - `full_step_cost`
+  - `primary_request_usage`
+  - `cost_scope`
+- reconcile:
+  - full visible-step sums
+  - latest cumulative session total
+  - unmapped/internal usage
+- verify that JSON/Markdown exports keep these fields together with `source_kind`, basis fields, warnings, confirmation semantics, and cumulative before/after fields.
 
 External forensic audit update:
 
@@ -244,9 +261,13 @@ Implementation planning baseline for the next slice:
 - [D-20260607-002](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/tokken_dashboard_decisions.md#d-20260607-002)
 - [D-20260607-003](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/tokken_dashboard_decisions.md#d-20260607-003)
 - [D-20260607-004](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/tokken_dashboard_decisions.md#d-20260607-004)
+- [D-20260607-005](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/tokken_dashboard_decisions.md#d-20260607-005)
+- [D-20260608-001](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/tokken_dashboard_decisions.md#d-20260608-001)
 - [J-20260607-002](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/tokken_dashboard_journal.md#j-20260607-002)
 - [J-20260607-003](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/tokken_dashboard_journal.md#j-20260607-003)
 - [J-20260607-004](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/tokken_dashboard_journal.md#j-20260607-004)
+- [J-20260607-005](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/tokken_dashboard_journal.md#j-20260607-005)
+- [J-20260608-001](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/tokken_dashboard_journal.md#j-20260608-001)
 - [2026-06-07_V1-20260607-014953_detailed-implementation-plan-for-codex-token-monitor-audit.md](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/external_chats/notebook/2026-06-07_V1-20260607-014953_detailed-implementation-plan-for-codex-token-monitor-audit.md)
 
 <a id="token-cost-normalizer-v1"></a>

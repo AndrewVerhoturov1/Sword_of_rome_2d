@@ -31,6 +31,9 @@ Started: `2026-06-03`
 - [J-20260607-002](#j-20260607-002)
 - [J-20260607-003](#j-20260607-003)
 - [J-20260607-004](#j-20260607-004)
+- [J-20260607-005](#j-20260607-005)
+- [J-20260608-001](#j-20260608-001)
+- [J-20260608-002](#j-20260608-002)
 - [Bugs And Difficulties](#bugs-and-difficulties)
 - [Open Follow-ups](#open-follow-ups)
 
@@ -901,6 +904,105 @@ found and fixed partly
 - Bugs and difficulties:
   - the default verified-flow is intentionally still unreachable from the ordinary UI path because `evidence_note` is not provided there;
   - some older markdown sections still contain mojibake, so updates continue to use additive clean blocks.
+- Human verdict: `recorded`
+
+<a id="j-20260607-005"></a>
+
+### J-20260607-005 - Next execution slice retargeted from honesty hardening to audit cumulative-accounting expansion
+
+- Stage: `Stage 1 - audit expansion prepared`
+- Role: `Orc`
+- Execution route: `direct planning + Kilo handoff preparation`
+- Related decisions:
+  - [D-20260607-004](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/tokken_dashboard_decisions.md#d-20260607-004)
+  - [D-20260607-005](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/tokken_dashboard_decisions.md#d-20260607-005)
+- Confirmed:
+  - user explicitly overrode the previous default next step `Honesty hardening`;
+  - next requested slice is still `Codex Token Monitor Audit`, but now focused on cumulative-after-step accounting and unattributed live usage;
+  - this is not a new monitor UI, not a new OTel experiment, not a live-config change, and not a source-split change.
+- Required implementation direction for the new handoff:
+  - add CLI-first audit execution path with `--source-id/--session-id` and `--forensic-pack`;
+  - compute per-step `request_usage`, `cumulative_usage_after_step`, `cumulative_delta_since_previous_visible_step`, and `unattributed_delta`;
+  - compute session-level mismatch between cumulative total and visible-step request sums;
+  - verify exports preserve basis, warnings, confirmation semantics, and new cumulative/unattributed fields;
+  - keep `Honesty hardening` out of scope except for minimal machine-readable surfacing.
+- Result:
+  - session/docs route no longer points to `Honesty hardening` as immediate next slice;
+  - new Kilo handoff `0050` is the next prepared execution package.
+- Bugs and difficulties:
+  - docs had already advanced to “honesty hardening pending”, so this user override had to be recorded explicitly to avoid an incorrect next-step route;
+  - additive updates used instead of rewriting older history blocks.
+- Human verdict: `recorded`
+
+<a id="j-20260608-001"></a>
+
+### J-20260608-001 - Kilo run 0050 accepted as cumulative-accounting baseline; next slice retargeted to correct visible-step full-cost accounting
+
+- Stage: `Stage 1 - cumulative-accounting accepted, step-cost follow-up prepared`
+- Role: `Orc`
+- Execution route: `Kilo run review + direct local verification + handoff preparation`
+- Related decisions:
+  - [D-20260607-005](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/tokken_dashboard_decisions.md#d-20260607-005)
+  - [D-20260608-001](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/tokken_dashboard_decisions.md#d-20260608-001)
+- Reviewed artifacts:
+  - [0050_codex_token_monitor_audit_cumulative_accounting.md](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/handoffs/0050_codex_token_monitor_audit_cumulative_accounting.md)
+  - [0050_codex_token_monitor_audit_cumulative_accounting_report.md](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/reports/0050_codex_token_monitor_audit_cumulative_accounting_report.md)
+  - [codex_token_monitor_audit.py](/D:/Codex+Kilocode/projects/sword-of-rome-web/scripts/codex_token_monitor_audit.py)
+  - [codex_token_monitor_server.py](/D:/Codex+Kilocode/projects/sword-of-rome-web/scripts/codex_token_monitor_server.py)
+  - [app.js](/D:/Codex+Kilocode/projects/sword-of-rome-web/static/codex-token-monitor/app.js)
+  - [test_codex_token_monitor_audit.py](/D:/Codex+Kilocode/projects/sword-of-rome-web/tests/test_codex_token_monitor_audit.py)
+- Confirmed:
+  - Kilo run `0050` materially advanced the accepted audit baseline:
+    - cumulative-after-step fields exist;
+    - unattributed-delta fields exist;
+    - CLI forensic-pack mode works;
+    - tests pass;
+    - direct CLI smoke-run over forensic pack succeeds.
+  - current session-total arithmetic is no longer the main open problem.
+  - next user-priority gap is the meaning of visible-step cost:
+    - one visible step can contain several internal model requests;
+    - current displayed request-level cost can still be misread as the cost of the whole visible step.
+- Verification:
+  - `python -m unittest tests.test_codex_token_monitor_audit tests.test_codex_token_monitor_server tests.test_codex_token_cost_normalizer tests.test_codex_token_debugger`
+  - `node --check static/codex-token-monitor/app.js`
+  - `python scripts/codex_token_monitor_audit.py --forensic-pack .ai/subprojects/tokken_dashboard/public_forensics/live_monitor_audit_019e9d2a --output-dir _local/codex-token-monitor/audits/019e9d2a-smoke`
+- Result:
+  - `0050` accepted as cumulative-accounting baseline;
+  - next safe slice is `visible_step_cost_accounting` / `step_full_cost_accounting`;
+  - this next slice should fix cost-scope meaning, not session-total arithmetic.
+- Bugs and difficulties:
+  - audit report output still contains mojibake in Russian sections; this remains a separate report/export defect;
+- current step-cost wording is still ambiguous even when raw totals are arithmetically correct.
+- Human verdict: `recorded`
+
+<a id="j-20260608-002"></a>
+
+### J-20260608-002 - New immediate slice narrowed to raw Step 1 diagnostic dump before step-cost implementation
+
+- Stage: `Stage 1 - pre-implementation forensic dump prepared`
+- Role: `Orc`
+- Execution route: `direct planning + Kilo handoff preparation`
+- Related decisions:
+  - [D-20260608-001](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/tokken_dashboard_decisions.md#d-20260608-001)
+- Confirmed:
+  - user paused the previous immediate route and requested a narrower Kilo slice first;
+  - current goal is not implementation of new cost semantics yet;
+  - current goal is a raw markdown dump for:
+    - live session `019e9d3e-02a1-7fa1-a3a8-da5b5df7dcfa`
+    - Step 1
+    - event range `6-210`
+  - dump must stay forensic and raw:
+    - no UI edits;
+    - no parser edits;
+    - no export redesign;
+    - no new chronology invention;
+    - no guessed action attribution.
+- Result:
+  - next Kilo handoff should produce one raw diagnostic file under subproject reports;
+  - that dump becomes the evidence base for the later `visible_step_cost_accounting` slice.
+- Bugs and difficulties:
+  - this is a user override over the current `P7` implementation route, so session/docs had to be retargeted again;
+  - existing mojibake in some older report sections remains out of scope for this dump-only slice.
 - Human verdict: `recorded`
 
 <a id="open-follow-ups"></a>

@@ -25,6 +25,8 @@ Decision layer: `subproject-level accepted decisions`
 - [D-20260607-002](#d-20260607-002)
 - [D-20260607-003](#d-20260607-003)
 - [D-20260607-004](#d-20260607-004)
+- [D-20260607-005](#d-20260607-005)
+- [D-20260608-001](#d-20260608-001)
 - [Corrected Decisions](#corrected-decisions)
 - [Rejected Options](#rejected-options)
 - [Waivers](#waivers)
@@ -478,6 +480,56 @@ Decision layer: `subproject-level accepted decisions`
   - audit truth-fix accepted;
   - later follow-up can move to `Honesty hardening`, with optional explicit verified-flow wiring only if the human workflow really needs source-evidence notes through ordinary UI/API.
 - Boundary: this decision does not authorize a new OTel experiment, live Codex config changes, source-split redesign, writes into `C:/Users/andre/.codex/**`, or a full monitor UI rewrite.
+- Human approval: `recorded`
+
+<a id="d-20260607-005"></a>
+
+### D-20260607-005 - Audit expansion must add cumulative-after-step and unattributed-delta accounting before honesty hardening
+
+- Status: `accepted`
+- Source: `user follow-up on 2026-06-07 + local orchestration review`
+- Decision: the next execution slice is still inside `Codex Token Monitor Audit`, not `Honesty hardening`. The accepted audit baseline now needs a second technical layer: per visible step, audit should compare request-level usage against cumulative growth seen after that step.
+- Decision: the expanded audit must compute and preserve, whenever evidence allows:
+  - `request_usage`
+  - `cumulative_usage_after_step`
+  - `cumulative_delta_since_previous_visible_step`
+  - `unattributed_delta`
+  - session-level unattributed usage between cumulative total and visible-step request sums
+- Decision: `Honesty hardening` remains out of scope as primary work. This slice may add only minimal user-facing status text needed to surface new audit results honestly.
+- Decision: for live mode, audit must explicitly represent the possibility that the first visible step is not a cold-start request and that cumulative growth may include usage not attributable to the visible prompt/answer pair.
+- Decision: fallback from `total_token_usage` must remain technically downgraded and may be used for cumulative-after-step accounting, but never relabeled as confirmed request usage.
+- Reason: current audit truth layer can grade evidence/confidence correctly, but it still does not answer a key technical accounting question: how much cumulative thread growth happened after a visible step, and how much of that growth is unattributed to request-level step usage.
+- Consequence: next Kilo handoff should target CLI + forensic-pack audit mode, cumulative accounting fields, export-presence checks, minimal API/UI integration, and regression tests around `unattributed_delta`, `visible_steps_sum_matches_summary`, and first-visible-step non-cold-start semantics.
+- Boundary: this decision does not authorize a new OTel experiment, live Codex config changes, source-split redesign, writes into `C:/Users/andre/.codex/**`, a new dashboard, a Tool Activity Monitor, or broad refactor outside the audit slice.
+- Human approval: `recorded`
+
+<a id="d-20260608-001"></a>
+
+### D-20260608-001 - Visible step cost must mean full visible-step cost, not the cost of one internal request
+
+- Status: `accepted`
+- Source: `local review after Kilo run 0050 + user follow-up on 2026-06-08`
+- Decision: current accepted session-total arithmetic stays as-is. The next execution slice must not "fix totals". It must fix the meaning of visible-step cost.
+- Decision: for live mode, `visible step cost` must mean the sum of all internal model requests inside the visible-step boundary, not the cost of one selected `last_token_usage` request unless that step really contains only one request.
+- Decision: monitor must distinguish at least three scopes:
+  - `request cost`
+  - `full visible step cost`
+  - `session total cost`
+- Decision: data model and export must preserve:
+  - `event_range`
+  - `request_usage_items`
+  - `full_step_usage`
+  - `full_step_cost`
+  - `primary_request_usage`
+  - `cumulative_before_step`
+  - `cumulative_after_step`
+  - `cumulative_delta`
+  - `unattributed_delta`
+  - `cost_scope`
+- Decision: ambiguous wording like `Cost confirmed: yes` is no longer acceptable when the shown number is only one internal request cost. UI/export must state whether the shown cost is one request, full visible step, partial, or unknown.
+- Reason: current monitor can be technically truthful about `live_last_token_usage` and still mislead the user, because one visible step may contain many internal model requests. The user reads the displayed number as the cost of the whole visible step.
+- Consequence: next Kilo handoff must target `visible_step_cost_accounting` / `step_full_cost_accounting`, keep current source split, reuse accepted cumulative-accounting baseline, and reconcile full visible-step sums against session total plus unmapped/internal usage.
+- Boundary: this decision does not authorize a new OTel experiment, live Codex config changes, source-split redesign, writes into `C:/Users/andre/.codex/**`, a new dashboard, or broad refactor outside monitor/audit slice.
 - Human approval: `recorded`
 
 ## Maintenance rule
