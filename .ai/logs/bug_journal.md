@@ -8,6 +8,96 @@ Do not record every tiny typo. Record issues that may help future debugging.
 
 ## Entries
 
+### BUG-20260608-001 - Visible-step cost can show one internal request cost instead of the full cost of the visible step
+
+Status: open
+
+Area:
+`scripts/codex_token_monitor_server.py`, `scripts/codex_token_monitor_audit.py`, `static/codex-token-monitor/app.js`, export/copy semantics
+
+Symptoms:
+- monitor can display a number that looks like `стоимость шага`, while the underlying data may come from only one `live_last_token_usage` checkpoint;
+- the user reads that number as the cost of everything Codex did between one visible user message and the next visible user message;
+- on live sessions with many internal model requests per visible step, this can understate the real full visible-step cost.
+
+Observed recurrence:
+- confirmed by local review after accepted cumulative-accounting baseline `0050`;
+- user follow-up on 2026-06-08 narrowed the main remaining gap from totals arithmetic to visible-step cost semantics.
+
+Cause:
+- current monitor and audit baseline now preserve request-level and cumulative fields, but visible-step full-cost aggregation is still not a first-class data product;
+- one visible step can contain several internal model requests, while the currently displayed cost may still correspond to one request-level checkpoint.
+
+Fix:
+- not fixed yet;
+- next implementation slice should add:
+  - `event_range`
+  - `request_usage_items`
+  - `full_step_usage`
+  - `full_step_cost`
+  - `primary_request_usage`
+  - `cost_scope`
+  - session reconciliation between full visible-step sums and latest cumulative total.
+
+Verification:
+- local Kilo review of `0050` accepted cumulative-accounting fields but did not yet produce visible-step full-cost semantics;
+- no code fix run for this journal entry.
+
+Human check:
+not needed
+
+Related files:
+- [codex_token_monitor_server.py](D:/Codex+Kilocode/projects/sword-of-rome-web/scripts/codex_token_monitor_server.py)
+- [codex_token_monitor_audit.py](D:/Codex+Kilocode/projects/sword-of-rome-web/scripts/codex_token_monitor_audit.py)
+- [app.js](D:/Codex+Kilocode/projects/sword-of-rome-web/static/codex-token-monitor/app.js)
+
+### BUG-20260607-004 - Audit lacks cumulative-after-step and unattributed-delta accounting for live visible steps
+
+Status: closed (accepted in Kilo run 0050)
+
+Area:
+`scripts/codex_token_monitor_audit.py`, `scripts/codex_token_monitor_server.py`, audit exports/API
+
+Symptoms:
+- audit can say monitor detail is technically plausible, but still cannot answer how much cumulative thread growth happened after a visible step;
+- user cannot separate:
+  - request-level usage of visible step;
+  - cumulative total after that step;
+  - delta between visible steps;
+  - unattributed growth not explainable by visible request usage;
+- first visible live step remains especially ambiguous because it may not be cold-start request.
+
+Observed recurrence:
+- confirmed during local review of current audit baseline on live forensic thread `019e9d2a-17d7-7210-ba5e-bd42e6ce6e5f`;
+- current accepted audit truth-fix blocks fake verification, but does not yet provide cumulative-after-step accounting.
+
+Cause:
+- audit currently focuses on source/session truth, evidence basis, fallback confidence, and export-presence semantics;
+- it does not yet materialize `cumulative_usage_after_step`, `cumulative_delta_since_previous_visible_step`, or `unattributed_delta` as first-class audit outputs.
+
+Fix:
+- fixed in Kilo run `0050_codex_token_monitor_audit_cumulative_accounting`;
+- audit now has:
+  - CLI and forensic-pack execution path;
+  - per-step cumulative-after-step lookup;
+  - cumulative delta between visible steps;
+  - unattributed delta;
+  - session-level unattributed cumulative usage;
+  - export/API presence for these new fields.
+
+Verification:
+- `python -m unittest tests.test_codex_token_monitor_audit tests.test_codex_token_monitor_server tests.test_codex_token_cost_normalizer tests.test_codex_token_debugger`
+- `node --check static/codex-token-monitor/app.js`
+- `python scripts/codex_token_monitor_audit.py --forensic-pack .ai/subprojects/tokken_dashboard/public_forensics/live_monitor_audit_019e9d2a --output-dir _local/codex-token-monitor/audits/019e9d2a-smoke`
+
+Human check:
+not needed
+
+Related files:
+- [codex_token_monitor_audit.py](D:/Codex+Kilocode/projects/sword-of-rome-web/scripts/codex_token_monitor_audit.py)
+- [codex_token_monitor_server.py](D:/Codex+Kilocode/projects/sword-of-rome-web/scripts/codex_token_monitor_server.py)
+- [live_session_detail.json](D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/public_forensics/live_monitor_audit_019e9d2a/live_session_detail.json)
+
 ### BUG-20260607-003 - Monitor Audit can self-certify the same mapping it is supposed to verify
 
 Status: closed (fixed in Kilo run 0049)

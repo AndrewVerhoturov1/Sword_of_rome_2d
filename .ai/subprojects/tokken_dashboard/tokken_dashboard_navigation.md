@@ -48,7 +48,7 @@ Navigation не заменяет:
 ## Current lifecycle stage
 
 ```text
-Stage 1 - hybrid monitor baseline accepted; audit truth-fix accepted; honesty hardening pending
+Stage 1 - hybrid monitor baseline accepted; audit truth-fix accepted; audit cumulative-accounting expansion pending
 ```
 
 Gate state:
@@ -305,19 +305,23 @@ Keep v1 as the archive viewer. Build v2 as a hybrid monitor with two explicit so
 Focused next route:
 
 ```text
-Do not reopen the source split. Current accepted baseline already includes the audit truth layer. The next safe slice is Honesty hardening: explain cached/request/cumulative/estimated semantics more honestly to humans without weakening the technical truth checks.
+Do not reopen the source split. Current accepted baseline already includes the audit truth layer and cumulative-accounting layer. The next safe slice is a raw forensic dump before further implementation: inspect Step 1 raw telemetry evidence first, then change visible-step full-cost semantics.
 ```
 
 New safe reading route:
 
 ```text
-Read D-20260606-001 -> D-20260607-001 -> D-20260607-002 -> D-20260607-003 -> D-20260607-004 -> J-20260607-002 -> J-20260607-003 -> J-20260607-004 -> V1-20260607-014953 notebook entry -> BUG-20260607-001 -> BUG-20260607-003 before touching the next honesty-hardening slice.
+Read D-20260606-001 -> D-20260607-001 -> D-20260607-002 -> D-20260607-003 -> D-20260607-004 -> D-20260607-005 -> D-20260608-001 -> J-20260607-002 -> J-20260607-003 -> J-20260607-004 -> J-20260607-005 -> J-20260608-001 -> J-20260608-002 -> V1-20260607-014953 notebook entry -> BUG-20260607-001 -> BUG-20260607-004 -> BUG-20260608-001 before touching the next dump/cost-accounting slice.
 ```
 
 Additional planning route:
 
 ```text
-If task is "Honesty hardening", treat the audit layer as accepted baseline first. Reuse forensic thread `019e9d2a-17d7-7210-ba5e-bd42e6ce6e5f`, the published forensic pack, and accepted audit evidence fields (`evidence_basis`, `evidence_note`, `audit_scope`, `selected_step_indices`) to decide what human-facing wording must be explicit.
+If task is `step1_raw_forensic_dump`, do not edit UI/parser/export first. Read the accepted audit truth layer and cumulative-accounting baseline, then produce one raw markdown dump for:
+- session `019e9d3e-02a1-7fa1-a3a8-da5b5df7dcfa`
+- Step 1
+- event range `6-210`
+The dump must enumerate raw events, request-usage items, nearby event context, path mentions, commands, and honest linkage confidence. Only after that proceed to `visible_step_cost_accounting`.
 ```
 
 ## Maintenance rule

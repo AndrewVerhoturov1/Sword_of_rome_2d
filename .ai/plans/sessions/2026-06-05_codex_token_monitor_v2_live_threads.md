@@ -44,9 +44,45 @@ active follow-up
 - Реализовать отдельный audit layer поверх current hybrid monitor без нового OTel и без source-split churn.
 - Разделить `Audit` и `Honesty hardening`: сначала technical truth checks и audit artifacts, потом отдельный human-facing wording slice.
 
+### P6: Expand Audit with cumulative-after-step and unattributed-usage accounting
+
+- Status: completed.
+- Добавить в `Codex Token Monitor Audit` второй technical layer: для каждого visible step считать `request_usage`, `cumulative_usage_after_step`, `cumulative_delta_since_previous_visible_step` и `unattributed_delta`.
+- Проверить session-level mismatch между cumulative total и суммой visible request usage, не выдавая эту разницу за обычный step usage.
+- Оставить `Honesty hardening` следующим отдельным slice после этой audit expansion.
+
+### P7: Correct visible-step full-cost accounting over the accepted cumulative baseline
+
+- Status: planned.
+- Не чинить session total arithmetic. Она уже принята как raw-source truth baseline.
+- Исправить смысл `стоимости шага`: visible step cost должен означать сумму всех internal model requests внутри границ visible step, а не стоимость одного request-level checkpoint.
+- Добавить step-level reconciliation между:
+  - `primary_request_usage`
+  - `full_step_usage`
+  - `full_step_cost`
+  - `cumulative_before_step`
+  - `cumulative_after_step`
+  - `unattributed_delta`
+- Явно отделить:
+  - request cost
+  - full visible step cost
+  - session total cost
+
+### P8: Produce raw forensic dump for Step 1 before changing step-cost semantics
+
+- Status: planned.
+- Не править UI, parser, export, chronology or attribution logic.
+- Сначала выгрузить максимально сырой diagnostic dump по live session `019e9d3e-02a1-7fa1-a3a8-da5b5df7dcfa`, Step 1, event range `6-210`.
+- Цель: показать человеку, какие raw events реально есть в telemetry вокруг Step 1, before any new cost/accounting implementation.
+- Dump должен ответить:
+  - есть ли реальные file/tool/command/test/git events;
+  - есть ли 33 request usage items;
+  - можно ли high-confidence связать AI calls с действиями;
+  - что именно monitor сейчас показывает неправильно по смыслу.
+
 ## Active Plan Item
 
-`none - waiting for the next approved slice`
+`P8: Produce raw forensic dump for Step 1 before changing step-cost semantics`
 
 ## Runs
 
@@ -58,6 +94,9 @@ active follow-up
 | 004 | External planning answer `V1-20260607-014953` defined `Codex Token Monitor Audit` as the next execution slice; docs and next Kilo handoff retargeted from generic hardening to a separate verification layer. |
 | 005 | Reviewed Kilo run 0048 and accepted only audit UI/API baseline. Main truth-risk stayed open because audit could self-certify monitor detail without enough upstream evidence. Prepared narrow correction handoff focused on truth gap and regression tests. |
 | 006 | Reviewed corrected Kilo run 0049, accepted the audit truth-fix, and recorded the accepted baseline: fake verified evidence without explicit note is blocked; evidence/scope metadata survives API and export; next slice is Honesty hardening. |
+| 007 | User overrode the previous next-step route: before honesty hardening, prepare one more Kilo implementation slice inside Audit itself for cumulative-after-step accounting, unattributed live usage, export honesty checks, and CLI/forensic-pack execution paths. |
+| 008 | Reviewed Kilo run 0050, accepted cumulative-accounting baseline, and retargeted the next slice to correct visible-step full-cost semantics: one visible step may contain many internal model requests, so request cost must be separated from full step cost. |
+| 009 | User overrode immediate implementation route again: before changing step-cost semantics, prepare a raw forensic dump slice for live session `019e9d3e...`, Step 1, event range `6-210`, to inspect actual telemetry evidence without UI/parser edits. |
 
 ## User Overrides
 
@@ -69,6 +108,8 @@ active follow-up
 - Не писать в `C:/Users/andre/.codex/**`.
 - Не переделывать source split.
 - Для follow-up по `cached_tokens` и export сначала реализовать `Audit` как technical truth layer, а уже потом делать отдельный human-facing `Honesty hardening`.
+- После принятия cumulative-accounting baseline следующий slice должен исправить смысл `стоимости шага`: показывать полную стоимость visible step, а не стоимость одного internal request.
+- Перед изменением step-cost semantics сначала сделать сырой diagnostic dump Step 1 без правок UI/parser/export, чтобы зафиксировать, какие raw events реально есть в telemetry.
 
 ## Checkpoint State
 
@@ -78,7 +119,9 @@ active follow-up
 - Принято решение [D-20260607-002](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/tokken_dashboard_decisions.md#d-20260607-002): следующий execution slice = `Codex Token Monitor Audit` как отдельный verification layer.
 - Принято решение [D-20260607-003](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/tokken_dashboard_decisions.md#d-20260607-003): audit не может сам себя сертифицировать без upstream evidence.
 - Принято решение [D-20260607-004](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/tokken_dashboard_decisions.md#d-20260607-004): audit truth-fix accepted, verified evidence now requires explicit note and evidence/scope metadata must survive export.
-- Следующий ожидаемый шаг: отдельный slice `Honesty hardening`, при нужде позже добавить ordinary UI/API wiring для `evidence_note`.
+- Принято решение [D-20260607-005](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/tokken_dashboard_decisions.md#d-20260607-005): before `Honesty hardening`, run one more Audit expansion slice for cumulative-after-step and unattributed-usage accounting.
+- Принято решение [D-20260608-001](/D:/Codex+Kilocode/projects/sword-of-rome-web/.ai/subprojects/tokken_dashboard/tokken_dashboard_decisions.md#d-20260608-001): visible step cost must mean full visible-step cost, not one internal request cost.
+- Следующий ожидаемый шаг: `P8` raw forensic dump for Step 1; затем `P7` visible-step full-cost accounting; только потом отдельные slices для `Honesty hardening` и residual report/export wording defects.
 ## Review checkpoint - 2026-06-06
 
 - Hybrid monitor now exists as the current working baseline for local live/archive inspection.
@@ -132,3 +175,42 @@ active follow-up
   - this is accepted as non-blocking because it limits verified-flow reachability, not truth-safety.
 - Next expected slice:
   - `Honesty hardening` as a separate follow-up over the now-accepted audit truth layer.
+
+## Review checkpoint - 2026-06-07 audit cumulative-accounting preparation
+
+- User explicitly overrode the previous default next route `Honesty hardening`.
+- New immediate target remains inside `Codex Token Monitor Audit`:
+  - add cumulative-after-step accounting;
+  - add `unattributed_delta` and session-level unattributed usage;
+  - add CLI + forensic-pack execution path;
+  - verify export presence of basis/warnings/new accounting fields.
+- This does not reopen the already accepted audit truth-fix and does not authorize a new OTel experiment, live config change, source-split change, or broad UI redesign.
+
+## Review checkpoint - 2026-06-08 cumulative-accounting acceptance
+
+- Kilo run `0050_codex_token_monitor_audit_cumulative_accounting` accepted as current cumulative-accounting baseline.
+- Current accepted fact:
+  - session total arithmetic is not the main open problem anymore;
+  - raw total comes from latest cumulative `total_token_usage`;
+  - next correction target is the meaning of visible-step cost.
+- Next expected slice:
+  - find all `last_token_usage` items inside each visible step range;
+  - sum them into `full_step_usage`;
+  - compute `full_step_cost`;
+  - keep `primary_request_usage` visible separately;
+  - reconcile visible-step full-cost sums against session total plus unmapped/internal usage.
+
+## Review checkpoint - 2026-06-08 step-1 diagnostic dump preparation
+
+- User inserted a narrower pre-implementation slice before `P7`.
+- New immediate target:
+  - no UI changes;
+  - no parser changes;
+  - no export redesign;
+  - produce a raw forensic markdown dump for Step 1 only.
+- Dump target:
+  - live session `019e9d3e-02a1-7fa1-a3a8-da5b5df7dcfa`
+  - Step 1
+  - event range `6-210`
+- Purpose:
+  - inspect real telemetry evidence around hidden AI calls, request usage items, file/path mentions, commands, tests, git, compaction, and confidence of linkage before any new cost-semantics implementation.

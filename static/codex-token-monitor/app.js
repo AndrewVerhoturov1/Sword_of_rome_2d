@@ -19,11 +19,17 @@ let sessionDetailCache = null;
 let sessionDetailLoading = false;
 let statusCache = { collector: "unknown", prompt_logging: true, last_update: "" };
 let currentWorkdirFilter = ALL_WORKDIRS_VALUE;
+// Track expanded step details across re-renders (auto-refresh)
+let expandedSteps = new Set();
+let openTextBlocks = new Set();
 
 // ── Formatters ──
 const nf = new Intl.NumberFormat("ru-RU");
 const money = n => "$" + Number(n || 0).toFixed(5);
+const moneyOrNA = n => (n != null) ? "$" + Number(n).toFixed(5) : "—";
 const pct = n => (Number(n || 0) * 100).toFixed(1) + "%";
+const numOrNA = n => (n != null && n !== 0) ? nf.format(n) : (n === 0 ? "0" : "—");
+const numWithSign = n => (n != null) ? ((n >= 0 ? "+" : "") + nf.format(n)) : "—";
 
 // ── API helpers ──
 async function api(path) {
@@ -391,6 +397,8 @@ function renderSessions() {
     el.onclick = async () => {
       currentSessionId = s.id;
       selected.clear();
+      expandedSteps.clear();
+      openTextBlocks.clear();
       sessionDetailCache = null;
       sessionDetailLoading = true;
       renderAll();
@@ -495,6 +503,17 @@ function textBlock(title, kind, available, text, stepIndex) {
   </div>`;
 }
 
+function wideBlock(label, suffix, content, stepIdx) {
+  const id = suffix + '-' + stepIdx;
+  return `<div class="text-block" id="${id}">
+    <div class="text-head" onclick="toggleText('${id}')">
+      <div><b>${label}</b></div>
+      <button class="ghost" onclick="event.stopPropagation();toggleText('${id}')">Показать</button>
+    </div>
+    <div class="text-body">${content}</div>
+  </div>`;
+}
+
 function renderTimelineEvent(evt) {
   const ids = [];
   if (evt.compaction_task_id) ids.push(`task: ${escapeHtml(evt.compaction_task_id)}`);
@@ -587,6 +606,7 @@ function renderSteps() {
           </div>
         </div>
         <div class="row-actions">
+          <button class="icon" onclick="event.stopPropagation();openStepPopup(${idx})">Подробно</button>
           <button class="icon" onclick="event.stopPropagation();copyStepSummary(${idx})">Copy</button>
         </div>
       </div>
@@ -622,6 +642,10 @@ function renderSteps() {
             ${kv("repo_context", env.repo_context_status)}
             ${kv("warnings", (t.warnings || []).join(", ") || "none")}
           </div>
+        </div>
+        <div class="box" style="margin-top:8px">
+          <h3>Стоимость шага (full step cost vs request cost)</h3>
+          ${buildStepCostBlock(t)}
         </div>
       </div>`;
     root.appendChild(el);
@@ -688,12 +712,26 @@ function renderAll() {
 // ── Interactions ──
 function toggleDetails(i) {
   const el = document.getElementById("step-" + i);
-  if (el) el.classList.toggle("open");
+  if (el) {
+    el.classList.toggle("open");
+    if (el.classList.contains("open")) {
+      expandedSteps.add(i);
+    } else {
+      expandedSteps.delete(i);
+    }
+  }
 }
 
 function toggleText(id) {
   const el = document.getElementById(id);
-  if (el) el.classList.toggle("open");
+  if (el) {
+    el.classList.toggle("open");
+    if (el.classList.contains("open")) {
+      openTextBlocks.add(id);
+    } else {
+      openTextBlocks.delete(id);
+    }
+  }
 }
 
 function toggleSelect(i) {
@@ -776,6 +814,751 @@ function buildTimelineContext(session, step) {
     }));
 }
 
+function _humanConfLabel(conf) {
+  if (conf === 'high') return 'high / raw';
+  if (conf === 'low') return 'low / approx';
+  if (conf === 'medium') return 'medium';
+  return conf || 'not_verified';
+}
+
+function buildAgentActivityMarkdown(step) {
+  const aa = step.agent_activity || {};
+  if (!aa.available) return ["- данные недоступны"];
+  const ac = aa.activity_counts || {};
+  const lines = [];
+
+  // ── v2.6: Главное резюме first ──
+  const hsum = aa.human_summary_ru || {};
+  if (hsum.available && hsum.text) {
+    lines.push("### Главное резюме");
+    lines.push("");
+    lines.push(hsum.text);
+    lines.push("");
+  } else {
+    // Fallback to old summary if human_summary_ru not available
+    const summaryLines = aa.activity_summary_ru || [];
+    if (summaryLines.length) {
+      lines.push("### Главное резюме");
+      lines.push("");
+      summaryLines.forEach((s, i) => lines.push(`${i + 1}. ${s}`));
+      lines.push("");
+    }
+  }
+
+  const sia = aa.step_internal_actions || [];
+  const rwu = aa.requests_with_usage || 0;
+  const mre = aa.model_related_events || 0;
+
+  // ── Хронология работы ──
+  const tl = aa.agent_timeline || {};
+  const tlItems = tl.items || [];
+  if (tlItems.length > 0) {
+    lines.push("### Хронология работы");
+    lines.push("");
+      lines.push("| # | Время | Действие | Объекты | AI | Cost | Нов. input | Cached | Output | Reasoning | Δt | Увер. |");
+      lines.push("|---:|---|---|---|---:|---:|---:|---:|---:|---:|---|");
+      tlItems.forEach(it => {
+        const lu = it.linked_request_usage || {};
+        const lc = it.linked_cost || {};
+        const dur = it.duration || {};
+        const ts = it.timestamp ? new Date(it.timestamp).toLocaleTimeString('ru-RU') : '';
+        const dt = dur.available ? (dur.seconds_since_previous_item >= 60 ? Math.round(dur.seconds_since_previous_item / 60) + 'm' : '+' + Math.round(dur.seconds_since_previous_item) + 's') : '';
+        const displayTitle = it.display_title_ru || it.recognized_action_ru || '—';
+        const aiLabel = it.linked_model_request_index ? '#' + it.linked_model_request_index : '—';
+        const nonCached = lu.available ? (lu.non_cached_input_tokens || 0) : 0;
+        const cached = lu.available ? (lu.cached_tokens || 0) : 0;
+        const reasoning = lu.available ? (lu.reasoning_tokens || 0) : 0;
+        const confLabel = _humanConfLabel(it.confidence || it.recognition_confidence);
+        lines.push('| ' + it.index + ' | ' + ts + ' | ' + displayTitle.substring(0, 45) + ' | ' + (it.object_label || '').substring(0, 35) + ' | ' + aiLabel + ' | ' + (lc.total_usd != null ? '$' + Number(lc.total_usd).toFixed(5) : '—') + ' | ' + (lu.available ? nf.format(nonCached) : '—') + ' | ' + (lu.available ? nf.format(cached) : '—') + ' | ' + (lu.available ? nf.format(lu.output_tokens || 0) : '—') + ' | ' + (lu.available ? nf.format(reasoning) : '—') + ' | ' + dt + ' | ' + confLabel + ' |');
+    });
+    lines.push("");
+    lines.push("### Что означает AI #");
+    lines.push("");
+    lines.push("AI # — это техническое скрытое обращение Codex к модели, по которому известны токены и стоимость.");
+    lines.push("В хронологии оно используется как источник cost/usage для человеческого действия.");
+    lines.push("");
+
+    // ── v2.7: Детализация этапов ──
+    var hasDetails = tlItems.some(function(it) { return (it.files && it.files.length) || (it.commands && it.commands.length) || (it.details && it.details.available); });
+    if (hasDetails) {
+      lines.push("### Детализация этапов");
+      lines.push("");
+      tlItems.forEach(function(it) {
+        var fullTitle = it.full_title_ru || it.display_title_ru || '';
+        var lc = it.linked_cost || {};
+        var lu = it.linked_request_usage || {};
+        var lai = it.linked_ai_call;
+        var confLabel = _humanConfLabel(it.recognition_confidence || it.confidence);
+        lines.push('<details>');
+        lines.push('<summary>#' + it.index + ' ' + fullTitle + ' — ' + (lc.total_usd != null ? '$' + Number(lc.total_usd).toFixed(5) : '—') + '</summary>');
+        lines.push('');
+        if (lai) lines.push('**AI:** #' + lai.ai_index + '  ');
+        lines.push('**Уверенность:** ' + confLabel + '  ');
+        if (lc.total_usd != null) lines.push('**Cost:** $' + Number(lc.total_usd).toFixed(5) + '  ');
+        if (lu.available || lai) {
+          lines.push('');
+          lines.push('**Статистика:** Input: ' + nf.format(lai?lai.input_tokens:(lu.input_tokens||0)) + ' | New input: ' + nf.format(lai?lai.non_cached_input_tokens:(lu.non_cached_input_tokens||0)) + ' | Cached: ' + nf.format(lai?lai.cached_tokens:(lu.cached_tokens||0)) + ' | Output: ' + nf.format(lai?lai.output_tokens:(lu.output_tokens||0)) + ' | Reasoning: ' + nf.format(lai?lai.reasoning_tokens:(lu.reasoning_tokens||0)));
+        }
+        lines.push('');
+
+        // ── v2.13: Context contribution table (moved to technical section) ──
+        var isServiceAction = (it.display_title_ru||'').indexOf('Обновил план') >= 0 || (it.display_title_ru||'').indexOf('Выполнил служебное') >= 0;
+        var hasContextObjects = false;
+        var allCtxObjects = [];
+        (it.files||[]).forEach(function(f) {
+          var cc = f.context_contribution || {};
+          if (cc.output_length_chars || cc.estimated_text_tokens) { hasContextObjects = true; }
+          allCtxObjects.push({kind:'file',obj:f,cc:cc});
+        });
+        (it.commands||[]).forEach(function(c) {
+          if (c.classified_action !== 'file_read' && c.classified_action !== 'file_read_batch') {
+            var cc = c.context_contribution || {};
+            if (cc.output_length_chars || cc.estimated_text_tokens) { hasContextObjects = true; }
+            allCtxObjects.push({kind:'command',obj:c,cc:cc});
+          }
+        });
+        if (hasContextObjects && allCtxObjects.length > 0) {
+          lines.push('**Вклад файлов и команд в New input:**');
+          lines.push('');
+          lines.push('| Объект | Тип | Размер | ~New input tokens | Доля | ~Вклад в New input cost |');
+          lines.push('|---|---:|---:|---:|---:|---:|');
+          var ncTokens = lai ? lai.non_cached_input_tokens : (lu.non_cached_input_tokens || 0);
+          allCtxObjects.forEach(function(ao) {
+            var cc = ao.cc;
+            var obj = ao.obj;
+            var name = ao.kind==='file' ? (obj.display_name||obj.path||'?').split('\\').pop().split('/').pop() : (obj.command||'').substring(0,50);
+            var type = ao.kind==='file' ? (obj.operation||'read') : (obj.classified_action||'cmd');
+            if (ao.kind==='file' && obj.read_count > 1) name += ' (' + obj.read_count + ' фрагм.)';
+            var share = cc.share_of_tool_output_text;
+            var estTokens = (share != null && ncTokens > 0) ? Math.round(share * ncTokens) : null;
+            var estCost = cc.estimated_new_input_cost_usd;
+            lines.push('| ' + name + ' | ' + type + ' | ' + (cc.output_length_chars ? nf.format(cc.output_length_chars) : '—') + ' | ' + (estTokens != null ? '~'+nf.format(estTokens) : '—') + ' | ' + (share != null ? Number(share*100).toFixed(0)+'%' : '—') + ' | ' + (estCost != null ? '~$'+Number(estCost).toFixed(6) : '—') + ' |');
+          });
+          lines.push('');
+          lines.push('> Это оценка. Raw telemetry даёт точную стоимость только на уровне AI-call целиком. Cached, Output и Reasoning не распределяются по отдельным файлам/командам.');
+          lines.push('');
+        }
+
+        // ── v2.10: per-action-kind details ──
+        var apd = it.apply_patch_data;
+        var pud = it.plan_update_data;
+        var isPlanUpdate = pud && pud.available;
+        var isApplyPatch = apd && apd.available;
+        var isModelOnly = it.row_type === 'ai_call_only';
+        var files = it.files;
+        var cmds = it.commands;
+
+        if (isPlanUpdate) {
+          lines.push('**План работы**');
+          lines.push('');
+          lines.push(pud.note_ru || '');
+          lines.push('');
+          if (pud.explanation) {
+            lines.push('Explanation: ' + pud.explanation);
+            lines.push('');
+          }
+          if (pud.plan_items && pud.plan_items.length) {
+            lines.push('План:');
+            pud.plan_items.forEach(function(pi, i) { lines.push((i+1) + '. ' + String(pi)); });
+            lines.push('');
+          }
+        } else if (isApplyPatch) {
+          lines.push('**Patch-действие**');
+          lines.push('');
+          if (apd.patch_status) lines.push('- Статус: ' + apd.patch_status);
+          if (files && files.length) {
+            files.forEach(function(f) {
+              lines.push('- Файл: `' + f.path + '`');
+              if (f.operation) lines.push('  Роль: ' + f.operation);
+            });
+          }
+          if (apd.patch_input_chars) lines.push('- Patch input: ' + nf.format(apd.patch_input_chars) + ' chars (~' + nf.format(apd.estimated_patch_tokens||0) + ' ток.)');
+          if (apd.output_length) lines.push('- Tool output: ' + nf.format(apd.output_length) + ' chars (~' + nf.format(apd.estimated_tool_output_tokens||0) + ' ток.)');
+          lines.push('');
+          if (apd.cost_note_ru) lines.push(apd.cost_note_ru);
+          lines.push('');
+        } else if (isModelOnly) {
+          var isFinalReport = (it.display_title_ru||'').indexOf('Сформулировал') >= 0;
+          if (isFinalReport) {
+            var amd = it.assistant_message_data;
+            lines.push('**Финальный ответ агента**');
+            lines.push('');
+            if (amd && amd.available) {
+              if (amd.cost_explanation_ru) { lines.push(amd.cost_explanation_ru); lines.push(''); }
+              if (amd.message_length_chars) lines.push('- Размер ответа: ' + nf.format(amd.message_length_chars) + ' симв.');
+              if (amd.message_text_location_ru) lines.push('- ' + amd.message_text_location_ru);
+              if (amd.source) lines.push('- Источник: ' + amd.source + ' (' + (amd.source_confidence||'') + ')');
+              if (amd.message_preview) {
+                lines.push('');
+                lines.push('Preview:');
+                lines.push(amd.message_preview);
+              }
+            } else {
+              lines.push('AI-call без новых tool events, но с visible assistant message. Стоимость относится к генерации финального отчёта.');
+            }
+            lines.push('');
+          } else {
+            lines.push('**Model-only AI-call**');
+            lines.push('');
+            lines.push('В raw telemetry нет прямых tool events для этого AI-обращения. Вероятно, модель анализировала уже загруженный контекст или формулировала следующий шаг.');
+            lines.push('');
+          }
+        } else if (files && files.length) {
+          lines.push('**Файлы:**');
+          files.forEach(function(f) {
+            var label = '- `' + f.path + '`';
+            if (f.read_count > 1) {
+              label += ' — ' + f.read_count + ' фрагментов';
+              if (f.ranges && f.ranges.length) label += ' [' + f.ranges.join(', ') + ']';
+            }
+            if (f.operation) label += ' (' + f.operation + ')';
+            lines.push(label);
+          });
+          lines.push('');
+        } else {
+          lines.push('**Файлы:** нет подтверждённых файлов');
+          lines.push('');
+        }
+        // Commands (always show in technical/details section)
+        if (cmds && cmds.length) {
+          lines.push('**Команды:**');
+          cmds.forEach(function(c) {
+            lines.push('- `' + (c.command||'').substring(0, 120) + '`');
+            if (c.workdir) lines.push('  workdir: ' + c.workdir + ', exit: ' + (c.exit_code != null ? c.exit_code : '?'));
+          });
+          lines.push('');
+        }
+        // Raw evidence
+        var rev = it.raw_evidence;
+        if (rev && rev.length) {
+          lines.push('**Raw evidence:**');
+          rev.forEach(function(r) { lines.push('- event #' + r.event_index + ' `' + r.payload_type + '` call_id=' + r.call_id); });
+          lines.push('');
+        }
+        lines.push('</details>');
+        lines.push('');
+      });
+    }
+  }
+
+  // ── Самые дорогие действия ──
+  const eha = aa.expensive_human_actions || [];
+  if (eha.length > 0) {
+    lines.push("### Самые дорогие действия");
+    lines.push("");
+    lines.push("| # | Действие | AI | Cost | Нов. input | Cached | Output | Reasoning | Почему дорого | Увер. |");
+    lines.push("|---:|---|---:|---:|---:|---:|---:|---|---|");
+    eha.forEach(eh => {
+      const confLabel = _humanConfLabel(eh.confidence);
+      lines.push('| ' + eh.index + ' | ' + (eh.display_title_ru || '').substring(0, 45) + ' | ' + (eh.linked_model_request_index ? '#' + eh.linked_model_request_index : '—') + ' | ' + (eh.total_usd != null ? '$' + Number(eh.total_usd).toFixed(5) : '—') + ' | ' + nf.format(eh.non_cached_input_tokens || 0) + ' | ' + nf.format(eh.cached_tokens || 0) + ' | ' + nf.format(eh.output_tokens || 0) + ' | ' + nf.format(eh.reasoning_tokens || 0) + ' | ' + (eh.expensive_reason || '—') + ' | ' + confLabel + ' |');
+    });
+    lines.push("");
+  }
+
+  // ── Mentioned files ──
+  const paths = aa.important_paths || [];
+  if (paths.length) {
+    lines.push("### Файлы и команды");
+    lines.push("");
+    lines.push("Упомянутые / задействованные файлы:");
+    paths.slice(0, 8).forEach(p => lines.push(`- ${p}`));
+    lines.push("");
+  }
+
+  // Commands
+  const cmds = aa.important_commands || [];
+  if (cmds.length) {
+    lines.push("Команды и проверки:");
+    cmds.slice(0, 5).forEach(c => lines.push(`- \`${c}\``));
+    lines.push("");
+  }
+
+  // ── Техническая детализация ──
+  const hasTechnical = (sia.length > 0) || (aa.agent_activity_stages || []).length > 0;
+  if (hasTechnical) {
+    lines.push("### Техническая детализация");
+    lines.push("");
+    lines.push("> Ниже технические данные. Они нужны для аудита, но не являются основным человеческим отчётом.");
+    lines.push("");
+
+    // Technical AI calls
+    const tac = aa.technical_ai_calls || {};
+    const tacItems = tac.items || [];
+    if (tacItems.length > 0) {
+      lines.push("#### Технические AI-обращения");
+      lines.push("");
+      lines.push("| AI | Cost | Input | Нов. input | Output | Связан |");
+      lines.push("|---:|---:|---:|---:|---:|---|");
+      tacItems.forEach(ai => {
+        lines.push(`| #${ai.ai_index} | ${ai.cost_total_usd != null ? '$' + Number(ai.cost_total_usd).toFixed(5) : '—'} | ${nf.format(ai.input_tokens || 0)} | ${nf.format(ai.non_cached_input_tokens || 0)} | ${nf.format(ai.output_tokens || 0)} | ${ai.linked_to_human_item ? '✓' : '—'} |`);
+      });
+      lines.push("");
+    }
+
+    // Stages (low confidence)
+    const stages = aa.agent_activity_stages || [];
+    if (stages.length > 0) {
+      lines.push("#### Низкоуверенные этапы из текста ответа");
+      lines.push("");
+      lines.push("| Этап | Запросы | Cost | Input | Output | Уверенность |");
+      lines.push("|---|---:|---:|---:|---:|---|");
+      stages.forEach(s => {
+        lines.push(`| ${s.title_ru} | ${s.request_range || ''} | $${Number(s.cost_total_usd || 0).toFixed(5)} | ${nf.format(s.input_tokens || 0)} | ${nf.format(s.output_tokens || 0)} | ${s.confidence || 'low'} |`);
+      });
+      lines.push("");
+      lines.push("> Этапы построены по тексту ответа агента; точная привязка каждого внутреннего запроса не подтверждена.");
+      lines.push("");
+    }
+
+    // Internal requests table
+    if (sia.length > 0) {
+      lines.push(`#### Внутренние запросы модели по времени (${rwu} запросов с usage` + (mre !== rwu ? `, ${mre} model-событий` : '') + ')');
+      lines.push("");
+      lines.push("| # | Запрос | Возможный этап | Cost | Input | Non-cached | Cached | Output | Уверенность |");
+      lines.push("|---|--------|----------------|------|-------|------------|--------|--------|------------|");
+      sia.forEach(a => {
+        const u = a.usage || {};
+        const c = a.cost || {};
+        lines.push(`| ${a.index} | ${a.title_ru || ''} | ${a.possible_stage_ru || '—'} | ${c.total_usd != null ? '$' + Number(c.total_usd).toFixed(5) : '—'} | ${nf.format(u.input_tokens || 0)} | ${nf.format(u.non_cached_input_tokens || 0)} | ${nf.format(u.cached_tokens || 0)} | ${nf.format(u.output_tokens || 0)} | ${a.stage_confidence || 'low'} |`);
+      });
+      lines.push("");
+    }
+
+    // ── v2.13: Token cost breakdown (per-step, technical) ──
+    // Добавим breakdown для каждого шага, который его имеет
+    var stepsWithBreakdown = tlItems.filter(function(it) { return it.token_cost_breakdown && it.token_cost_breakdown.available; });
+    if (stepsWithBreakdown.length > 0) {
+      lines.push("#### Стоимость по типам токенов (по шагам)");
+      lines.push("");
+      stepsWithBreakdown.forEach(function(it) {
+        var tcb = it.token_cost_breakdown;
+        var stepTitle = (it.display_title_ru || it.full_title_ru || 'Шаг #' + it.index).substring(0, 40);
+        lines.push('**' + stepTitle + ':**');
+        lines.push('');
+        lines.push('| Тип | Кол-во | Цена за 1M | Стоимость |');
+        lines.push('|---|---:|---:|---:|');
+        var items = tcb.items || [];
+        for (var ki = 0; ki < items.length; ki++) {
+          var item = items[ki];
+          var kindLabel = item.kind === 'new_input' ? 'Новый ввод' : (item.kind === 'cached_input' ? 'Кэш' : 'Вывод');
+          lines.push('| ' + kindLabel + ' | ' + nf.format(item.tokens || 0) + ' | $' + Number(item.price_per_million || 0).toFixed(2) + ' | $' + Number(item.cost_usd || 0).toFixed(6) + ' |');
+        }
+        lines.push('| **Итого** | | | **$' + Number(tcb.total_from_breakdown_usd || 0).toFixed(6) + '** |');
+        if (tcb.reasoning_note) {
+          lines.push('');
+          lines.push(tcb.reasoning_note);
+        }
+        lines.push('');
+      });
+    }
+
+    // Technical expensive
+    const te = aa.top_expensive_internal_actions || [];
+    if (te.length > 0) {
+      lines.push("#### Самые дорогие внутренние запросы");
+      lines.push("");
+      lines.push("| # | Контекст этапа | AI | Cost | Input | Cached | Non-cached | Output | Reasoning | Причина |");
+      lines.push("|---|--------------|----|------|-------|--------|------------|--------|-----------|--------|");
+      te.slice(0, 10).forEach(a => {
+        const ac = a.cost || {};
+        const au = a.usage || {};
+        const displayName = (a.possible_stage_ru || a.title_ru || '').substring(0, 45);
+        lines.push('| ' + a.index + ' | ' + displayName + ' | #' + a.index + ' | ' + (ac.total_usd != null ? '$' + Number(ac.total_usd).toFixed(5) : '—') + ' | ' + nf.format(au.input_tokens || 0) + ' | ' + nf.format(au.cached_tokens || 0) + ' | ' + nf.format(au.non_cached_input_tokens || 0) + ' | ' + nf.format(au.output_tokens || 0) + ' | ' + nf.format(au.reasoning_tokens || 0) + ' | ' + (a.expensive_reason || '—') + ' |');
+      });
+      lines.push("");
+    }
+
+    // Technical events count
+    const classified = (ac.file_reads || 0) + (ac.file_writes || 0) + (ac.shell_commands || 0) +
+      (ac.git_operations || 0) + (ac.test_runs || 0) + (ac.context_compactions || 0) +
+      (ac.internal_prompts || 0) + (ac.environment_events || 0);
+    const unclassified = (aa.unclassified_raw_events || 0) + (ac.unknown_events || 0);
+    lines.push("#### Технические события");
+    lines.push("");
+    lines.push(`- Внутренних запросов модели: ${ac.model_requests || 0}`);
+    lines.push(`- Сырых событий: ${aa.event_range?.raw_events_count || 0}`);
+    lines.push(`- Распознано действий: ${classified}`);
+    if (unclassified > 0) lines.push(`- Нераспознано событий: ${unclassified}`);
+    lines.push("");
+  }
+
+  // Notes
+  (aa.notes_ru || []).forEach(n => lines.push(`> ${n}`));
+
+  return lines;
+}
+
+function buildStepSummaryBlock(t) {
+  const aa = t.agent_activity || {};
+  const fsc = t.full_step_cost || {};
+  const fsu = t.full_step_usage || {};
+  const lines = [];
+  // v2.6: show human summary first
+  const hsum = aa.human_summary_ru || {};
+  if (hsum.available && hsum.text) {
+    lines.push('<div class="muted" style="font-weight:600;margin-bottom:2px">Главное резюме:</div>');
+    lines.push('<div class="muted xsmall" style="margin-bottom:4px">' + escapeHtml(hsum.text) + '</div>');
+  }
+  lines.push(kv("полная стоимость шага", moneyOrNA(fsc.total_usd)));
+  lines.push(kv("внутренних запросов", nf.format(fsu.request_count || 0)));
+  const eha = aa.expensive_human_actions || [];
+  if (eha.length > 0) {
+    lines.push(kv("самое дорогое действие", (eha[0].display_title_ru || '').substring(0, 40) + ' ($' + (eha[0].total_usd != null ? Number(eha[0].total_usd).toFixed(5) : '—') + ')'));
+  }
+  const tl = aa.agent_timeline || {};
+  if ((tl.items || []).length) lines.push(kv("событий в хронологии", nf.format(tl.items.length)));
+  lines.push('<div class="muted xsmall" style="margin-top:4px">Нажмите «Подробно» для полной информации.</div>');
+  return lines.join("");
+}
+
+// ── v2.6: Agent activity block (human-first ordering) ──
+function buildAgentActivityBlock(t) {
+  const aa = t.agent_activity || {};
+  if (!aa.available) {
+    return kv("данные", "недоступны");
+  }
+  const ac = aa.activity_counts || {};
+  const lines = [];
+
+  // ── Главное резюме ──
+  const hsum = aa.human_summary_ru || {};
+  if (hsum.available && hsum.text) {
+    lines.push('<div class="muted" style="font-weight:600;margin-bottom:2px">Главное резюме:</div>');
+    lines.push('<div class="muted xsmall" style="margin-bottom:6px">' + escapeHtml(hsum.text) + '</div>');
+  } else {
+    // Fallback to old tag list
+    const summaryLines = aa.activity_summary_ru || [];
+    if (summaryLines.length) {
+      lines.push('<div class="muted" style="font-weight:600;margin-bottom:2px">Кратко:</div>');
+      summaryLines.forEach((s, i) => {
+        lines.push('<div class="muted xsmall">' + (i + 1) + '. ' + escapeHtml(s) + '</div>');
+      });
+      lines.push('<hr class="thin">');
+    }
+  }
+
+  // ── Mentioned / involved files ──
+  const paths = aa.important_paths || [];
+  if (paths.length > 0) {
+    lines.push('<div class="muted" style="font-weight:600">Упомянутые / задействованные файлы:</div>');
+    paths.slice(0, 8).forEach(p => {
+      lines.push('<div class="muted xsmall" style="font-family:monospace">' + escapeHtml(p) + '</div>');
+    });
+  }
+
+  // ── Commands and checks ──
+  const cmds = aa.important_commands || [];
+  if (cmds.length > 0) {
+    lines.push('<div class="muted" style="font-weight:600;margin-top:4px">Команды и проверки:</div>');
+    cmds.slice(0, 5).forEach(c => {
+      lines.push('<div class="muted xsmall" style="font-family:monospace">' + escapeHtml(c) + '</div>');
+    });
+  }
+
+  // ── Technical events ──
+  lines.push('<hr class="thin">');
+  lines.push('<div class="muted" style="font-weight:600">Технические события:</div>');
+  lines.push(kv("внутренних запросов модели", nf.format(ac.model_requests || 0)));
+  lines.push(kv("сырых событий", nf.format(aa.event_range?.raw_events_count || 0)));
+
+  const classified = (ac.file_reads || 0) + (ac.file_writes || 0) + (ac.shell_commands || 0) +
+    (ac.git_operations || 0) + (ac.test_runs || 0) + (ac.context_compactions || 0) +
+    (ac.internal_prompts || 0) + (ac.environment_events || 0);
+  const unclassified = (aa.unclassified_raw_events || 0) + (ac.unknown_events || 0);
+  lines.push(kv("распознано действий", nf.format(classified)));
+  if (unclassified > 0) {
+    lines.push(kv("нераспознано событий", nf.format(unclassified)));
+  }
+
+  // ── Tool breakdown ──
+  const items = aa.activity_items || [];
+  if (items.length > 0) {
+    const toolCounts = {};
+    items.forEach(it => {
+      const tn = it.tool_name || it.category || '?';
+      toolCounts[tn] = (toolCounts[tn] || 0) + 1;
+    });
+    const topTools = Object.entries(toolCounts).sort((a, b) => b[1] - a[1]).slice(0, 6);
+    if (topTools.length) {
+      lines.push('<span class="muted xsmall">Инструменты:</span>');
+      topTools.forEach(([tn, cnt]) => {
+        lines.push('<div class="muted xsmall" style="font-family:monospace">' + escapeHtml(tn) + ' ×' + cnt + '</div>');
+      });
+    }
+
+    // Collapsible detailed items
+    const detailId = 'activity-detail-' + t.step_index;
+    lines.push('<button class="small" onclick="var el=document.getElementById(\'' + detailId + '\');el.style.display=el.style.display===\'none\'?\'block\':\'none\'">Показать события (' + items.length + ')</button>');
+    lines.push('<div id="' + detailId + '" style="display:none;max-height:300px;overflow-y:auto;font-size:11px;margin-top:4px">');
+    items.forEach(it => {
+      const tn = it.tool_name ? '<b>' + escapeHtml(it.tool_name) + '</b>: ' : '';
+      const st = it.status === 'reported_by_agent' ? ' <span style="color:#888">[со слов агента]</span>' : '';
+      lines.push('<div style="padding:1px 0;border-bottom:1px solid #eee">' + tn + escapeHtml(it.detail || '') + st + '</div>');
+    });
+    lines.push('</div>');
+  }
+
+  // ── Timeline ──
+  const tl = aa.agent_timeline || {};
+  const tlItems = tl.items || [];
+  if (tlItems.length > 0) {
+    const tlId = 'tl-' + t.step_index;
+    lines.push('<hr class="thin">');
+    lines.push('<div class="muted" style="font-weight:600">Хронология работы (' + tlItems.length + ' событий)</div>');
+    lines.push('<button class="small" onclick="var el=document.getElementById(\'' + tlId + '\');el.style.display=el.style.display===\'none\'?\'block\':\'none\'">Свернуть</button>');
+    lines.push('<div id="' + tlId + '" style="display:block;max-height:450px;overflow:auto;font-size:10px;margin-top:4px">');
+    lines.push('<table style="width:100%;border-collapse:collapse"><thead><tr style="background:#333">');
+    lines.push('<th style="text-align:right;padding:2px 4px">#</th><th style="text-align:left;padding:2px 4px;min-width:70px">Время</th>');
+    lines.push('<th style="text-align:left;padding:2px 4px">Действие</th><th style="text-align:left;padding:2px 4px;min-width:60px">Объекты</th>');
+    lines.push('<th style="text-align:center;padding:2px 4px;min-width:30px">AI</th>');
+    lines.push('<th style="text-align:right;padding:2px 4px">Cost</th><th style="text-align:right;padding:2px 4px">Нов. input</th>');
+    lines.push('<th style="text-align:right;padding:2px 4px">Output</th><th style="text-align:right;padding:2px 4px">Δt</th>');
+    lines.push('<th style="text-align:center;padding:2px 4px">Увер.</th></tr></thead><tbody>');
+    tlItems.forEach(function(it) {
+      var lu = it.linked_request_usage || {};
+      var lc = it.linked_cost || {};
+      var dur = it.duration || {};
+      var ts = it.timestamp ? new Date(it.timestamp).toLocaleTimeString('ru-RU') : '';
+      var dt = dur.available ? (dur.seconds_since_previous_item >= 60 ? Math.round(dur.seconds_since_previous_item / 60) + 'm' : '+' + Math.round(dur.seconds_since_previous_item) + 's') : '';
+      var displayTitle = it.display_title_ru || it.recognized_action_ru || '—';
+      var aiLabel = it.linked_model_request_index ? '#' + it.linked_model_request_index : '—';
+      var nonCached = lu.available ? (lu.non_cached_input_tokens || 0) : 0;
+      var rowStyle = '';
+      if (it.row_type === 'action_only') rowStyle = 'color:#888;font-style:italic';
+      if (it.row_type === 'ai_call_only') rowStyle = 'color:#aaa;';
+      lines.push('<tr style="' + rowStyle + '">');
+      lines.push('<td style="text-align:right;padding:1px 4px">' + it.index + '</td>');
+      lines.push('<td style="padding:1px 4px;white-space:nowrap;font-size:9px">' + ts + '</td>');
+      lines.push('<td style="padding:1px 4px" title="' + escapeHtml(displayTitle) + '">' + escapeHtml(displayTitle.substring(0, 55)) + '</td>');
+      lines.push('<td style="padding:1px 4px;max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:9px" title="' + escapeHtml(it.object_label || '') + '">' + escapeHtml((it.object_label || '').substring(0, 40)) + '</td>');
+      lines.push('<td style="text-align:center;padding:1px 4px;font-weight:600;font-size:10px">' + aiLabel + '</td>');
+      lines.push('<td style="text-align:right;padding:1px 4px;font-weight:600">' + (lc.total_usd != null ? '$' + Number(lc.total_usd).toFixed(5) : '—') + '</td>');
+      lines.push('<td style="text-align:right;padding:1px 4px">' + (lu.available ? nf.format(nonCached) : '—') + '</td>');
+      lines.push('<td style="text-align:right;padding:1px 4px">' + (lu.available ? nf.format(lu.output_tokens || 0) : '—') + '</td>');
+      lines.push('<td style="text-align:right;padding:1px 4px;color:#888;font-size:9px">' + dt + '</td>');
+      lines.push('<td style="text-align:center;padding:1px 4px;font-size:9px">' + escapeHtml(it.confidence || it.recognition_confidence || 'low') + '</td>');
+      lines.push('</tr>');
+    });
+    lines.push('</tbody></table></div>');
+
+    // ── Technical AI calls table ──
+    var tac = aa.technical_ai_calls || {};
+    var tacItems = tac.items || [];
+    if (tacItems.length > 0) {
+      var tacId = 'tac-' + t.step_index;
+      lines.push('<hr class="thin">');
+      lines.push('<div class="muted" style="font-weight:600">Технические AI-обращения (' + tacItems.length + ')</div>');
+      lines.push('<button class="small" onclick="var el=document.getElementById(\'' + tacId + '\');el.style.display=el.style.display===\'none\'?\'block\':\'none\'">Показать</button>');
+      lines.push('<div id="' + tacId + '" style="display:none;max-height:350px;overflow:auto;font-size:10px;margin-top:4px">');
+      lines.push('<div class="muted xsmall" style="margin-bottom:4px">AI # — техническое скрытое обращение Codex к модели. В хронологии используется как источник cost/usage.</div>');
+      lines.push('<table style="width:100%;border-collapse:collapse"><thead><tr style="background:#333">');
+      lines.push('<th style="text-align:center;padding:2px 4px">AI</th><th style="text-align:right;padding:2px 4px">Cost</th>');
+      lines.push('<th style="text-align:right;padding:2px 4px">Input</th><th style="text-align:right;padding:2px 4px">Нов. input</th>');
+      lines.push('<th style="text-align:right;padding:2px 4px">Output</th><th style="text-align:center;padding:2px 4px">Связан</th>');
+      lines.push('</tr></thead><tbody>');
+      tacItems.forEach(function(ai) {
+        lines.push('<tr>');
+        lines.push('<td style="text-align:center;padding:1px 4px;font-weight:600">#' + ai.ai_index + '</td>');
+        lines.push('<td style="text-align:right;padding:1px 4px;font-weight:600">' + (ai.cost_total_usd != null ? '$' + Number(ai.cost_total_usd).toFixed(5) : '—') + '</td>');
+        lines.push('<td style="text-align:right;padding:1px 4px">' + nf.format(ai.input_tokens || 0) + '</td>');
+        lines.push('<td style="text-align:right;padding:1px 4px">' + nf.format(ai.non_cached_input_tokens || 0) + '</td>');
+        lines.push('<td style="text-align:right;padding:1px 4px">' + nf.format(ai.output_tokens || 0) + '</td>');
+        lines.push('<td style="text-align:center;padding:1px 4px;font-size:9px">' + (ai.linked_to_human_item ? '✓' : '—') + '</td>');
+        lines.push('</tr>');
+      });
+      lines.push('</tbody></table></div>');
+    }
+  }
+
+  // ── v2.6: Самые дорогие действия ──
+  const eha = aa.expensive_human_actions || [];
+  if (eha.length > 0) {
+    const ehaId = 'eha-' + t.step_index;
+    lines.push('<hr class="thin">');
+    lines.push('<div class="muted" style="font-weight:600">Самые дорогие действия (' + eha.length + ')</div>');
+    lines.push('<button class="small" onclick="var el=document.getElementById(\'' + ehaId + '\');el.style.display=el.style.display===\'none\'?\'block\':\'none\'">Показать</button>');
+    lines.push('<div id="' + ehaId + '" style="display:none;max-height:350px;overflow:auto;font-size:10px;margin-top:4px">');
+    lines.push('<table style="width:100%;border-collapse:collapse"><thead><tr style="background:#333">');
+    lines.push('<th style="text-align:right;padding:2px 4px">#</th><th style="text-align:left;padding:2px 4px">Действие</th>');
+    lines.push('<th style="text-align:center;padding:2px 4px">AI</th><th style="text-align:right;padding:2px 4px">Cost</th>');
+    lines.push('<th style="text-align:left;padding:2px 4px">Почему дорого</th><th style="text-align:center;padding:2px 4px">Увер.</th>');
+    lines.push('</tr></thead><tbody>');
+    eha.forEach(function(eh) {
+      var confLabel = _humanConfLabel(eh.confidence);
+      lines.push('<tr>');
+      lines.push('<td style="text-align:right;padding:1px 4px">' + eh.index + '</td>');
+      lines.push('<td style="padding:1px 4px">' + escapeHtml((eh.display_title_ru || '').substring(0, 50)) + '</td>');
+      lines.push('<td style="text-align:center;padding:1px 4px;font-weight:600">' + (eh.linked_model_request_index ? '#' + eh.linked_model_request_index : '—') + '</td>');
+      lines.push('<td style="text-align:right;padding:1px 4px;font-weight:600">' + (eh.total_usd != null ? '$' + Number(eh.total_usd).toFixed(5) : '—') + '</td>');
+      lines.push('<td style="padding:1px 4px;font-size:9px">' + (eh.expensive_reason || '—') + '</td>');
+      lines.push('<td style="text-align:center;padding:1px 4px;font-size:9px">' + confLabel + '</td>');
+      lines.push('</tr>');
+    });
+    lines.push('</tbody></table></div>');
+  }
+
+  // ── v2.6: Техническая детализация ──
+  const hasTech = (aa.agent_activity_stages || []).length > 0 || (aa.requests_with_usage || 0) > 0;
+  if (hasTech) {
+    var techId = 'tech-' + t.step_index;
+    lines.push('<hr class="thin">');
+    lines.push('<div class="muted" style="font-weight:600">Техническая детализация</div>');
+    lines.push('<div class="muted xsmall" style="margin-bottom:2px">Ниже технические данные. Они нужны для аудита, но не являются основным человеческим отчётом.</div>');
+    lines.push('<button class="small" onclick="var el=document.getElementById(\'' + techId + '\');el.style.display=el.style.display===\'none\'?\'block\':\'none\'">Показать</button>');
+    lines.push('<div id="' + techId + '" style="display:none;margin-top:4px">');
+
+    // ── Stages (inside technical) ──
+    const stages = aa.agent_activity_stages || [];
+    if (stages.length > 0) {
+      lines.push('<div class="muted" style="font-weight:600;margin-top:6px">Этапы работы агента (приблизительно)</div>');
+      lines.push('<table style="width:100%;border-collapse:collapse;font-size:11px;margin-top:2px"><thead><tr style="background:#333">');
+      lines.push('<th style="text-align:left;padding:2px 4px">Этап</th><th style="text-align:right;padding:2px 4px">Запросы</th>');
+      lines.push('<th style="text-align:right;padding:2px 4px">Cost</th><th style="text-align:right;padding:2px 4px">Input</th>');
+      lines.push('<th style="text-align:right;padding:2px 4px">Output</th><th style="text-align:center;padding:2px 4px">Увер.</th>');
+      lines.push('</tr></thead><tbody>');
+      stages.forEach(function(s) {
+        lines.push('<tr>');
+        lines.push('<td style="padding:1px 4px">' + escapeHtml(s.title_ru) + '</td>');
+        lines.push('<td style="text-align:right;padding:1px 4px">' + (s.request_range || '') + '</td>');
+        lines.push('<td style="text-align:right;padding:1px 4px;font-weight:600">$' + Number(s.cost_total_usd || 0).toFixed(5) + '</td>');
+        lines.push('<td style="text-align:right;padding:1px 4px">' + nf.format(s.input_tokens || 0) + '</td>');
+        lines.push('<td style="text-align:right;padding:1px 4px">' + nf.format(s.output_tokens || 0) + '</td>');
+        lines.push('<td style="text-align:center;padding:1px 4px;font-size:9px">' + escapeHtml(s.confidence || 'low') + '</td>');
+        lines.push('</tr>');
+      });
+      lines.push('</tbody></table>');
+    }
+
+    // ── Internal requests table (inside technical) ──
+    const sia = aa.step_internal_actions || [];
+    const rwu = aa.requests_with_usage || 0;
+    const mre = aa.model_related_events || 0;
+    if (rwu > 0) {
+    lines.push('<hr class="thin">');
+    lines.push('<div class="muted" style="font-weight:600">Внутренние запросы (' + rwu + ' с usage' + (mre !== rwu ? ', ' + mre + ' model-событий' : '') + ')</div>');
+
+    const timeTableId = 'ia-time-' + t.step_index;
+    const costTableId = 'ia-cost-' + t.step_index;
+    lines.push('<button class="small" onclick="document.getElementById(\'' + timeTableId + '\').style.display=\'block\';document.getElementById(\'' + costTableId + '\').style.display=\'none\'" style="margin-right:4px">По времени</button>');
+    lines.push('<button class="small" onclick="document.getElementById(\'' + costTableId + '\').style.display=\'block\';document.getElementById(\'' + timeTableId + '\').style.display=\'none\'">По расходу</button>');
+
+    function buildIaTable(items, id) {
+      var h = '<div id="' + id + '" style="' + (id === timeTableId ? '' : 'display:none;') + 'max-height:450px;overflow:auto;font-size:10px;margin-top:4px">';
+      h += '<table style="width:100%;border-collapse:collapse"><thead><tr style="background:#333">';
+      h += '<th style="text-align:right;padding:2px 4px">#</th>';
+      h += '<th style="text-align:left;padding:2px 4px">Запрос</th>';
+      h += '<th style="text-align:left;padding:2px 4px;min-width:120px">Возможный этап</th>';
+      h += '<th style="text-align:right;padding:2px 4px">Cost</th>';
+      h += '<th style="text-align:right;padding:2px 4px">Input</th>';
+      h += '<th style="text-align:right;padding:2px 4px">Non-cached</th>';
+      h += '<th style="text-align:right;padding:2px 4px">Cached</th>';
+      h += '<th style="text-align:right;padding:2px 4px">Output</th>';
+      h += '<th style="text-align:center;padding:2px 4px">Увер.</th>';
+      h += '</tr></thead><tbody>';
+      items.forEach(function(a) {
+        var u = a.usage || {};
+        var c = a.cost || {};
+        var er = a.expensive_reason || '';
+        h += '<tr>';
+        h += '<td style="text-align:right;padding:1px 4px">' + a.index + '</td>';
+        h += '<td style="padding:1px 4px;white-space:nowrap" title="' + escapeHtml(a.title_ru || '') + '">' + escapeHtml((a.title_ru || '').substring(0, 50)) + '</td>';
+        h += '<td style="padding:1px 4px;color:#888;font-size:9px">' + escapeHtml((a.possible_stage_ru || '').substring(0, 60)) + '</td>';
+        h += '<td style="text-align:right;padding:1px 4px;font-weight:600">' + (c.total_usd != null ? '$' + Number(c.total_usd).toFixed(5) : '—') + '</td>';
+        h += '<td style="text-align:right;padding:1px 4px">' + nf.format(u.input_tokens || 0) + '</td>';
+        h += '<td style="text-align:right;padding:1px 4px">' + nf.format(u.non_cached_input_tokens || 0) + (er ? '<br><span style="color:#c09853;font-size:8px">' + escapeHtml(er) + '</span>' : '') + '</td>';
+        h += '<td style="text-align:right;padding:1px 4px;color:#888">' + nf.format(u.cached_tokens || 0) + '</td>';
+        h += '<td style="text-align:right;padding:1px 4px">' + nf.format(u.output_tokens || 0) + '</td>';
+        h += '<td style="text-align:center;padding:1px 4px;font-size:9px">' + escapeHtml(a.stage_confidence || a.confidence || 'low') + '</td>';
+        h += '</tr>';
+      });
+      h += '</tbody></table></div>';
+      return h;
+    }
+
+    lines.push(buildIaTable(sia, timeTableId));
+    var costSorted = [...sia].sort(function(a, b) { return (b.cost.total_usd || 0) - (a.cost.total_usd || 0); });
+    lines.push(buildIaTable(costSorted, costTableId));
+    }  // end if (rwu > 0)
+
+    lines.push('</div>');  // close tech div
+  }  // end if (hasTech)
+
+  // ── Note ──
+  const notes = aa.notes_ru || [];
+  if (notes.length > 0) {
+    lines.push('<hr class="thin">');
+    notes.forEach(n => {
+      lines.push('<div class="muted xsmall" style="font-style:italic">' + escapeHtml(n) + '</div>');
+    });
+  }
+
+  return lines.join("");
+}
+
+// ── v2.1: Step cost block (full step cost vs request cost) ──
+function buildStepCostBlock(t) {
+  const fsu = t.full_step_usage || {};
+  const fsc = t.full_step_cost || {};
+  const cd = t.cumulative_delta || {};
+  const ud = t.unattributed_delta || {};
+  const cs = t.cost_scope || {};
+  const er = t.event_range || {};
+  const reqCount = fsu.request_count || 0;
+
+  const lines = [];
+  if (reqCount === 0) {
+    lines.push(kv("внутренних запросов", "0"));
+    lines.push(kv("полная стоимость шага", "не рассчитана"));
+    lines.push(kv("причина", "нет last_token_usage внутри шага"));
+  } else if (reqCount === 1) {
+    lines.push(kv("внутренних запросов модели", "1"));
+    lines.push(kv("полная стоимость шага", moneyOrNA(fsc.total_usd)));
+    lines.push('<div class="muted xsmall">Стоимость request-а совпадает с полной стоимостью шага.</div>');
+    lines.push(kv("input (полный шаг)", numOrNA(fsu.input_tokens)));
+    lines.push(kv("cached input", numOrNA(fsu.cached_tokens)));
+    lines.push(kv("output", numOrNA(fsu.output_tokens)));
+    lines.push(kv("reasoning", numOrNA(fsu.reasoning_tokens)));
+  } else {
+    lines.push(kv("внутренних запросов модели", nf.format(reqCount)));
+    lines.push(kv("полная стоимость шага", moneyOrNA(fsc.total_usd)));
+    lines.push('<div class="muted xsmall">Полная стоимость = сумма ' + reqCount + ' внутренних запросов.</div>');
+    lines.push(kv("input (полный шаг)", numOrNA(fsu.input_tokens)));
+    lines.push(kv("cached input", numOrNA(fsu.cached_tokens)));
+    lines.push(kv("output", numOrNA(fsu.output_tokens)));
+    lines.push(kv("reasoning", numOrNA(fsu.reasoning_tokens)));
+    lines.push('<hr class="thin">');
+    lines.push('<span class="muted xsmall">Для сравнения:</span>');
+    lines.push(kv("стоимость осн. request-а", moneyOrNA(usageMoney(t.usage || {}, "estimated_total_cost_usd"))));
+  }
+
+  // Cumulative delta
+  if (cd.available) {
+    lines.push('<hr class="thin">');
+    lines.push(kv("прирост счётчика (Δ)", numOrNA(cd.input_tokens) + " input"));
+  }
+
+  // Unattributed delta
+  if (ud.available) {
+    const udInput = ud.input_tokens;
+    if (udInput != null && udInput !== 0) {
+      lines.push(kv("неразнесённая разница", numWithSign(udInput) + " input"));
+    } else {
+      lines.push(kv("неразнесённая разница", "0 (всё разнесено)"));
+    }
+  }
+
+  // Event range
+  if (er.start_event_index) {
+    lines.push(kv("диапазон событий", er.start_event_index + "–" + er.end_event_index + " (" + er.raw_events_count + ")"));
+  }
+
+  // Confidence
+  lines.push(kv("scope", cs.current_displayed_cost_scope || "—"));
+  lines.push(kv("confidence", cs.mapping_confidence || "—"));
+
+  return lines.join("");
+}
+
 function buildStepExportData(step, session) {
   const usage = step?.usage || {};
   const environment = step?.environment || {};
@@ -817,7 +1600,20 @@ function buildStepExportData(step, session) {
       input_usd: usage.estimated_input_cost_usd ?? null,
       cached_input_usd: usage.estimated_cached_input_cost_usd ?? null,
       output_usd: usage.estimated_output_cost_usd ?? null,
+      note: "request-level cost (primary_request_usage); for full visible step cost see full_step_cost",
     },
+    // v2.1: full step cost fields
+    event_range: step.event_range || {},
+    request_usage_items: step.request_usage_items || [],
+    full_step_usage: step.full_step_usage || {},
+    full_step_cost: step.full_step_cost || {},
+    primary_request_usage: step.primary_request_usage || {},
+    cumulative_before_step: step.cumulative_before_step || {},
+    cumulative_after_step: step.cumulative_after_step || {},
+    cumulative_delta: step.cumulative_delta || {},
+    unattributed_delta: step.unattributed_delta || {},
+    cost_scope: step.cost_scope || {},
+    agent_activity: step.agent_activity || {},
     environment: {
       thread_id: environment.thread_id || "",
       cwd: environment.cwd || "",
@@ -895,6 +1691,10 @@ function buildSessionExportMarkdown(session, steps, title) {
     `- Total reasoning: ${summary.total_reasoning_tokens ?? "не подтверждено"}`,
     `- Usage basis: ${summary.usage_basis || "—"}`,
     `- Step usage basis: ${summary.step_usage_basis || "—"}`,
+    `- Visible steps: ${summary.visible_steps_count ?? summary.turn_count ?? "—"}`,
+    `- Raw model requests: ${summary.raw_model_requests_count ?? "—"}`,
+    `- Visible step full usage sum (input): ${summary.visible_step_full_usage_sum?.input_tokens ?? "—"}`,
+    `- Unmapped/internal usage (input): ${summary.unmapped_or_internal_usage?.input_tokens ?? "—"}`,
     "",
     "## Warnings",
     ...(data.warnings.length ? data.warnings.map(w => `- ${w}`) : ["- none"]),
@@ -911,7 +1711,10 @@ function buildSessionExportMarkdown(session, steps, title) {
       `- Usage confirmation: ${step.usage.confirmation_label}`,
       `- Usage source: ${step.usage.source || "—"}`,
       `- Usage note: ${step.usage.note || "—"}`,
-      `- Cost confirmed: ${step.cost_breakdown.confirmed ? "yes" : "no"}`,
+      `- Request cost (primary request): ${step.cost_breakdown.total_usd == null ? "не подтверждено" : money(step.cost_breakdown.total_usd)}`,
+      `- Full step cost: ${step.full_step_cost.total_usd == null ? "не рассчитано" : money(step.full_step_cost.total_usd)}`,
+      `- Internal requests count: ${step.full_step_usage.request_count || 0}`,
+      `- Cost scope: ${step.cost_scope.current_displayed_cost_scope || "—"} (confidence: ${step.cost_scope.mapping_confidence || "—"})`,
       "",
       "### Prompt",
       step.prompt.available ? step.prompt.text : "не доступен в источнике",
@@ -928,11 +1731,26 @@ function buildSessionExportMarkdown(session, steps, title) {
       `- Reasoning: ${step.usage.reasoning_tokens ?? "не подтверждено"}`,
       `- Tools: ${step.usage.tool_tokens ?? "не подтверждено"}`,
       "",
-      "### Cost breakdown",
-      `- Total: ${step.cost_breakdown.total_usd == null ? "не подтверждено" : money(step.cost_breakdown.total_usd)}`,
-      `- Input: ${step.cost_breakdown.input_usd == null ? "не подтверждено" : money(step.cost_breakdown.input_usd)}`,
-      `- Cached input: ${step.cost_breakdown.cached_input_usd == null ? "не подтверждено" : money(step.cost_breakdown.cached_input_usd)}`,
-      `- Output: ${step.cost_breakdown.output_usd == null ? "не подтверждено" : money(step.cost_breakdown.output_usd)}`,
+      "### Cost breakdown (request-level)",
+      `- Total (request): ${step.cost_breakdown.total_usd == null ? "не подтверждено" : money(step.cost_breakdown.total_usd)}`,
+      `- Input (request): ${step.cost_breakdown.input_usd == null ? "не подтверждено" : money(step.cost_breakdown.input_usd)}`,
+      `- Cached input (request): ${step.cost_breakdown.cached_input_usd == null ? "не подтверждено" : money(step.cost_breakdown.cached_input_usd)}`,
+      `- Output (request): ${step.cost_breakdown.output_usd == null ? "не подтверждено" : money(step.cost_breakdown.output_usd)}`,
+      "",
+      "### Full step cost",
+      `- Internal requests: ${step.full_step_usage.request_count || 0}`,
+      `- Full step total: ${step.full_step_cost.total_usd == null ? "не рассчитано" : money(step.full_step_cost.total_usd)}`,
+      `- Full step input: ${step.full_step_usage.input_tokens == null ? "—" : nf.format(step.full_step_usage.input_tokens)}`,
+      `- Full step cached: ${step.full_step_usage.cached_tokens == null ? "—" : nf.format(step.full_step_usage.cached_tokens)}`,
+      `- Full step output: ${step.full_step_usage.output_tokens == null ? "—" : nf.format(step.full_step_usage.output_tokens)}`,
+      `- Cost scope: ${step.cost_scope.current_displayed_cost_scope || "—"}`,
+      `- Mapping confidence: ${step.cost_scope.mapping_confidence || "—"}`,
+      `- Event range: ${step.event_range.start_event_index || 0}–${step.event_range.end_event_index || 0}`,
+      `- Cumulative delta input: ${step.cumulative_delta.available ? (step.cumulative_delta.input_tokens != null ? nf.format(step.cumulative_delta.input_tokens) : "—") : "не доступен"}`,
+      `- Unattributed delta input: ${step.unattributed_delta.available ? (step.unattributed_delta.input_tokens != null ? nf.format(step.unattributed_delta.input_tokens) : "—") : "не доступен"}`,
+      "",
+      "### Что делал агент",
+      ...buildAgentActivityMarkdown(step),
       "",
       "### Environment",
       `- Thread ID: ${step.environment.thread_id || "—"}`,
@@ -972,6 +1790,524 @@ function copyStepSummary(i) {
   const step = s.steps.find(t => t.step_index === i);
   if (!step) return;
   copyText(buildStepExportText(step, s));
+}
+
+let popupTab = 'timeline';
+let popupSortCol = 'index';
+let popupSortDir = 'asc';
+
+function _sortHeader(label, col, i) {
+  var arrow = '';
+  if (popupSortCol === col) arrow = popupSortDir === 'asc' ? ' ▲' : ' ▼';
+  return '<th style="text-align:left;padding:3px;cursor:pointer;user-select:none" onclick="if(popupSortCol===\''+col+'\'){popupSortDir=popupSortDir===\'asc\'?\'desc\':\'asc\'}else{popupSortCol=\''+col+'\';popupSortDir=\'asc\'};openStepPopup('+i+')">'+label+arrow+'</th>';
+}
+
+function _sortHeaderR(label, col, i) {
+  var arrow = '';
+  if (popupSortCol === col) arrow = popupSortDir === 'asc' ? ' ▲' : ' ▼';
+  return '<th style="text-align:right;padding:3px;cursor:pointer;user-select:none" onclick="if(popupSortCol===\''+col+'\'){popupSortDir=popupSortDir===\'asc\'?\'desc\':\'asc\'}else{popupSortCol=\''+col+'\';popupSortDir=\'asc\'};openStepPopup('+i+')">'+label+arrow+'</th>';
+}
+
+function _sortHeaderC(label, col, i) {
+  var arrow = '';
+  if (popupSortCol === col) arrow = popupSortDir === 'asc' ? ' ▲' : ' ▼';
+  return '<th style="text-align:center;padding:3px;cursor:pointer;user-select:none" onclick="if(popupSortCol===\''+col+'\'){popupSortDir=popupSortDir===\'asc\'?\'desc\':\'asc\'}else{popupSortCol=\''+col+'\';popupSortDir=\'asc\'};openStepPopup('+i+')">'+label+arrow+'</th>';
+}
+
+function openStepPopup(i) {
+  const s = sessionDetailCache;
+  if (!s || !s.steps) return;
+  const step = s.steps.find(t => t.step_index === i);
+  if (!step) return;
+  const aa = step.agent_activity || {};
+  const u = step.usage || {};
+  const fsc = step.full_step_cost || {};
+
+  const tabs = ['timeline','stages','expensive','requests','filescmds','tech'];
+  const labels = {'timeline':'Хронология','stages':'Этапы','expensive':'Дорогие','requests':'AI-запросы','filescmds':'Файлы и команды','tech':'Техника'};
+
+  function tabBtn(t) {
+    return '<button class="small" onclick="popupTab=\''+t+'\';openStepPopup('+i+')" style="'+(popupTab===t?'font-weight:bold;background:#3a3a3a;color:#fff':'color:#aaa')+'">'+labels[t]+'</button>';
+  }
+
+  var body = '<div style="max-height:70vh;overflow:auto">';
+
+  if (popupTab === 'timeline') {
+    body += buildPopupTimeline(aa, i);
+  } else if (popupTab === 'stages') {
+    body += buildPopupStages(aa);
+  } else if (popupTab === 'expensive') {
+    body += buildPopupExpensive(aa, step);
+  } else if (popupTab === 'requests') {
+    body += buildPopupRequests(step);
+  } else if (popupTab === 'filescmds') {
+    body += buildPopupFilesCmds(aa);
+  } else {
+    body += buildPopupTech(aa, step);
+  }
+  body += '</div>';
+
+  var html = '<div id="stepPopupOverlay" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:9999;display:flex;align-items:center;justify-content:center" onclick="if(event.target===this)closeStepPopup()">';
+  html += '<div style="background:#1e1e1e;color:#d4d4d4;border-radius:8px;width:95vw;max-width:1200px;max-height:90vh;padding:16px;box-shadow:0 4px 24px rgba(0,0,0,0.6);display:flex;flex-direction:column">';
+  html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">';
+  html += '<div><b>Step '+i+'</b> — '+escapeHtml(step.model)+' / '+escapeHtml(step.reasoning_effort)+'</div>';
+  html += '<div style="font-weight:600">Полная стоимость: '+(fsc.total_usd!=null?'$'+Number(fsc.total_usd).toFixed(5):'—')+' | Запросов: '+(step.full_step_usage?.request_count||0)+'</div>';
+  html += '<button onclick="closeStepPopup()" style="font-size:20px;border:none;background:none;cursor:pointer">✕</button>';
+  html += '</div>';
+  html += '<div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:8px;border-bottom:1px solid #444;padding-bottom:8px">';
+  tabs.forEach(function(t) { html += tabBtn(t); });
+  html += '</div>';
+  html += body;
+  html += '</div></div>';
+
+  var old = document.getElementById('stepPopupOverlay');
+  if (old) old.remove();
+  var div = document.createElement('div');
+  div.innerHTML = html;
+  document.body.appendChild(div.firstElementChild);
+}
+
+function closeStepPopup() {
+  var el = document.getElementById('stepPopupOverlay');
+  if (el) el.remove();
+}
+
+function buildPopupTimeline(aa, i) {
+  var tl = aa.agent_timeline || {};
+  var items = tl.items || [];
+  if (!items.length) return '<div class="muted">Нет данных хронологии</div>';
+
+  // Sort by current column
+  var sorted = [...items];
+  var col = popupSortCol || 'index';
+  var dir = popupSortDir === 'desc' ? -1 : 1;
+  sorted.sort(function(a, b) {
+    var va, vb;
+    if (col === 'index') { va = a.index || 0; vb = b.index || 0; }
+    else if (col === 'cost') { va = (a.linked_cost||{}).total_usd || 0; vb = (b.linked_cost||{}).total_usd || 0; }
+    else if (col === 'noncached') { va = (a.linked_request_usage||{}).non_cached_input_tokens || 0; vb = (b.linked_request_usage||{}).non_cached_input_tokens || 0; }
+    else if (col === 'cached') { va = (a.linked_request_usage||{}).cached_tokens || 0; vb = (b.linked_request_usage||{}).cached_tokens || 0; }
+    else if (col === 'output') { va = (a.linked_request_usage||{}).output_tokens || 0; vb = (b.linked_request_usage||{}).output_tokens || 0; }
+    else if (col === 'reasoning') { va = (a.linked_request_usage||{}).reasoning_tokens || 0; vb = (b.linked_request_usage||{}).reasoning_tokens || 0; }
+    else if (col === 'dt') {
+      va = (a.duration||{}).seconds_since_previous_item || 0;
+      vb = (b.duration||{}).seconds_since_previous_item || 0;
+    }
+    else { va = a.index || 0; vb = b.index || 0; }
+    return (va - vb) * dir;
+  });
+
+  var h = '<div style="margin-bottom:4px;color:#aaa;font-size:10px">Нажми строку для подробностей. Заголовки сортируют. По умолчанию — хронология.</div>';
+
+  h += '<table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr style="background:#333">';
+  h += _sortHeader('#','index',i);
+  h += _sortHeader('Время','index',i);
+  h += _sortHeader('Действие','action',i);
+  h += _sortHeader('Объекты','objects',i);
+  h += _sortHeaderC('AI','ai',i);
+  h += _sortHeaderR('Cost','cost',i);
+  h += _sortHeaderC('Увер.','conf',i);
+  h += '</tr></thead><tbody>';
+  sorted.forEach(function(it) {
+    var itemId = 'tl-item-' + i + '-' + it.index;
+    var lu = it.linked_request_usage || {};
+    var lc = it.linked_cost || {};
+    var dur = it.duration || {};
+    var ts = it.timestamp ? new Date(it.timestamp).toLocaleTimeString('ru-RU') : '';
+    var title = it.display_title_ru || it.recognized_action_ru || '';
+    var fullTitle = it.full_title_ru || title;
+
+    // Confidence badge
+    var conf = it.recognition_confidence || it.confidence || 'low';
+    var badge = '<span style="font-size:9px;padding:1px 4px;border-radius:3px;';
+    if (conf === 'high') badge += 'background:#1a4a1a;color:#4f4">RAW</span>';
+    else if (conf === 'low') badge += 'background:#4a4a1a;color:#cc4">APPROX</span>';
+    else if (conf === 'not_verified') badge += 'background:#4a1a1a;color:#c44">?</span>';
+    else badge += 'background:#333;color:#aaa">'+escapeHtml(conf)+'</span>';
+
+    // Object label: short
+    var objLabel = '';
+    var files = it.files;
+    var cmds = it.commands;
+    if (files && files.length) {
+      var firstFile = files[0];
+      if (files.length === 1 && firstFile.read_count > 1) {
+        objLabel = firstFile.display_name + ' — ' + firstFile.read_count + ' фрагментов';
+      } else {
+        objLabel = files.length + ' файл' + (files.length===1?'':'а');
+      }
+    }
+    else if (cmds && cmds.length) objLabel = cmds.length + ' команд' + (cmds.length===1?'а':'');
+    else objLabel = escapeHtml((it.object_label||'').substring(0,30));
+
+    var rowStyle = 'cursor:pointer;';
+    if (it.row_type === 'ai_call_only') rowStyle += 'color:#aaa;';
+    if (it.row_type === 'action_only') rowStyle += 'color:#888;font-style:italic';
+
+    h += '<tr class="tl-click-row" style="' + rowStyle + '" onclick="var was=this.classList.contains(\'tl-sel\');var all=document.querySelectorAll(\'.tl-sel\');all.forEach(function(r){r.classList.remove(\'tl-sel\')});if(!was){this.classList.add(\'tl-sel\')};var el=document.getElementById(\''+itemId+'\');el.style.display=el.style.display===\'none\'?\'table-row\':\'none\'" title="'+escapeHtml(fullTitle)+'">';
+    h += '<td style="text-align:right;padding:2px 4px">'+it.index+'</td>';
+    h += '<td style="padding:2px 4px;white-space:nowrap;font-size:11px">'+ts+'</td>';
+    h += '<td style="padding:2px 4px">'+escapeHtml(title.substring(0,50))+'</td>';
+    h += '<td style="padding:2px 4px;font-size:10px;color:#aaa">'+objLabel+'</td>';
+    h += '<td style="text-align:center;padding:2px 4px;font-weight:600;font-size:11px">'+(it.linked_model_request_index?'#'+it.linked_model_request_index:'—')+'</td>';
+    h += '<td style="text-align:right;padding:2px 4px;font-weight:600">'+(lc.total_usd!=null?'$'+Number(lc.total_usd).toFixed(5):'—')+'</td>';
+    h += '<td style="text-align:center;padding:2px 4px">'+badge+'</td>';
+    h += '</tr>';
+    // Expandable details row
+    h += '<tr id="'+itemId+'" class="tl-detail" style="display:none"><td colspan="7" style="padding:8px 12px;background:#252525;border-left:3px solid #4a4">';
+    h += buildTimelineItemDetails(it);
+    h += '</td></tr>';
+  });
+  h += '</tbody></table>';
+  return h;
+}
+
+function buildTimelineItemDetails(it) {
+  var h = '';
+  var fullTitle = it.full_title_ru || it.display_title_ru || '';
+  var lai = it.linked_ai_call;
+  var lu = it.linked_request_usage || {};
+  var lc = it.linked_cost || {};
+
+  // ── Top: compact summary ──
+  h += '<div style="font-weight:600;margin-bottom:4px">Этап #'+it.index+' — '+escapeHtml(fullTitle)+'</div>';
+  h += '<div style="font-size:11px;margin-bottom:2px">';
+  if (lai) h += 'AI: #'+lai.ai_index+' | ';
+  h += 'Cost: '+(lc.total_usd!=null?'$'+Number(lc.total_usd).toFixed(5):'—');
+  if (lu.available || lai) {
+    h += ' | Нов.input: '+nf.format(lai?lai.non_cached_input_tokens:(lu.non_cached_input_tokens||0));
+    h += ' | Cached: '+nf.format(lai?lai.cached_tokens:(lu.cached_tokens||0));
+    h += ' | Output: '+nf.format(lai?lai.output_tokens:(lu.output_tokens||0));
+    h += ' | Reasoning: '+nf.format(lai?lai.reasoning_tokens:(lu.reasoning_tokens||0));
+  }
+  h += ' | Уверенность: '+_humanConfLabel(it.recognition_confidence||it.confidence);
+  h += '</div>';
+
+  // ── Cost scope note ──
+  if (lai) {
+    h += '<div style="font-size:10px;color:#c09853;margin-bottom:6px">Стоимость этапа известна точно по telemetry AI #'+lai.ai_index+'. Отдельная стоимость файлов/команд недоступна. Ниже — вклад объектов в контекст этапа.</div>';
+  }
+
+  // ── v2.13: Context contribution: "Вклад файлов и команд в New input" ──
+  var isServiceAction = (it.display_title_ru||'').indexOf('Обновил план') >= 0 || (it.display_title_ru||'').indexOf('Выполнил служебное') >= 0;
+  var allObjects = [];
+  (it.files||[]).forEach(function(f) { allObjects.push({kind:'file',obj:f,cc:f.context_contribution||{}}); });
+  // Only include commands that are NOT file_read (they're already shown as files)
+  (it.commands||[]).forEach(function(c) {
+    if (c.classified_action !== 'file_read' && c.classified_action !== 'file_read_batch') {
+      allObjects.push({kind:'command',obj:c,cc:c.context_contribution||{}});
+    }
+  });
+
+  // v2.13: only show contribution table when there are real tool-output rows
+  // and not for model_only / final_report without tool events
+  var isFinalReport = it.row_type === 'ai_call_only' && (it.display_title_ru||'').indexOf('Сформулировал') >= 0;
+  var isModelOnly = it.row_type === 'ai_call_only' && !isFinalReport;
+  var hasRealObjects = allObjects.some(function(ao){ var cc=ao.cc; return cc.output_length_chars || cc.estimated_text_tokens; });
+
+  if (hasRealObjects && allObjects.length > 0) {
+    h += '<div style="font-weight:600;font-size:10px;margin-bottom:2px">Вклад файлов и команд в New input</div>';
+    h += '<table style="width:100%;border-collapse:collapse;font-size:10px"><thead><tr style="background:#333">';
+    h += '<th style="text-align:left;padding:2px 4px">Объект</th><th style="text-align:left;padding:2px 4px">Тип</th><th style="text-align:right;padding:2px 4px">Размер вывода</th><th style="text-align:right;padding:2px 4px">~Токенов текста tool-output</th><th style="text-align:right;padding:2px 4px">Доля tool-output</th><th style="text-align:right;padding:2px 4px">~New input tokens</th><th style="text-align:right;padding:2px 4px">~Вклад в New input cost</th><th style="text-align:center;padding:2px 4px">Copy</th>';
+    h += '</tr></thead><tbody>';
+    allObjects.forEach(function(ao) {
+      var cc = ao.cc;
+      var obj = ao.obj;
+      var name = ao.kind==='file' ? (obj.display_name||obj.path||'?').split('\\').pop().split('/').pop() : (obj.command||'').substring(0,50);
+      var full = ao.kind==='file' ? obj.path : obj.command;
+      var type = ao.kind==='file' ? (obj.operation||'read') : (obj.classified_action||'cmd');
+      if (ao.kind==='file' && obj.read_count > 1) {
+        name += ' — ' + obj.read_count + ' фрагментов';
+        if (obj.ranges && obj.ranges.length) {
+          name += ' [' + obj.ranges.join(', ') + ']';
+        }
+      }
+      var outLen = cc.output_length_chars;
+      var estTok = cc.estimated_text_tokens;
+      var share = cc.share_of_tool_output_text;
+      var estCost = cc.estimated_new_input_cost_usd;
+
+      // ~New input tokens = share * nc_tokens from token_cost_breakdown
+      var tcb = it.token_cost_breakdown;
+      var ncTokens = 0;
+      if (tcb && tcb.available && tcb.items) {
+        var ni = tcb.items.find(function(x){return x.kind==='new_input';});
+        if (ni) ncTokens = ni.tokens || 0;
+      }
+      var estNITokens = (share != null && ncTokens > 0) ? Math.round(ncTokens * share) : null;
+
+      h += '<tr>';
+      h += '<td style="padding:1px 4px;font-family:monospace;font-size:9px" title="'+escapeHtml(full||'')+'">'+escapeHtml(name)+'</td>';
+      h += '<td style="padding:1px 4px;color:#888;font-size:9px">'+escapeHtml(type)+'</td>';
+      h += '<td style="text-align:right;padding:1px 4px">'+(outLen?nf.format(outLen):'—')+'</td>';
+      h += '<td style="text-align:right;padding:1px 4px">'+(estTok!=null?'~'+nf.format(estTok):'—')+'</td>';
+      h += '<td style="text-align:right;padding:1px 4px">'+(share!=null?Number(share*100).toFixed(0)+'%':'—')+'</td>';
+      h += '<td style="text-align:right;padding:1px 4px">'+(estNITokens!=null?'~'+nf.format(estNITokens):'—')+'</td>';
+      h += '<td style="text-align:right;padding:1px 4px;font-size:9px">'+(estCost!=null?'~$'+Number(estCost).toFixed(6):'—')+'</td>';
+      h += '<td style="text-align:center;padding:1px 4px"><button class="small" onclick="event.stopPropagation();copyText(\''+escapeHtml(full||'').replace(/'/g,"\\'")+'\')" style="font-size:8px;padding:0 3px">Copy</button></td>';
+      h += '</tr>';
+    });
+    h += '</tbody></table>';
+    h += '<div style="font-size:9px;color:#888;margin-top:4px">Это оценка. Raw telemetry даёт точную стоимость только на уровне AI-call целиком. Cached, Output и Reasoning не распределяются по отдельным файлам/командам.</div>';
+  } else if (isServiceAction) {
+    h += '<div style="font-size:10px;color:#888">Это служебное действие Codex: обновление плана работы. Файлов и команд нет.</div>';
+  } else if (it.row_type === 'ai_call_only' && (it.display_title_ru||'').indexOf('Сформулировал') >= 0) {
+    var amd = it.assistant_message_data;
+    h += '<div style="margin-top:4px;padding:6px 8px;background:#1a1a2e;border:1px solid #333;border-radius:4px">';
+    h += '<div style="font-weight:600;font-size:10px;color:#7af">Финальный ответ агента</div>';
+    if (amd && amd.available) {
+      h += '<div style="font-size:9px;color:#888;margin-top:2px">'+escapeHtml(amd.cost_explanation_ru||'')+'</div>';
+      if (amd.message_length_chars) h += '<div style="font-size:9px;margin-top:4px">Размер ответа: '+nf.format(amd.message_length_chars)+' симв.</div>';
+      if (amd.message_text_location_ru) h += '<div style="font-size:9px;color:#888">'+escapeHtml(amd.message_text_location_ru)+'</div>';
+      if (amd.source) h += '<div style="font-size:9px;color:#888">Источник: '+escapeHtml(amd.source)+' ('+escapeHtml(amd.source_confidence||'')+')</div>';
+      if (amd.message_preview) {
+        h += '<div style="margin-top:4px;font-size:9px;color:#888;max-height:120px;overflow-y:auto;white-space:pre-wrap;font-family:monospace">'+escapeHtml(amd.message_preview)+'</div>';
+      }
+    }
+    h += '</div>';
+  } else if (it.row_type === 'ai_call_only') {
+    h += '<div style="margin-top:4px;padding:6px 8px;background:#1a1a2e;border:1px solid #333;border-radius:4px">';
+    h += '<div style="font-weight:600;font-size:10px;color:#7af">Model-only AI-call</div>';
+    h += '<div style="font-size:9px;color:#888;margin-top:2px">В raw telemetry нет прямых tool events для этого AI-обращения. Вероятно, модель анализировала уже загруженный контекст или формулировала следующий шаг.</div>';
+    if (lai) {
+      h += '<div style="font-size:9px;margin-top:2px">AI: #'+lai.ai_index+' | Cost: $'+Number(lc.total_usd||0).toFixed(5)+' | Нов.input: '+nf.format(lai.non_cached_input_tokens||0)+' | Cached: '+nf.format(lai.cached_tokens||0)+' | Output: '+nf.format(lai.output_tokens||0)+' | Reasoning: '+nf.format(lai.reasoning_tokens||0)+'</div>';
+    }
+    h += '</div>';
+  } else {
+    h += '<div style="font-size:10px;color:#888">Файлы: нет. Команды: нет.</div>';
+  }
+
+  // ── v2.10: apply_patch data ──
+  var apd = it.apply_patch_data;
+  if (apd && apd.available) {
+    h += '<div style="margin-top:6px;padding:6px 8px;background:#1a1a2e;border:1px solid #333;border-radius:4px">';
+    h += '<div style="font-weight:600;font-size:10px;margin-bottom:4px;color:#7af">Patch-действие и связанный AI cost</div>';
+    // Files table
+    if (it.files && it.files.length) {
+      h += '<table style="font-size:10px;border-collapse:collapse;width:100%"><thead><tr style="background:#333">';
+      h += '<th style="text-align:left;padding:2px 4px">Файл</th><th style="text-align:left;padding:2px 4px">Роль</th><th style="text-align:right;padding:2px 4px">Patch input</th><th style="text-align:right;padding:2px 4px">Tool output</th><th style="text-align:right;padding:2px 4px">AI cost</th>';
+      h += '</tr></thead><tbody>';
+      it.files.forEach(function(f) {
+        var pic = apd.patch_input_chars;
+        var ptok = apd.estimated_patch_tokens;
+        var toc = apd.output_length;
+        var ttok = apd.estimated_tool_output_tokens;
+        h += '<tr>';
+        h += '<td style="padding:1px 4px;font-family:monospace;font-size:9px">'+escapeHtml(f.display_name||f.path||'?')+'</td>';
+        h += '<td style="padding:1px 4px;font-size:9px">'+escapeHtml(f.operation||'modified')+'</td>';
+        h += '<td style="text-align:right;padding:1px 4px">'+(pic?nf.format(pic)+' симв. (~'+nf.format(ptok)+' ток.)':'—')+'</td>';
+        h += '<td style="text-align:right;padding:1px 4px">'+(toc?nf.format(toc)+' симв. (~'+nf.format(ttok)+' ток.)':'—')+'</td>';
+        h += '<td style="text-align:right;padding:1px 4px;font-weight:600">'+(lc.total_usd!=null?'$'+Number(lc.total_usd).toFixed(5):'—')+'</td>';
+        h += '</tr>';
+      });
+      h += '</tbody></table>';
+    }
+    // Status
+    if (apd.patch_status) {
+      var stColor = apd.patch_status==='success'?'#4f4':(apd.patch_status==='failed'?'#c44':'#cc4');
+      h += '<div style="margin-top:4px;font-size:10px">Статус: <span style="color:'+stColor+';font-weight:600">'+escapeHtml(apd.patch_status)+'</span></div>';
+    }
+    // Cost note
+    h += '<div style="margin-top:4px;font-size:9px;color:#c09853">'+escapeHtml(apd.cost_note_ru||'')+'</div>';
+    h += '</div>';
+  }
+
+  // ── v2.10: plan_update details ──
+  var pud = it.plan_update_data;
+  if (pud && pud.available) {
+    h += '<div style="margin-top:6px;padding:6px 8px;background:#1a1a2e;border:1px solid #333;border-radius:4px">';
+    h += '<div style="font-weight:600;font-size:10px;margin-bottom:4px;color:#7af">План работы</div>';
+    h += '<div style="font-size:9px;color:#888;margin-bottom:4px">'+escapeHtml(pud.note_ru||'')+'</div>';
+    if (pud.explanation) {
+      h += '<div style="font-size:9px;color:#aaa;margin-bottom:4px">'+escapeHtml(pud.explanation)+'</div>';
+    }
+    if (pud.plan_items && pud.plan_items.length) {
+      h += '<ol style="margin:0;padding-left:18px;font-size:9px;color:#aaa">';
+      pud.plan_items.forEach(function(pi) {
+        h += '<li>'+escapeHtml(String(pi))+'</li>';
+      });
+      h += '</ol>';
+    }
+    h += '</div>';
+  }
+
+  // ── Техническое (collapsed) ──
+  var techId = 'tech-detail-'+it.index;
+  h += '<div style="margin-top:6px"><button class="small" onclick="event.stopPropagation();var el=document.getElementById(\''+techId+'\');el.style.display=el.style.display===\'none\'?\'block\':\'none\'" style="font-size:9px;padding:2px 6px">Техническое</button></div>';
+  h += '<div id="'+techId+'" style="display:none;margin-top:4px;font-size:9px;color:#888">';
+  // Show ALL commands including file_read in technical
+  var allCmds = it.commands;
+  if (allCmds && allCmds.length) {
+    var hasReadCmds = allCmds.some(function(c){return c.classified_action==='file_read'||c.classified_action==='file_read_batch';});
+    if (hasReadCmds) {
+      h += '<div style="font-weight:600">Технические команды (чтение):</div>';
+      allCmds.forEach(function(c) {
+        if (c.classified_action==='file_read'||c.classified_action==='file_read_batch') {
+          h += '<div style="font-size:8px;margin:1px 0"><span style="font-family:monospace">'+escapeHtml((c.command||'').substring(0,100))+'</span></div>';
+        }
+      });
+    }
+  }
+  // v2.13: Token cost breakdown moved to technical block
+  var tcb = it.token_cost_breakdown;
+  if (tcb && tcb.available) {
+    h += '<div style="font-weight:600;margin-top:6px">Расчёт стоимости по типам токенов:</div>';
+    h += '<table style="width:100%;border-collapse:collapse;font-size:8px;margin-top:2px"><thead><tr style="background:#333">';
+    h += '<th style="text-align:left;padding:1px 3px">Тип</th><th style="text-align:right;padding:1px 3px">Кол-во</th><th style="text-align:right;padding:1px 3px">$/1M</th><th style="text-align:right;padding:1px 3px">Стоимость</th>';
+    h += '</tr></thead><tbody>';
+    var items = tcb.items || [];
+    for (var k = 0; k < items.length; k++) {
+      var item = items[k];
+      var kindLabel = item.kind === 'new_input' ? 'New input' : (item.kind === 'cached_input' ? 'Cached' : 'Output');
+      h += '<tr>';
+      h += '<td style="padding:1px 3px">' + kindLabel + '</td>';
+      h += '<td style="text-align:right;padding:1px 3px">' + nf.format(item.tokens || 0) + '</td>';
+      h += '<td style="text-align:right;padding:1px 3px">$' + Number(item.price_per_million || 0).toFixed(2) + '</td>';
+      h += '<td style="text-align:right;padding:1px 3px">$' + Number(item.cost_usd || 0).toFixed(6) + '</td>';
+      h += '</tr>';
+    }
+    h += '<tr style="border-top:1px solid #555"><td style="padding:1px 3px;font-weight:600">Итого</td><td></td><td></td><td style="text-align:right;padding:1px 3px;font-weight:600">$' + Number(tcb.total_from_breakdown_usd || 0).toFixed(6) + '</td></tr>';
+    if (tcb.matched_model_key) h += '<tr><td colspan="4" style="font-size:8px;padding:1px 3px">Модель: ' + escapeHtml(tcb.matched_model_key) + ' · Источник: ' + escapeHtml(tcb.pricing_source||'—') + '</td></tr>';
+    h += '</tbody></table>';
+    h += '<div style="font-size:8px;margin-top:2px">' + escapeHtml(tcb.reasoning_note || '') + '</div>';
+  }
+  var rev = it.raw_evidence;
+  if (rev && rev.length) {
+    h += '<div style="font-weight:600;margin-top:4px">Raw evidence:</div>';
+    rev.forEach(function(r) {
+      h += '<div>event #'+r.event_index+' '+escapeHtml(r.payload_type||'')+' '+escapeHtml(r.call_id||'').substring(0,20)+'</div>';
+    });
+  }
+  var details = it.details || {};
+  if (details.available) {
+    h += '<div style="margin-top:2px">'+escapeHtml(details.summary_ru||'')+'</div>';
+  }
+  h += '<div style="margin-top:4px"><button class="small" onclick="event.stopPropagation();copyText(JSON.stringify({index:it.index,title:fullTitle,confidence:it.recognition_confidence||it.confidence,linked_ai_call:lai},null,2))" style="font-size:9px;padding:2px 6px">Copy JSON</button></div>';
+  h += '</div>';
+
+  return h;
+}
+
+function buildPopupStages(aa) {
+  var stages = aa.agent_activity_stages || [];
+  if (!stages.length) return '<div class="muted">Нет данных этапов</div>';
+  var h = '<table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr style="background:#333">';
+  h += '<th style="text-align:left;padding:4px">Этап</th><th style="text-align:right;padding:4px">Запросы</th><th style="text-align:right;padding:4px">Cost</th><th style="text-align:right;padding:4px">Input</th><th style="text-align:right;padding:4px">Output</th><th style="text-align:center;padding:4px">Увер.</th>';
+  h += '</tr></thead><tbody>';
+  stages.forEach(function(s) {
+    h += '<tr><td style="padding:2px 4px">'+escapeHtml(s.title_ru)+'</td><td style="text-align:right;padding:2px 4px">'+(s.request_range||'')+'</td>';
+    h += '<td style="text-align:right;padding:2px 4px;font-weight:600">$'+Number(s.cost_total_usd||0).toFixed(5)+'</td>';
+    h += '<td style="text-align:right;padding:2px 4px">'+nf.format(s.input_tokens||0)+'</td>';
+    h += '<td style="text-align:right;padding:2px 4px">'+nf.format(s.output_tokens||0)+'</td>';
+    h += '<td style="text-align:center;padding:2px 4px;font-size:10px">'+escapeHtml(s.confidence||'low')+'</td></tr>';
+  });
+  h += '</tbody></table>';
+  return h;
+}
+
+function buildPopupExpensive(aa, step) {
+  // Prefer expensive_human_actions if available, fallback to step_internal_actions
+  var eha = aa.expensive_human_actions || [];
+  if (eha.length > 0) {
+    var h = '<div style="font-weight:600;margin-bottom:4px">Самые дорогие действия</div>';
+    h += '<table style="width:100%;border-collapse:collapse;font-size:11px"><thead><tr style="background:#333">';
+    h += '<th style="text-align:right;padding:3px">#</th><th style="text-align:left;padding:3px">Действие</th><th style="text-align:center;padding:3px">AI</th><th style="text-align:right;padding:3px">Cost</th><th style="text-align:right;padding:3px">Нов.input</th><th style="text-align:right;padding:3px">Cached</th><th style="text-align:right;padding:3px">Output</th><th style="text-align:right;padding:3px">Reason</th><th style="text-align:left;padding:3px">Почему</th><th style="text-align:center;padding:3px">Увер.</th>';
+    h += '</tr></thead><tbody>';
+    eha.forEach(function(eh) {
+      var confLabel = _humanConfLabel(eh.confidence);
+      h += '<tr>';
+      h += '<td style="text-align:right;padding:1px 3px">'+eh.index+'</td>';
+      h += '<td style="padding:1px 3px">'+escapeHtml((eh.display_title_ru||'').substring(0,50))+'</td>';
+      h += '<td style="text-align:center;padding:1px 3px;font-weight:600">'+(eh.linked_model_request_index?'#'+eh.linked_model_request_index:'—')+'</td>';
+      h += '<td style="text-align:right;padding:1px 3px;font-weight:600">'+(eh.total_usd!=null?'$'+Number(eh.total_usd).toFixed(5):'—')+'</td>';
+      h += '<td style="text-align:right;padding:1px 3px">'+nf.format(eh.non_cached_input_tokens||0)+'</td>';
+      h += '<td style="text-align:right;padding:1px 3px;color:#888">'+nf.format(eh.cached_tokens||0)+'</td>';
+      h += '<td style="text-align:right;padding:1px 3px">'+nf.format(eh.output_tokens||0)+'</td>';
+      h += '<td style="text-align:right;padding:1px 3px;color:#888">'+nf.format(eh.reasoning_tokens||0)+'</td>';
+      h += '<td style="padding:1px 3px;font-size:10px">'+escapeHtml(eh.expensive_reason||'—')+'</td>';
+      h += '<td style="text-align:center;padding:1px 3px;font-size:9px">'+confLabel+'</td>';
+      h += '</tr>';
+    });
+    h += '</tbody></table>';
+    return h;
+  }
+  // Fallback to old style with stage context
+  var sia = aa.step_internal_actions || [];
+  var costSorted = [...sia].sort(function(a,b){return (b.cost.total_usd||0)-(a.cost.total_usd||0);}).slice(0,15);
+  if (!costSorted.length) return '<div class="muted">Нет данных</div>';
+  var h = '<table style="width:100%;border-collapse:collapse;font-size:11px"><thead><tr style="background:#333">';
+  h += '<th style="text-align:right;padding:3px">#</th><th style="text-align:left;padding:3px">Контекст этапа</th><th style="text-align:right;padding:3px">Cost</th><th style="text-align:right;padding:3px">Input</th><th style="text-align:right;padding:3px">Cached</th><th style="text-align:right;padding:3px">Output</th><th style="text-align:left;padding:3px">Почему</th>';
+  h += '</tr></thead><tbody>';
+  costSorted.forEach(function(a) {
+    var c = a.cost || {};
+    var u = a.usage || {};
+    var displayName = (a.possible_stage_ru || a.title_ru || '').substring(0,45);
+    h += '<tr><td style="text-align:right;padding:1px 3px">'+a.index+'</td>';
+    h += '<td style="padding:1px 3px">'+escapeHtml(displayName)+'</td>';
+    h += '<td style="text-align:right;padding:1px 3px;font-weight:600">'+(c.total_usd!=null?'$'+Number(c.total_usd).toFixed(5):'—')+'</td>';
+    h += '<td style="text-align:right;padding:1px 3px">'+nf.format(u.input_tokens||0)+'</td>';
+    h += '<td style="text-align:right;padding:1px 3px;color:#888">'+nf.format(u.cached_tokens||0)+'</td>';
+    h += '<td style="text-align:right;padding:1px 3px">'+nf.format(u.output_tokens||0)+'</td>';
+    h += '<td style="padding:1px 3px;font-size:10px">'+escapeHtml(a.expensive_reason||'—')+'</td></tr>';
+  });
+  h += '</tbody></table>';
+  return h;
+}
+
+function buildPopupRequests(step) {
+  var sia = step.step_internal_actions || [];
+  if (!sia.length) return '<div class="muted">Нет данных</div>';
+  var h = '<table style="width:100%;border-collapse:collapse;font-size:11px"><thead><tr style="background:#333">';
+  h += '<th style="text-align:right;padding:3px">#</th><th style="text-align:left;padding:3px">Контекст этапа</th><th style="text-align:right;padding:3px">Cost</th><th style="text-align:right;padding:3px">Input</th><th style="text-align:right;padding:3px">Non-cached</th><th style="text-align:right;padding:3px">Cached</th><th style="text-align:right;padding:3px">Output</th><th style="text-align:right;padding:3px">Reason</th>';
+  h += '</tr></thead><tbody>';
+  sia.forEach(function(a) {
+    var u = a.usage || {};
+    var c = a.cost || {};
+    var displayName = (a.possible_stage_ru || a.title_ru || '').substring(0,45);
+    h += '<tr><td style="text-align:right;padding:1px 3px">'+a.index+'</td>';
+    h += '<td style="padding:1px 3px">'+escapeHtml(displayName)+'</td>';
+    h += '<td style="text-align:right;padding:1px 3px;font-weight:600">'+(c.total_usd!=null?'$'+Number(c.total_usd).toFixed(5):'—')+'</td>';
+    h += '<td style="text-align:right;padding:1px 3px">'+nf.format(u.input_tokens||0)+'</td>';
+    h += '<td style="text-align:right;padding:1px 3px">'+nf.format(u.non_cached_input_tokens||0)+'</td>';
+    h += '<td style="text-align:right;padding:1px 3px;color:#888">'+nf.format(u.cached_tokens||0)+'</td>';
+    h += '<td style="text-align:right;padding:1px 3px">'+nf.format(u.output_tokens||0)+'</td>';
+    h += '<td style="text-align:right;padding:1px 3px;color:#888">'+nf.format(u.reasoning_tokens||0)+'</td></tr>';
+  });
+  h += '</tbody></table>';
+  return h;
+}
+
+function buildPopupFilesCmds(aa) {
+  var paths = aa.important_paths || [];
+  var cmds = aa.important_commands || [];
+  var h = '';
+  if (paths.length) {
+    h += '<div style="font-weight:600;margin-bottom:4px">Файлы:</div><table style="width:100%;font-size:12px">';
+    paths.forEach(function(p) { h += '<tr><td style="padding:2px 4px;font-family:monospace">'+escapeHtml(p)+'</td></tr>'; });
+    h += '</table>';
+  }
+  if (cmds.length) {
+    h += '<div style="font-weight:600;margin-top:12px;margin-bottom:4px">Команды:</div><table style="width:100%;font-size:12px">';
+    cmds.forEach(function(c) { h += '<tr><td style="padding:2px 4px;font-family:monospace">'+escapeHtml(c)+'</td></tr>'; });
+    h += '</table>';
+  }
+  if (!paths.length && !cmds.length) h = '<div class="muted">Нет данных</div>';
+  return h;
+}
+
+function buildPopupTech(aa, step) {
+  var ac = aa.activity_counts || {};
+  var er = aa.event_range || {};
+  var h = '<table style="font-size:12px">';
+  h += '<tr><td style="padding:2px 8px">Внутренних запросов с usage:</td><td><b>'+nf.format(aa.requests_with_usage||0)+'</b></td></tr>';
+  h += '<tr><td style="padding:2px 8px">Model-событий:</td><td><b>'+nf.format(aa.model_related_events||0)+'</b></td></tr>';
+  h += '<tr><td style="padding:2px 8px">Сырых событий в шаге:</td><td><b>'+nf.format(er.raw_events_count||0)+'</b></td></tr>';
+  h += '<tr><td style="padding:2px 8px">Диапазон событий:</td><td><b>'+(er.start_event_index||0)+'–'+(er.end_event_index||0)+'</b></td></tr>';
+  h += '<tr><td style="padding:2px 8px">Распознано действий:</td><td><b>'+nf.format((ac.file_reads||0)+(ac.file_writes||0)+(ac.shell_commands||0)+(ac.git_operations||0)+(ac.test_runs||0)+(ac.context_compactions||0))+'</b></td></tr>';
+  h += '<tr><td style="padding:2px 8px">Нераспознано:</td><td><b>'+nf.format(aa.unclassified_raw_events||0)+'</b></td></tr>';
+  h += '<tr><td style="padding:2px 8px">Confidence:</td><td><b>'+escapeHtml(aa.confidence||'—')+'</b></td></tr>';
+  h += '</table>';
+  return h;
 }
 
 function copySessionSummary() {
@@ -1172,10 +2508,78 @@ function renderAuditPanel() {
           <span class="pill red">❌ ${failCount}</span>
         </div>
         ${findingsHtml}
+        ${buildCumulativeAccountingHtml(r)}
         ${r.report_path ? `<div class="audit-path mono xsmall">Отчёт: ${escapeHtml(r.report_path)}</div>` : ""}
       </div>
       ${auditButtonsHtml}
     </div>`;
+}
+
+function buildCumulativeAccountingHtml(r) {
+  const rows = r.cumulative_accounting_rows || [];
+  const sca = r.session_cumulative_accounting;
+  if (!rows.length && !sca) return "";
+
+  let html = '<div class="audit-cumulative">';
+  html += '<div class="audit-section-title">📊 Cumulative Accounting</div>';
+
+  if (rows.length) {
+    html += '<table class="audit-table"><thead><tr><th>Step</th><th>request_usage</th><th>cumulative_after</th><th>cumulative_delta</th><th>unattributed_delta</th></tr></thead><tbody>';
+    rows.forEach(row => {
+      const req = fmtTokenDictShort(row.request_usage || {});
+      const cum = fmtTokenDictShort(row.cumulative_usage_after_step || {});
+      const delta = fmtTokenDictShort(row.cumulative_delta_since_previous_visible_step || {});
+      const unattrib = fmtTokenDictShort(row.unattributed_delta || {});
+      html += `<tr>
+        <td>${row.step_index || "?"}</td>
+        <td class="mono xsmall">${escapeHtml(req)}</td>
+        <td class="mono xsmall">${escapeHtml(cum)}</td>
+        <td class="mono xsmall">${escapeHtml(delta)}</td>
+        <td class="mono xsmall">${escapeHtml(unattrib)}</td>
+      </tr>`;
+    });
+    html += '</tbody></table>';
+  }
+
+  if (sca) {
+    html += '<div class="audit-section-title xsmall">Session-Level</div>';
+    html += `<div class="mono xsmall">session_total_usage: ${fmtTokenDictShort(sca.session_total_usage || {})}</div>`;
+    html += `<div class="mono xsmall">request_usage_sum: ${fmtTokenDictShort(sca.visible_steps_request_usage_sum || {})}</div>`;
+    html += `<div class="mono xsmall">delta_sum: ${fmtTokenDictShort(sca.visible_steps_cumulative_delta_sum || {})}</div>`;
+    html += `<div class="mono xsmall">unattributed: ${fmtTokenDictShort(sca.unattributed_session_usage || {})}</div>`;
+    if (sca.includes_hidden_context_possible) {
+      html += '<div class="warning xsmall">⚠️ Видимые шаги покрывают менее 50% session total — возможен скрытый контекст</div>';
+    }
+  }
+
+  html += '</div>';
+  return html;
+}
+
+function buildCumulativeCostMetric(u) {
+  const cumUsage = u.cumulative_usage_after_step || {};
+  if (!cumUsage.available) return "";
+  const cumCost = u.estimated_cumulative_cost_usd;
+  if (cumCost == null) return "";
+  return `<span class="metric"><span class="label" title="Cumulative cost after this step (total_token_usage)">Cumul. $</span><b>$${cumCost.toFixed(4)}</b></span>`;
+}
+
+function buildCumulativeInputMetric(u) {
+  const cumUsage = u.cumulative_usage_after_step || {};
+  if (!cumUsage.available) return "";
+  const cumInput = cumUsage.input_tokens;
+  if (cumInput == null || cumInput === 0) return "";
+  return `<span class="metric"><span class="label" title="Cumulative input tokens after this step">Cumul. in</span><b>${nf.format(cumInput)}</b></span>`;
+}
+
+function fmtTokenDictShort(d) {
+  if (!d || Object.keys(d).length === 0) return "—";
+  const parts = [];
+  for (const [k, v] of Object.entries(d)) {
+    if (v === null || v === undefined) continue;
+    if (typeof v === 'number') parts.push(`${k}=${v.toLocaleString()}`);
+  }
+  return parts.length ? parts.join(", ") : "—";
 }
 
 function toggleAuditCollapse() {
@@ -1310,6 +2714,8 @@ function renderSessions() {
     el.onclick = async () => {
       currentSessionId = s.id;
       selected.clear();
+      expandedSteps.clear();
+      openTextBlocks.clear();
       sessionDetailCache = null;
       sessionDetailLoading = true;
       renderAll();
@@ -1422,6 +2828,7 @@ function renderSteps() {
           </div>
         </div>
         <div class="row-actions">
+          <button class="icon" onclick="event.stopPropagation();openStepPopup(${idx})">Подробно</button>
           <button class="icon" onclick="event.stopPropagation();copyStepSummary(${idx})">Copy</button>
         </div>
       </div>
@@ -1575,7 +2982,9 @@ function renderSteps() {
           </div>
           <div class="metrics">
             ${metric("Cost", usageMoney(u, "estimated_total_cost_usd"))}
+            ${buildCumulativeCostMetric(u)}
             ${metric("Input", usageNumber(u, "input_tokens"))}
+            ${buildCumulativeInputMetric(u)}
             ${metric("Cached", usageNumber(u, "cached_tokens"))}
             ${metric("Non-cached", usageNumber(u, "non_cached_input_tokens"))}
             ${metric("Cache", usagePercent(u, "cached_ratio"))}
@@ -1595,12 +3004,14 @@ function renderSteps() {
           </div>
         </div>
         <div class="row-actions">
+          <button class="icon" onclick="event.stopPropagation();openStepPopup(${idx})">Подробно</button>
           <button class="icon" onclick="event.stopPropagation();copyStepSummary(${idx})">Copy</button>
         </div>
       </div>
       <div class="detail">
         ${textBlock(t.user_prompt.kind === 'system_composed' ? "System prompt (composed)" : "User prompt", "prompt", t.user_prompt.available, t.user_prompt.text, idx)}
         ${textBlock("Assistant answer", "answer", t.assistant_answer.available, t.assistant_answer.text, idx)}
+        ${wideBlock("Сводка", "summary", buildStepSummaryBlock(t), idx)}
         <div class="detail-grid">
           <div class="box">
             <h3>Tokens${usageNote}</h3>
@@ -1611,6 +3022,11 @@ function renderSteps() {
             ${kv("output_tokens", usageNumber(u, "output_tokens"))}
             ${kv("reasoning_tokens", usageNumber(u, "reasoning_tokens"))}
             ${kv("tool_tokens", usageNumber(u, "tool_tokens"))}
+            <hr class="thin">
+            ${kv("cumul_input", usageNumber((u.cumulative_usage_after_step || {}), "input_tokens"))}
+            ${kv("cumul_cached", usageNumber((u.cumulative_usage_after_step || {}), "cached_tokens"))}
+            ${kv("cumul_output", usageNumber((u.cumulative_usage_after_step || {}), "output_tokens"))}
+            <hr class="thin">
             ${kv("confirmation", usageConfirmationLabel(u))}
             ${kv("source", u.source || "—")}
           </div>
@@ -1620,6 +3036,7 @@ function renderSteps() {
             ${kv("cached_cost", usageMoney(u, "estimated_cached_input_cost_usd"))}
             ${kv("output_cost", usageMoney(u, "estimated_output_cost_usd"))}
             ${kv("total_cost", usageMoney(u, "estimated_total_cost_usd"))}
+            ${kv("cumulative_cost", usageMoney(u, "estimated_cumulative_cost_usd"))}
             ${kv("pricing", "config/token_pricing.json")}
           </div>
           <div class="box">
@@ -1648,6 +3065,17 @@ function renderSteps() {
       wrap.innerHTML = renderTimelineEvent(evt);
       root.appendChild(wrap.firstElementChild);
     });
+  });
+
+  // Restore expanded step details after re-render (auto-refresh)
+  expandedSteps.forEach(i => {
+    const el = document.getElementById("step-" + i);
+    if (el) el.classList.add("open");
+  });
+  // Restore open text blocks (prompt, answer, stepcost, activity)
+  openTextBlocks.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.classList.add("open");
   });
 }
 
