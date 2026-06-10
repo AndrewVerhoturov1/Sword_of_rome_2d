@@ -1038,5 +1038,301 @@ class TestAgentActivityBreakdownV22(unittest.TestCase):
             fixture.tearDown()
 
 
+class TestRawStepExport(unittest.TestCase):
+    """v2.14: Tests for raw-first step export via _build_raw_step_export."""
+
+    def _make_rollout_events(self, count: int, with_auth: bool = False) -> list[dict]:
+        """Build synthetic rollout events with known structure."""
+        events = []
+        for i in range(1, count + 1):
+            if i % 5 == 0:
+                # token_count (event_msg)
+                events.append({
+                    "type": "event_msg",
+                    "timestamp": f"2026-06-10T00:00:{i:02d}Z",
+                    "payload": {
+                        "info": {
+                            "total_token_usage": {
+                                "input_tokens": 10000 + i * 1000,
+                                "cached_input_tokens": 2000 + i * 200,
+                                "output_tokens": 500 + i * 50,
+                                "reasoning_tokens": 100 + i * 10,
+                            },
+                        },
+                    },
+                })
+            elif i % 5 == 2:
+                # function_call
+                call_id = f"call_{i}"
+                events.append({
+                    "type": "response_item",
+                    "timestamp": f"2026-06-10T00:00:{i:02d}Z",
+                    "payload": {
+                        "type": "function_call",
+                        "call_id": call_id,
+                        "name": "read_file" if i % 3 == 0 else "execute_command",
+                        "arguments": {"filePath": f"/test/file_{i}.ts"} if i % 3 == 0 else {"command": f"echo test_{i}"},
+                    },
+                })
+            elif i % 5 == 3:
+                # function_call_output
+                call_id = f"call_{i - 1}"
+                events.append({
+                    "type": "response_item",
+                    "timestamp": f"2026-06-10T00:00:{i:02d}Z",
+                    "payload": {
+                        "type": "function_call_output",
+                        "call_id": call_id,
+                        "output": f"Output for {call_id}",
+                    },
+                })
+            elif i % 5 == 1:
+                # assistant message
+                events.append({
+                    "type": "response_item",
+                    "timestamp": f"2026-06-10T00:00:{i:02d}Z",
+                    "payload": {
+                        "type": "message",
+                        "role": "assistant",
+                        "content": [{"type": "output_text", "text": f"Assistant message content for event {i}"}],
+                    },
+                })
+            else:
+                # unknown/generic event
+                events.append({
+                    "type": "unknown_event",
+                    "timestamp": f"2026-06-10T00:00:{i:02d}Z",
+                    "payload": {"data": f"unknown_{i}", "value": i},
+                })
+
+        if with_auth:
+            events.insert(2, {
+                "type": "environment_event",
+                "timestamp": "2026-06-10T00:00:02Z",
+                "payload": {
+                    "user.email": "test@example.com",
+                    "user.account_id": "acct_12345",
+                    "authorization": "Bearer secret-token-xxx",
+                    "api_key": "sk-1234567890",
+                    "host.name": "test-host",
+                },
+            })
+
+        return events
+
+    def _setup_rollout_fixture(self, events: list[dict]) -> tuple[Path, Path, str]:
+        """Create temp codex_dir with rollout JSONL, return (codex_dir, rollout_path, thread_id)."""
+        tmpdir = Path(tempfile.mkdtemp())
+        sessions_dir = tmpdir / "sessions" / "test-thread"
+        sessions_dir.mkdir(parents=True)
+        rollout_path = sessions_dir / "rollout-001.jsonl"
+        with rollout_path.open("w", encoding="utf-8") as f:
+            for ev in events:
+                f.write(json.dumps(ev, ensure_ascii=False) + "\n")
+
+        thread_id = "test-thread-001"
+        return tmpdir, rollout_path, thread_id
+
+    def test_single_step_raw_export(self):
+        """Raw export contains only events in event_range, order preserved, unknown included."""
+        events = self._make_rollout_events(20)
+        codex_dir, _, thread_id = self._setup_rollout_fixture(events)
+
+        try:
+            # Patch _get_live_rollout_summaries to return our fixture
+            original = _server_mod._get_live_rollout_summaries
+            def _mock_summaries(cd, **kw):
+                if str(cd) == str(codex_dir):
+                    return {thread_id: {"paths": [str(codex_dir / "sessions" / "test-thread" / "rollout-001.jsonl")]}}
+                return {}
+            _server_mod._get_live_rollout_summaries = _mock_summaries
+
+            try:
+                source = {"id": "test", "kind": "live", "codex_dir": str(codex_dir)}
+                step_detail = [{
+                    "index": 1,
+                    "event_range": {"start_event_index": 10, "end_event_index": 17},
+                }]
+                result = _server_mod._build_raw_step_export(source, thread_id, step_detail)
+
+                self.assertIn("bundle_text", result)
+                bundle = result["bundle_text"]
+                # Should have FILE markers
+                self.assertIn("===== FILE: step_1_raw.jsonl =====", bundle)
+                self.assertIn("===== FILE: step_1_README.md =====", bundle)
+
+                # Count JSONL lines in bundle (between markers)
+                parts = bundle.split("===== FILE: step_1_raw.jsonl =====")
+                self.assertEqual(len(parts), 2)
+                after_raw = parts[1].split("===== FILE: step_1_README.md =====")
+                raw_section = after_raw[0].strip()
+                raw_lines = [l for l in raw_section.split("\n") if l.strip()]
+                # Events 10..17 = 8 events
+                self.assertEqual(len(raw_lines), 8)
+
+                # First raw line should be event 10 (event_msg / token_count)
+                self.assertIn("event_msg", raw_lines[0] if raw_lines else "")
+
+                # Unknown events present (event 11, 16 are unknown by pattern)
+                unknown_count = sum(1 for l in raw_lines if "unknown_event" in l)
+                self.assertGreater(unknown_count, 0)
+
+                # README should have event range
+                readme_section = after_raw[1] if len(after_raw) > 1 else ""
+                self.assertIn("Event range: 10..17", readme_section)
+                self.assertIn("Raw events count: 8", readme_section)
+
+                # Steps metadata
+                self.assertEqual(len(result["steps"]), 1)
+                self.assertEqual(result["steps"][0]["step_index"], 1)
+                self.assertEqual(result["steps"][0]["raw_events_count"], 8)
+            finally:
+                _server_mod._get_live_rollout_summaries = original
+        finally:
+            import shutil
+            shutil.rmtree(str(codex_dir), ignore_errors=True)
+
+    def test_multiple_selected_steps(self):
+        """Bundle has separate raw + README for each selected step."""
+        events = self._make_rollout_events(30)
+        codex_dir, _, thread_id = self._setup_rollout_fixture(events)
+
+        original = _server_mod._get_live_rollout_summaries
+        def _mock_summaries(cd, **kw):
+            if str(cd) == str(codex_dir):
+                return {thread_id: {"paths": [str(codex_dir / "sessions" / "test-thread" / "rollout-001.jsonl")]}}
+            return {}
+        _server_mod._get_live_rollout_summaries = _mock_summaries
+
+        try:
+            source = {"id": "test", "kind": "live", "codex_dir": str(codex_dir)}
+            steps_detail = [
+                {"index": 1, "event_range": {"start_event_index": 5, "end_event_index": 10}},
+                {"index": 4, "event_range": {"start_event_index": 20, "end_event_index": 25}},
+            ]
+            result = _server_mod._build_raw_step_export(source, thread_id, steps_detail)
+
+            bundle = result["bundle_text"]
+            self.assertIn("===== FILE: step_1_raw.jsonl =====", bundle)
+            self.assertIn("===== FILE: step_1_README.md =====", bundle)
+            self.assertIn("===== FILE: step_4_raw.jsonl =====", bundle)
+            self.assertIn("===== FILE: step_4_README.md =====", bundle)
+
+            self.assertEqual(len(result["steps"]), 2)
+            self.assertEqual(result["steps"][0]["step_index"], 1)
+            self.assertEqual(result["steps"][1]["step_index"], 4)
+        finally:
+            _server_mod._get_live_rollout_summaries = original
+            import shutil
+            shutil.rmtree(str(codex_dir), ignore_errors=True)
+
+    def test_function_call_pairing_index(self):
+        """README tool call index lists paired output events."""
+        events = self._make_rollout_events(10)
+        codex_dir, _, thread_id = self._setup_rollout_fixture(events)
+
+        original = _server_mod._get_live_rollout_summaries
+        def _mock_summaries(cd, **kw):
+            if str(cd) == str(codex_dir):
+                return {thread_id: {"paths": [str(codex_dir / "sessions" / "test-thread" / "rollout-001.jsonl")]}}
+            return {}
+        _server_mod._get_live_rollout_summaries = _mock_summaries
+
+        try:
+            source = {"id": "test", "kind": "live", "codex_dir": str(codex_dir)}
+            step_detail = [{"index": 1, "event_range": {"start_event_index": 1, "end_event_index": 10}}]
+            result = _server_mod._build_raw_step_export(source, thread_id, step_detail)
+
+            bundle = result["bundle_text"]
+            # Readme should list function_call + function_call_output pairs
+            self.assertIn("function_call", bundle)
+            self.assertIn("function_call_output", bundle)
+
+            # Raw lines unchanged - should contain both call and output events
+            self.assertIn("===== FILE: step_1_raw.jsonl =====", bundle)
+            raw_after = bundle.split("===== FILE: step_1_raw.jsonl =====")[1]
+            raw_section = raw_after.split("===== FILE: step_1_README.md =====")[0]
+            self.assertIn("function_call", raw_section)
+            self.assertIn("function_call_output", raw_section)
+        finally:
+            _server_mod._get_live_rollout_summaries = original
+            import shutil
+            shutil.rmtree(str(codex_dir), ignore_errors=True)
+
+    def test_token_count_index(self):
+        """README lists AI calls from token_count events."""
+        events = self._make_rollout_events(15)
+        codex_dir, _, thread_id = self._setup_rollout_fixture(events)
+
+        original = _server_mod._get_live_rollout_summaries
+        def _mock_summaries(cd, **kw):
+            if str(cd) == str(codex_dir):
+                return {thread_id: {"paths": [str(codex_dir / "sessions" / "test-thread" / "rollout-001.jsonl")]}}
+            return {}
+        _server_mod._get_live_rollout_summaries = _mock_summaries
+
+        try:
+            source = {"id": "test", "kind": "live", "codex_dir": str(codex_dir)}
+            step_detail = [{"index": 1, "event_range": {"start_event_index": 1, "end_event_index": 15}}]
+            result = _server_mod._build_raw_step_export(source, thread_id, step_detail)
+
+            bundle = result["bundle_text"]
+            # README should have AI calls table
+            self.assertIn("## AI calls / token_count events", bundle)
+            # Should have token usage values
+            self.assertIn("input", bundle.lower())
+            self.assertIn("cached", bundle.lower())
+
+            # Steps metadata should report AI calls
+            self.assertGreater(result["steps"][0]["ai_calls_count"], 0)
+        finally:
+            _server_mod._get_live_rollout_summaries = original
+            import shutil
+            shutil.rmtree(str(codex_dir), ignore_errors=True)
+
+    def test_redaction(self):
+        """Sensitive fields are redacted, event structure preserved."""
+        events = self._make_rollout_events(5, with_auth=True)
+        codex_dir, _, thread_id = self._setup_rollout_fixture(events)
+
+        original = _server_mod._get_live_rollout_summaries
+        def _mock_summaries(cd, **kw):
+            if str(cd) == str(codex_dir):
+                return {thread_id: {"paths": [str(codex_dir / "sessions" / "test-thread" / "rollout-001.jsonl")]}}
+            return {}
+        _server_mod._get_live_rollout_summaries = _mock_summaries
+
+        try:
+            source = {"id": "test", "kind": "live", "codex_dir": str(codex_dir)}
+            step_detail = [{"index": 1, "event_range": {"start_event_index": 1, "end_event_index": 6}}]
+            result = _server_mod._build_raw_step_export(source, thread_id, step_detail)
+
+            bundle = result["bundle_text"]
+
+            # Sensitive values should be redacted
+            self.assertNotIn("test@example.com", bundle)
+            self.assertNotIn("acct_12345", bundle)
+            self.assertNotIn("Bearer secret-token-xxx", bundle)
+            self.assertNotIn("sk-1234567890", bundle)
+            self.assertIn("[REDACTED]", bundle)
+
+            # Event structure preserved - the environment_event should still be present
+            self.assertIn("environment_event", bundle)
+
+            # README should say redaction enabled
+            self.assertIn("Redaction: enabled", bundle)
+
+            # host.name should NOT be redacted
+            self.assertIn("test-host", bundle)
+
+            # Redaction fields listed
+            self.assertIn("redacted_fields", result)
+            self.assertTrue(isinstance(result["redacted_fields"], list))
+        finally:
+            _server_mod._get_live_rollout_summaries = original
+            import shutil
+            shutil.rmtree(str(codex_dir), ignore_errors=True)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -920,7 +920,7 @@ function buildAgentActivityMarkdown(step) {
         if (hasContextObjects && allCtxObjects.length > 0) {
           lines.push('**Вклад файлов и команд в New input:**');
           lines.push('');
-          lines.push('| Объект | Тип | Размер | ~New input tokens | Доля | ~Вклад в New input cost |');
+          lines.push('| Объект | Тип | Размер | ~Распределённый New input | Доля | ~Вклад в New input cost |');
           lines.push('|---|---:|---:|---:|---:|---:|');
           var ncTokens = lai ? lai.non_cached_input_tokens : (lu.non_cached_input_tokens || 0);
           allCtxObjects.forEach(function(ao) {
@@ -1983,6 +1983,50 @@ function buildTimelineItemDetails(it) {
   h += ' | Уверенность: '+_humanConfLabel(it.recognition_confidence||it.confidence);
   h += '</div>';
 
+  // ── v2.14: why_expensive block ──
+  var whyExp = it.why_expensive;
+  if (whyExp && whyExp.detected) {
+    h += '<div style="margin-top:6px;padding:8px 10px;background:#2a1a1a;border:1px solid #a44;border-radius:4px">';
+    h += '<div style="font-weight:600;font-size:11px;color:#f66;margin-bottom:6px">⚠ Почему этап дорогой</div>';
+    h += '<div style="font-size:10px;line-height:1.5;white-space:pre-wrap">'+escapeHtml(whyExp.explanation_ru||'')+'</div>';
+    // neighbor context
+    var nc = whyExp.neighbor_context;
+    if (nc) {
+      h += '<div style="margin-top:8px;font-weight:600;font-size:10px;color:#ccc">Контекст соседних AI-call</div>';
+      h += '<table style="width:100%;border-collapse:collapse;font-size:9px;margin-top:4px"><thead><tr style="background:#333">';
+      h += '<th style="text-align:left;padding:2px 4px">AI-call</th><th style="text-align:left;padding:2px 4px">Действие</th><th style="text-align:right;padding:2px 4px">New input</th><th style="text-align:right;padding:2px 4px">Cached</th><th style="text-align:right;padding:2px 4px">Output</th><th style="text-align:right;padding:2px 4px">Cache%</th>';
+      h += '</tr></thead><tbody>';
+
+      var rows = [];
+      if (nc.previous && nc.previous.available) rows.push({label:'Предыдущий',data:nc.previous});
+      rows.push({label:'→ Текущий ←',data:nc.current,current:true});
+      if (nc.next && nc.next.available) rows.push({label:'Следующий',data:nc.next});
+
+      rows.forEach(function(r) {
+        var d = r.data;
+        var bg = r.current ? 'background:#3a2020' : '';
+        h += '<tr style="'+bg+'">';
+        h += '<td style="padding:1px 4px;font-weight:600">'+r.label+'</td>';
+        h += '<td style="padding:1px 4px">'+escapeHtml((d.display_title_ru||'').substring(0,35))+'</td>';
+        h += '<td style="text-align:right;padding:1px 4px">'+nf.format(d.non_cached_input_tokens||0)+'</td>';
+        h += '<td style="text-align:right;padding:1px 4px">'+nf.format(d.cached_tokens||0)+'</td>';
+        h += '<td style="text-align:right;padding:1px 4px">'+nf.format(d.output_tokens||0)+'</td>';
+        h += '<td style="text-align:right;padding:1px 4px">'+(d.cache_ratio!=null?Number(d.cache_ratio*100).toFixed(1)+'%':'—')+'</td>';
+        h += '</tr>';
+      });
+      h += '</tbody></table>';
+    }
+    // pattern
+    if (whyExp.detected_pattern) {
+      h += '<div style="margin-top:6px;padding:4px 6px;background:#332211;border:1px solid #a84;border-radius:3px;font-size:10px;color:#fa0">';
+      h += '🔍 '+escapeHtml(whyExp.pattern_note_ru||whyExp.detected_pattern);
+      h += '</div>';
+    }
+    // honesty note
+    h += '<div style="margin-top:6px;font-size:9px;color:#888">'+escapeHtml(whyExp.honesty_note_ru||'')+'</div>';
+    h += '</div>';
+  }
+
   // ── Cost scope note ──
   if (lai) {
     h += '<div style="font-size:10px;color:#c09853;margin-bottom:6px">Стоимость этапа известна точно по telemetry AI #'+lai.ai_index+'. Отдельная стоимость файлов/команд недоступна. Ниже — вклад объектов в контекст этапа.</div>';
@@ -2003,12 +2047,19 @@ function buildTimelineItemDetails(it) {
   // and not for model_only / final_report without tool events
   var isFinalReport = it.row_type === 'ai_call_only' && (it.display_title_ru||'').indexOf('Сформулировал') >= 0;
   var isModelOnly = it.row_type === 'ai_call_only' && !isFinalReport;
+  var isPatch = it.is_patch_action === true;
   var hasRealObjects = allObjects.some(function(ao){ var cc=ao.cc; return cc.output_length_chars || cc.estimated_text_tokens; });
 
+  // v2.16: for patch actions, contribution table is hidden behind collapsible Experimental section
+  if (isPatch && hasRealObjects && allObjects.length > 0) {
+    h += '<details style="margin-top:4px;font-size:9px"><summary style="color:#666;cursor:pointer">Experimental distributed attribution</summary>';
+    h += '<div style="font-size:9px;color:#888;margin-top:2px">Вклад файлов и команд в New input для patch-действия. Основной блок — patch-детали выше.</div>';
+  }
+  
   if (hasRealObjects && allObjects.length > 0) {
     h += '<div style="font-weight:600;font-size:10px;margin-bottom:2px">Вклад файлов и команд в New input</div>';
     h += '<table style="width:100%;border-collapse:collapse;font-size:10px"><thead><tr style="background:#333">';
-    h += '<th style="text-align:left;padding:2px 4px">Объект</th><th style="text-align:left;padding:2px 4px">Тип</th><th style="text-align:right;padding:2px 4px">Размер вывода</th><th style="text-align:right;padding:2px 4px">~Токенов текста tool-output</th><th style="text-align:right;padding:2px 4px">Доля tool-output</th><th style="text-align:right;padding:2px 4px">~New input tokens</th><th style="text-align:right;padding:2px 4px">~Вклад в New input cost</th><th style="text-align:center;padding:2px 4px">Copy</th>';
+    h += '<th style="text-align:left;padding:2px 4px">Объект</th><th style="text-align:left;padding:2px 4px">Тип</th><th style="text-align:right;padding:2px 4px">Размер вывода</th><th style="text-align:right;padding:2px 4px">~Токенов текста tool-output</th><th style="text-align:right;padding:2px 4px">Доля tool-output</th><th style="text-align:right;padding:2px 4px">~Распределённый New input</th><th style="text-align:right;padding:2px 4px">~Вклад в New input cost</th><th style="text-align:center;padding:2px 4px">Copy</th>';
     h += '</tr></thead><tbody>';
     allObjects.forEach(function(ao) {
       var cc = ao.cc;
@@ -2027,7 +2078,7 @@ function buildTimelineItemDetails(it) {
       var share = cc.share_of_tool_output_text;
       var estCost = cc.estimated_new_input_cost_usd;
 
-      // ~New input tokens = share * nc_tokens from token_cost_breakdown
+      // ~Распределённый New input = share * nc_tokens from token_cost_breakdown
       var tcb = it.token_cost_breakdown;
       var ncTokens = 0;
       if (tcb && tcb.available && tcb.items) {
@@ -2049,6 +2100,8 @@ function buildTimelineItemDetails(it) {
     });
     h += '</tbody></table>';
     h += '<div style="font-size:9px;color:#888;margin-top:4px">Это оценка. Raw telemetry даёт точную стоимость только на уровне AI-call целиком. Cached, Output и Reasoning не распределяются по отдельным файлам/командам.</div>';
+    // v2.16: close experimental section for patch actions
+    if (isPatch) { h += '</details>'; }
   } else if (isServiceAction) {
     h += '<div style="font-size:10px;color:#888">Это служебное действие Codex: обновление плана работы. Файлов и команд нет.</div>';
   } else if (it.row_type === 'ai_call_only' && (it.display_title_ru||'').indexOf('Сформулировал') >= 0) {
@@ -2344,6 +2397,38 @@ function copySelectedTable() {
   const s = sessionDetailCache;
   if (!s || !s.steps) return;
   copyText(buildSessionExportMarkdown(s, selectedSteps(), "Selected steps export"));
+}
+
+function copySelectedRaw() {
+  console.log("copySelectedRaw called, source:", currentSourceId, "session:", currentSessionId);
+  if (!currentSourceId || !currentSessionId) {
+    showToast("Сначала выберите сессию");
+    return;
+  }
+  var sel = selectedSteps();
+  console.log("selectedSteps:", sel ? sel.length : 0);
+  if (!sel || sel.length === 0) {
+    showToast("Сначала выделите шаги (чекбоксами) — выберите один или несколько visible steps");
+    return;
+  }
+  var stepIndices = [];
+  for (var i = 0; i < sel.length; i++) {
+    var idx = sel[i].index || sel[i].step_index;
+    if (idx) stepIndices.push(idx);
+  }
+  console.log("stepIndices:", stepIndices);
+  if (stepIndices.length === 0) {
+    showToast("Не удалось определить индексы выбранных шагов");
+    return;
+  }
+
+  var stepIndicesParam = stepIndices.join(",");
+  var dlUrl = "/api/raw_step_download?source_id=" + encodeURIComponent(currentSourceId) +
+    "&session_id=" + encodeURIComponent(currentSessionId) +
+    "&step_indices=" + encodeURIComponent(stepIndicesParam);
+  console.log("dlUrl:", dlUrl);
+  showToast("Скачивание raw bundle...");
+  window.location.href = dlUrl;
 }
 
 // ── Audit ──

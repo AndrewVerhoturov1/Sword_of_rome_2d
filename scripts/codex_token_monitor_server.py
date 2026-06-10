@@ -747,6 +747,298 @@ def _read_rollout_jsonl(codex_dir: Path, thread_id: str) -> list[dict[str, Any]]
     return events
 
 
+# ── v2.14: raw step export redaction ──
+_RAW_REDACT_KEYS = frozenset({
+    "user.email", "user.account_id", "authorization", "cookie",
+    "api-key", "api_key", "secret", "password",
+    "client_secret", "proxy-authorization", "x-api-key",
+})
+
+
+def _redact_raw_event(obj: Any) -> Any:
+    """Recursively redact sensitive values in a raw event dict/list."""
+    if isinstance(obj, dict):
+        result: dict[str, Any] = {}
+        for k, v in obj.items():
+            if k.lower() in _RAW_REDACT_KEYS or any(
+                sk in k.lower() for sk in ("secret", "password", "token")
+            ):
+                result[k] = "[REDACTED]"
+            else:
+                result[k] = _redact_raw_event(v)
+        return result
+    if isinstance(obj, list):
+        return [_redact_raw_event(item) for item in obj]
+    return obj
+
+
+def _build_raw_step_export(
+    source: dict[str, Any],
+    session_id: str,
+    steps_detail: list[dict[str, Any]],
+) -> dict[str, Any]:
+    """Build raw step export bundle for selected visible steps.
+
+    Returns a dict with:
+      - bundle_text: copy-paste bundle string
+      - steps: list of per-step metadata
+    """
+    codex_dir = Path(source.get("codex_dir", ""))
+    events = _read_rollout_jsonl(codex_dir, session_id)
+
+    rollout_paths = _get_live_rollout_summaries(codex_dir).get(session_id, {}).get("paths", [])
+    source_rollout = rollout_paths[0] if rollout_paths else "unknown"
+
+    model = ""
+    workdir = ""
+    for ev in events:
+        pl = ev.get("payload", {})
+        if isinstance(pl, dict):
+            model = model or str(pl.get("model", ""))
+            workdir = workdir or str(pl.get("workdir", pl.get("cwd", "")))
+
+    bundle_parts: list[str] = []
+    step_results: list[dict[str, Any]] = []
+
+    for step in steps_detail:
+        step_index = step.get("index", 0)
+        er = step.get("event_range") or {}
+        start_ev = er.get("start_event_index", 0)
+        end_ev = er.get("end_event_index", 0)
+
+        # Extract raw events in range (1-based indexing)
+        raw_lines: list[str] = []
+        ai_calls: list[dict[str, Any]] = []
+        token_events: list[dict[str, Any]] = []
+        tool_calls: list[dict[str, Any]] = []
+        visible_msgs: list[dict[str, Any]] = []
+
+        for ev in events:
+            pl = ev.get("payload", {})
+            ev_type = ev.get("type", "")
+
+            if ev_type == "event_msg":
+                info = pl.get("info", {}) if isinstance(pl, dict) else {}
+                ttu = info.get("total_token_usage") or {}
+                ltu = info.get("last_token_usage") or {}
+                if isinstance(ttu, dict) and ttu:
+                    token_events.append({
+                        "input": _to_int_safe(ttu.get("input_tokens", ttu.get("input_token_count", 0))),
+                        "cached": _to_int_safe(ttu.get("cached_input_tokens", ttu.get("cached_input_token_count", 0))),
+                        "output": _to_int_safe(ttu.get("output_tokens", ttu.get("output_token_count", 0))),
+                        "reasoning": _to_int_safe(ttu.get("reasoning_tokens", ttu.get("reasoning_token_count", 0))),
+                    })
+
+            # Slice by event_range
+            ev_idx = len(raw_lines) + start_ev if start_ev > 0 else 0
+            if start_ev > 0 and (ev_idx < start_ev or ev_idx > end_ev):
+                raw_lines.append(json.dumps(ev, ensure_ascii=False))
+                continue
+
+        # Re-read with proper indexing
+        raw_lines = []
+        ev_idx = 0
+        for line_idx, ev in enumerate(events):
+            ev_idx = line_idx + 1  # 1-based
+            if start_ev > 0 and (ev_idx < start_ev or ev_idx > end_ev):
+                continue
+
+            # Redact and serialize
+            redacted = _redact_raw_event(ev)
+            raw_lines.append(json.dumps(redacted, ensure_ascii=False))
+
+            # Collect metadata
+            pl = ev.get("payload", {})
+            ev_type = ev.get("type", "")
+
+            if ev_type == "event_msg":
+                info = pl.get("info", {}) if isinstance(pl, dict) else {}
+                ttu = info.get("total_token_usage") or {}
+                ltu = info.get("last_token_usage") or {}
+                if isinstance(ttu, dict) and ttu:
+                    ai_calls.append({
+                        "event": ev_idx,
+                        "input": _to_int_safe(ttu.get("input_tokens", ttu.get("input_token_count", 0))),
+                        "cached": _to_int_safe(ttu.get("cached_input_tokens", ttu.get("cached_input_token_count", 0))),
+                        "output": _to_int_safe(ttu.get("output_tokens", ttu.get("output_token_count", 0))),
+                        "reasoning": _to_int_safe(ttu.get("reasoning_tokens", ttu.get("reasoning_token_count", 0))),
+                    })
+
+            elif ev_type == "response_item":
+                ri_type = pl.get("type", "") if isinstance(pl, dict) else ""
+                call_id = str(pl.get("call_id", "")) if isinstance(pl, dict) else ""
+                if ri_type == "function_call":
+                    tool_calls.append({
+                        "event": ev_idx,
+                        "type": "function_call",
+                        "call_id": call_id,
+                        "name": str(pl.get("name", "")) if isinstance(pl, dict) else "",
+                    })
+                elif ri_type == "function_call_output":
+                    tool_calls.append({
+                        "event": ev_idx,
+                        "type": "function_call_output",
+                        "call_id": call_id,
+                        "output_length": len(str(pl.get("output", ""))) if isinstance(pl, dict) else 0,
+                    })
+                elif ri_type == "custom_tool_call":
+                    tool_calls.append({
+                        "event": ev_idx,
+                        "type": "custom_tool_call",
+                        "call_id": call_id,
+                        "name": str(pl.get("name", "")) if isinstance(pl, dict) else "",
+                    })
+                elif ri_type == "custom_tool_call_output":
+                    tool_calls.append({
+                        "event": ev_idx,
+                        "type": "custom_tool_call_output",
+                        "call_id": call_id,
+                    })
+                elif ri_type == "message" and isinstance(pl, dict):
+                    content = pl.get("content", [])
+                    role = pl.get("role", "")
+                    if role == "assistant":
+                        text = ""
+                        if isinstance(content, list):
+                            for c in content:
+                                if isinstance(c, dict) and c.get("type") == "output_text":
+                                    text += str(c.get("text", ""))
+                        visible_msgs.append({
+                            "event": ev_idx,
+                            "type": "assistant_message",
+                            "length": len(text),
+                            "preview": text[:200] if text else "",
+                        })
+
+        # Build README
+        raw_count = end_ev - start_ev + 1 if (start_ev > 0 and end_ev > 0) else 0
+        timestamp = step.get("timestamp", "") or ""
+
+        readme_lines = [
+            "# Raw step export",
+            "",
+            "## Identity",
+            f"- Source: {source.get('id', 'unknown')}",
+            f"- Session ID: {session_id}",
+            f"- Step index: {step_index}",
+            f"- Turn ID: {step.get('turn_id', '')}",
+            f"- Timestamp: {timestamp}",
+            f"- Workdir: {workdir}",
+            f"- Model: {model}",
+            f"- Event range: {start_ev}..{end_ev}",
+            f"- Raw events count: {raw_count}",
+            f"- Source rollout path: {source_rollout}",
+            "",
+            "## AI calls / token_count events",
+        ]
+
+        if ai_calls:
+            readme_lines.append("| AI # | event | input | cached | new input | output | reasoning |")
+            readme_lines.append("|---:|---:|---:|---:|---:|---:|---:|")
+            for i, ac in enumerate(ai_calls):
+                nc = max(ac["input"] - ac["cached"], 0)
+                readme_lines.append(
+                    f"| {i + 1} | {ac['event']} | {ac['input']:,} | {ac['cached']:,} | {nc:,} | {ac['output']:,} | {ac['reasoning']:,} |"
+                )
+        else:
+            readme_lines.append("(none)")
+
+        readme_lines += [
+            "",
+            "## Tool call index",
+        ]
+        if tool_calls:
+            readme_lines.append("| event | type | call_id | name | paired output event |")
+            readme_lines.append("|---:|---|---|---|---:|")
+            # Pair function_call with function_call_output
+            call_map: dict[str, dict[str, Any]] = {}
+            for tc in tool_calls:
+                cid = tc["call_id"]
+                if tc["type"] in ("function_call", "custom_tool_call"):
+                    call_map.setdefault(cid, {})["call"] = tc
+                elif tc["type"] in ("function_call_output", "custom_tool_call_output"):
+                    call_map.setdefault(cid, {})["output"] = tc
+            for cid, pair in sorted(call_map.items()):
+                call_ev = pair.get("call", {})
+                out_ev = pair.get("output", {})
+                readme_lines.append(
+                    f"| {call_ev.get('event', '')} | {call_ev.get('type', '')} | {cid} | {call_ev.get('name', '')} | {out_ev.get('event', '')} |"
+                )
+        else:
+            readme_lines.append("(none)")
+
+        readme_lines += [
+            "",
+            "## Visible messages",
+        ]
+        if visible_msgs:
+            readme_lines.append("| event | type | length | preview |")
+            readme_lines.append("|---:|---|---:|")
+            for vm in visible_msgs:
+                preview = vm["preview"].replace("\n", " ")[:80]
+                readme_lines.append(f"| {vm['event']} | {vm['type']} | {vm['length']:,} | {preview} |")
+        else:
+            readme_lines.append("(none)")
+
+        readme_lines += [
+            "",
+            "## Notes",
+            "- Raw file is the source of truth.",
+            "- README is only an index.",
+            "- Monitor interpretation is not included in raw file.",
+            f"- Redaction: enabled",
+            f"- Redacted fields: user.email, user.account_id, authorization, cookie, api-key, secret, password",
+        ]
+
+        readme_text = "\n".join(readme_lines)
+
+        # Build bundle parts
+        bundle_parts.append(f"===== FILE: step_{step_index}_raw.jsonl =====")
+        bundle_parts.extend(raw_lines)
+        bundle_parts.append("")
+        bundle_parts.append(f"===== FILE: step_{step_index}_README.md =====")
+        bundle_parts.append(readme_text)
+        bundle_parts.append("")
+
+        step_results.append({
+            "step_index": step_index,
+            "event_range": {"start": start_ev, "end": end_ev},
+            "raw_events_count": raw_count,
+            "ai_calls_count": len(ai_calls),
+            "tool_calls_count": len(tool_calls),
+            "messages_count": len(visible_msgs),
+        })
+
+    bundle_text = "\n".join(bundle_parts)
+
+    return {
+        "bundle_text": bundle_text,
+        "steps": step_results,
+        "source_id": source.get("id", ""),
+        "session_id": session_id,
+        "total_step_count": len(steps_detail),
+        "redaction": "enabled",
+        "redacted_fields": list(_RAW_REDACT_KEYS),
+    }
+
+
+def _to_int_safe(val: Any) -> int:
+    """Safely convert a value to int, handling [REDACTED] and None."""
+    if val is None:
+        return 0
+    if isinstance(val, (int, float)):
+        return int(val)
+    if isinstance(val, str):
+        stripped = val.strip()
+        if stripped.upper() in ("[REDACTED]", "", "N/A", "NULL"):
+            return 0
+        try:
+            return int(stripped)
+        except (ValueError, TypeError):
+            return 0
+    return 0
+
+
 def build_live_session_detail(source: dict[str, Any], session_id: str) -> dict[str, Any] | None:
     """Build session detail for a live Codex chat."""
     codex_dir = Path(source.get("codex_dir", ""))
@@ -957,18 +1249,44 @@ def _detect_patch_status(output_text: str, success_flag: bool | None) -> str:
 
 
 def _build_apply_patch_title(file_infos: list[dict[str, str]], status: str) -> str:
-    """Build human-readable title for apply_patch action."""
+    """Build human-readable title for apply_patch action.
+    
+    v2.16: status-aware titles — failed patches are clearly marked.
+    """
     count = len(file_infos)
-    prefix = "Пытался изменить" if status == "failed" else "Изменил"
-
+    
+    # Short timeline titles (used in table)
+    short_labels = {
+        "success": "Применил patch",
+        "failed": "Patch не применился",
+        "unknown": "Patch-действие",
+    }
+    
     if count == 0:
-        return "Выполнил patch" if status != "failed" else "Пытался выполнить patch"
-    elif count == 1:
-        basename = file_infos[0]["path"].split("\\")[-1].split("/")[-1]
-        return f"{prefix} {basename}"
-    else:
-        basename = file_infos[0]["path"].split("\\")[-1].split("/")[-1]
-        return f"{prefix} {basename} +{count - 1}"
+        return short_labels.get(status, "Patch-действие")
+    
+    if status == "failed":
+        # Detailed title for failed patches
+        if count == 1:
+            basename = file_infos[0]["path"].split("\\")[-1].split("/")[-1]
+            return f"Попытался применить patch к {basename}, но он не применился"
+        else:
+            basename = file_infos[0]["path"].split("\\")[-1].split("/")[-1]
+            return f"Попытался применить patch к {basename} +{count - 1}, но они не применились"
+    elif status == "success":
+        if count == 1:
+            basename = file_infos[0]["path"].split("\\")[-1].split("/")[-1]
+            return f"Применил patch к {basename}"
+        else:
+            basename = file_infos[0]["path"].split("\\")[-1].split("/")[-1]
+            return f"Применил patch к {basename} +{count - 1}"
+    else:  # unknown
+        if count == 1:
+            basename = file_infos[0]["path"].split("\\")[-1].split("/")[-1]
+            return f"Выполнил patch-действие: {basename}"
+        else:
+            basename = file_infos[0]["path"].split("\\")[-1].split("/")[-1]
+            return f"Выполнил patch-действие: {basename} +{count - 1}"
 
 def _classify_shell_command(command: str) -> dict[str, Any]:
     """Classify a shell command string into a human-readable action.
@@ -976,12 +1294,57 @@ def _classify_shell_command(command: str) -> dict[str, Any]:
     Returns dict with classified_action, title_ru, action_type, and optional target_path.
     """
     cmd_lower = command.strip().lower() if command else ""
+    cmd_original = command.strip() if command else ""
+
+    # ── v2.16: inline script detection BEFORE file_read ──
+    # Detect @'...'@ | python -, python <<EOF ... EOF, python -c '...'
+    inline_patterns = [
+        r"""@'\s*(?:import|from|class|def|#!|print|sys|os|json|pathlib|re|collections|typing)\b""",
+        r"""@\"\s*(?:import|from|class|def|#!|print|sys|os|json|pathlib)\b""",
+        r"""\|\s*python\s*-?\s*$""",
+        r"""python\s+-c\s*['\"]""",
+        r"""python\s*<<\s*['\"]?EOF""",
+    ]
+    import re as _re_inline
+    is_inline_script = any(
+        _re_inline.search(pattern, cmd_original, _re_inline.IGNORECASE)
+        for pattern in inline_patterns
+    )
+    # Also: if command is pure inline code piped to python (no file prefixes)
+    if not is_inline_script:
+        stripped = cmd_original.lstrip()
+        if (stripped.startswith("import ") or stripped.startswith("from ") or
+            stripped.startswith("def ") or stripped.startswith("class ") or
+            stripped.startswith("#!")):
+            is_inline_script = True
+    
+    if is_inline_script:
+        return {
+            "classified_action": "diagnostic_script",
+            "action_type": "diagnostic_script",
+            "title_ru": "Запустил диагностический Python-скрипт",
+            "target_path": "",
+            "is_batch_candidate": False,
+            "batch_group": "",
+        }
 
     # ── file read patterns ──
     if any(kw in cmd_lower for kw in ("get-content", "cat ", "type ", "sed -n", "head ", "tail ")):
         import re as _re_sc
+        # Try quoted paths first, then unquoted path-like tokens
         path_m = _re_sc.search(r"""['"]([^'"]+)['"]""", command)
-        target = path_m.group(1) if path_m else ""
+        if path_m:
+            target = path_m.group(1)
+        else:
+            # Unquoted: extract the first path-like token after the command
+            # Matches Get-Content .ai\path\file.md -TotalCount N
+            # or Get-Content AGENTS.md | Select-Object ...
+            # Look for a token that looks like a file path (has extension, dot, or backslash)
+            unquoted_m = _re_sc.search(
+                r'(?:get-content|cat|type|sed\s+-n|head|tail)\s+([^\s|"\'\-][^\s|"\']*(?:\.[a-zA-Z]{1,10}|\\|/)[^\s|"\']*)',
+                command, _re_sc.IGNORECASE
+            )
+            target = unquoted_m.group(1) if unquoted_m else ""
         basename_lower = target.split("\\")[-1].split("/")[-1].lower() if target else ""
         # Batch candidate: core project context files read together
         batch_keywords = ("readme", "navigation", "project_state", "handoff", "agents",
@@ -1126,15 +1489,19 @@ def _classify_service_call(tool_name: str, args: dict[str, Any]) -> dict[str, An
                     plan_items.append(str(it.get("step", it.get("title", str(it)))))
                 else:
                     plan_items.append(str(it))
+        # v2.16: visible plan explanation → more descriptive title
+        has_visible = bool(explanation and explanation.strip() and len(explanation.strip()) > 10)
+        title = "Сформулировал план и обновил служебный план Codex" if has_visible else "Обновил служебный план Codex"
         return {
             "classified_action": "plan_update",
             "action_type": "plan_update",
-            "title_ru": "Обновил план работы",
+            "title_ru": title,
             "target_path": "",
             "is_batch_candidate": False,
             "batch_group": "",
             "plan_explanation": explanation,
             "plan_items": plan_items,
+            "has_visible_explanation": has_visible,
         }
 
     if tool_name == "todo_write":
@@ -1156,6 +1523,190 @@ def _classify_service_call(tool_name: str, args: dict[str, Any]) -> dict[str, An
         "is_batch_candidate": False,
         "batch_group": "",
     }
+
+
+def _add_why_expensive_blocks(
+    human_timeline_items: list[dict[str, Any]],
+    request_usage_items: list[dict[str, Any]],
+    live_tool_events: list[dict[str, Any]],
+) -> None:
+    """v2.14: Detect expensive AI-calls that look like small actions.
+
+    For each timeline item where:
+      - action appears lightweight (plan_update, model_only, service_action, final_report)
+      - new_input_ratio >= 0.70
+      - non_cached_input_tokens >= 20000
+
+    adds a `why_expensive` block explaining the probable cause:
+    accumulated context from previous AI-calls being processed as uncached input.
+    """
+    LIGHTWEIGHT_KINDS = {
+        "plan_update",
+        "model_only",
+        "service_action",
+        "final_report",
+        "assistant_message",
+    }
+
+    def _infer_action_kind(item: dict[str, Any]) -> str | None:
+        title = item.get("display_title_ru", "")
+        row_type = item.get("row_type", "")
+
+        if "Обновил план" in title or "Обновил список задач" in title:
+            return "plan_update"
+        if "Выполнил служебное" in title:
+            return "service_action"
+        if row_type == "ai_call_only":
+            amd = item.get("assistant_message_data") or {}
+            if amd.get("is_final_report"):
+                return "final_report"
+            if "Сформулировал" in title or "ответ" in title.lower():
+                return "assistant_message"
+            return "model_only"
+        if row_type == "tool_with_cost":
+            action_type = item.get("action_type", "")
+            if "plan_update" in str(action_type) or "update_plan" in str(action_type):
+                return "plan_update"
+            if "service_action" in str(action_type):
+                return "service_action"
+            if "apply_patch" in str(action_type):
+                return None
+        return None
+
+    def _build_neighbor_summary(item: dict[str, Any]) -> dict[str, Any]:
+        lu = item.get("linked_request_usage") or {}
+        if not lu.get("available"):
+            return {"available": False}
+
+        inp = lu.get("input_tokens", 0)
+        cached = lu.get("cached_tokens", 0)
+        nc = lu.get("non_cached_input_tokens", 0)
+        out = lu.get("output_tokens", 0)
+        cache_r = (cached / inp) if inp > 0 else 0
+
+        summary: dict[str, Any] = {
+            "available": True,
+            "display_title_ru": item.get("display_title_ru", ""),
+            "input_tokens": inp,
+            "cached_tokens": cached,
+            "non_cached_input_tokens": nc,
+            "output_tokens": out,
+            "cache_ratio": round(cache_r, 4),
+        }
+
+        tool_ev = item.get("tool_evidence") or {}
+        if tool_ev.get("available"):
+            summary["tool_evidence"] = {
+                "tool_count": tool_ev.get("tool_count", 0),
+            }
+
+        return summary
+
+    ai_items = [
+        (i, it) for i, it in enumerate(human_timeline_items)
+        if it.get("cost_available") and (it.get("linked_request_usage") or {}).get("available")
+    ]
+
+    for idx, (list_idx, item) in enumerate(ai_items):
+        lu = item.get("linked_request_usage") or {}
+        inp = lu.get("input_tokens", 0)
+        cached = lu.get("cached_tokens", 0)
+        nc = lu.get("non_cached_input_tokens", 0)
+
+        if inp <= 0:
+            continue
+        new_input_ratio = nc / inp
+        cache_ratio = cached / inp
+
+        if new_input_ratio < 0.70 or nc < 20000:
+            continue
+
+        action_kind = _infer_action_kind(item)
+        if action_kind not in LIGHTWEIGHT_KINDS:
+            continue
+
+        prev_item = ai_items[idx - 1][1] if idx > 0 else None
+        next_item = ai_items[idx + 1][1] if idx + 1 < len(ai_items) else None
+
+        prev_summary = _build_neighbor_summary(prev_item) if prev_item else {"available": False}
+        next_summary = _build_neighbor_summary(next_item) if next_item else {"available": False}
+
+        pattern = ""
+        pattern_note = ""
+        if prev_summary.get("available") and next_summary.get("available"):
+            prev_tool = prev_summary.get("tool_evidence") or {}
+            prev_nc = prev_summary.get("non_cached_input_tokens", 0)
+            next_cache_r = next_summary.get("cache_ratio", 0)
+            next_cached = next_summary.get("cached_tokens", 0)
+
+            if (prev_tool.get("tool_count", 0) > 0 or prev_nc > 50000) and next_cache_r > 0.70 and next_cached > 50000:
+                pattern = "cache_fill_after_tool_output"
+                pattern_note = (
+                    "Pattern: вероятный cache fill после большого tool-output. "
+                    "Предыдущий AI-call загрузил большой tool-output (файлы/команды). "
+                    "Текущий AI-call получил этот контекст как New input (cache miss). "
+                    "Следующий AI-call уже использует тот же контекст с высоким cache ratio."
+                )
+
+        cache_pct = round(cache_ratio * 100, 1)
+        kind_labels = {
+            "plan_update": "Обновление плана",
+            "model_only": "AI-обращение без инструментов",
+            "service_action": "Служебное действие",
+            "final_report": "Финальный ответ",
+            "assistant_message": "Ответ модели",
+        }
+        kind_label = kind_labels.get(action_kind, action_kind)
+
+        explanation_lines = [
+            "Этот AI-call не читал новые большие файлы и не запускал большие команды внутри своего окна.",
+            "Но он получил большой New input: {:,} токенов.".format(nc),
+            "Cached input: {:,} токенов.".format(cached),
+            "Cache ratio: {}%.".format(cache_pct),
+            "",
+            "Вероятная причина: cache miss / cache fill после загрузки большого контекста в предыдущих AI-call.",
+            "Стоимость вызвана не самим действием «{}», а тем, что модель впервые обработала большой накопленный контекст как незакэшированный input.".format(kind_label),
+        ]
+
+        honesty_note = (
+            "Raw telemetry подтверждает высокий New input и низкий Cached. "
+            "Raw telemetry не содержит точной причины cache miss."
+        )
+
+        why_expensive = {
+            "detected": True,
+            "action_kind": action_kind,
+            "action_kind_label_ru": kind_label,
+            "new_input_ratio": round(new_input_ratio, 4),
+            "cache_ratio": round(cache_ratio, 4),
+            "input_tokens": inp,
+            "cached_tokens": cached,
+            "non_cached_input_tokens": nc,
+            "output_tokens": lu.get("output_tokens", 0),
+            "explanation_ru": "\n".join(explanation_lines),
+            "honesty_note_ru": honesty_note,
+            "neighbor_context": {
+                "previous": prev_summary,
+                "current": {
+                    "display_title_ru": item.get("display_title_ru", ""),
+                    "input_tokens": inp,
+                    "cached_tokens": cached,
+                    "non_cached_input_tokens": nc,
+                    "cache_ratio": round(cache_ratio, 4),
+                },
+                "next": next_summary,
+            },
+        }
+
+        if pattern:
+            why_expensive["detected_pattern"] = pattern
+            why_expensive["pattern_note_ru"] = pattern_note
+
+        item["why_expensive"] = why_expensive
+        item["expensive_reason"] = (
+            "Высокий New input ({:,}) при низком Cache ({}%). "
+            "Вероятный cache miss/fill.".format(nc, cache_pct)
+        )
 
 
 def _build_live_steps(events: list[dict[str, Any]], thread_id: str) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
@@ -1963,6 +2514,11 @@ def _build_live_steps(events: list[dict[str, Any]], thread_id: str) -> tuple[lis
                 })
             item["raw_evidence"] = raw_evidence if raw_evidence else None
 
+            # ── v2.16: mark patch items so UI can suppress contribution table ──
+            item["is_patch_action"] = item.get("action_type") == "apply_patch" or any(
+                f.get("source") == "patch_header" for f in (files or [])
+            )
+
             # ── v2.10: apply_patch_output for items with apply_patch files ──
             if item.get("action_type") == "apply_patch" or any(
                 f.get("source") == "patch_header" for f in (files or [])
@@ -2438,6 +2994,18 @@ def _build_live_steps(events: list[dict[str, Any]], thread_id: str) -> tuple[lis
                     total_tool_count += len(tg["tool_events"])
                     action_types.add(tg["action_type"])
 
+                # ── v2.16: collect patch statuses and plan visibility for better titles ──
+                patch_statuses_agg: list[str] = []
+                has_visible_plan = False
+                for gi in interval_groups:
+                    tg = tool_groups[gi]
+                    for te in tg.get("tool_events", []):
+                        ps = te.get("patch_status", "")
+                        if ps and ps != "unknown":
+                            patch_statuses_agg.append(ps)
+                        if te.get("has_visible_explanation"):
+                            has_visible_plan = True
+
                 # Build aggregate title — v2.6: smarter human-readable titles
                 def _cmd_has(needle: str) -> bool:
                     return any(needle in (c or "") for c in all_cmds)
@@ -2449,52 +3017,75 @@ def _build_live_steps(events: list[dict[str, Any]], thread_id: str) -> tuple[lis
                 is_apply_patch = "apply_patch" in action_types
                 is_diagnostic_python = _cmd_has("python") and (_path_has("rollout") or _path_has("otel") or _path_has("session") or _path_has("json") or _cmd_has("codex_token"))
                 is_search = "code_search" in action_types or _cmd_has("rg") or _cmd_has("findstr") or _cmd_has("Select-String")
-                is_unittest = _cmd_has("unittest") or _cmd_has("pytest") or _cmd_has("test_")
+                # v2.15: only real test runner commands, not path-based "test_"
+                is_unittest = _cmd_has("python -m unittest") or _cmd_has("pytest") or _cmd_has("npm test") or _cmd_has("npm run test")
                 is_node_check = _cmd_has("node --check") or _cmd_has("node -c")
                 is_git = "git_operation" in action_types or _cmd_has("git")
                 is_file_read = "file_read" in action_types or "file_read_batch" in action_types
                 is_single_read = is_file_read and total_tool_count <= 2 and not all_batch_objects
                 is_multi_read = is_file_read and (total_tool_count > 2 or all_batch_objects)
-                is_diagnostic_cmd = bool(all_cmds) and not (is_file_read or is_search or is_unittest or is_node_check or is_git or is_apply_patch)
+                is_diagnostic_script = "diagnostic_script" in action_types
+                is_diagnostic_cmd = bool(all_cmds) and not (is_file_read or is_search or is_unittest or is_node_check or is_git or is_apply_patch or is_diagnostic_script)
 
-                # v2.9: check success for apply_patch
-                if is_plan_update:
-                    title = "Обновил план работы"
-                elif is_apply_patch:
-                    # Check if output has success flag
-                    all_success = True
-                    for gi in interval_groups:
-                        for te in tool_groups[gi].get("tool_events", []):
-                            if te.get("success") is False:
-                                all_success = False
-                                break
-                    if all_paths:
-                        if len(all_paths) == 1:
-                            fname = all_paths[0].split("\\")[-1].split("/")[-1]
-                            title = ("Изменил " + fname) if all_success else ("Пытался изменить " + fname)
-                        else:
-                            title = (f"Изменил {len(all_paths)} файлов") if all_success else (f"Пытался изменить {len(all_paths)} файлов")
+                # v2.15: build compound title for mixed action windows
+                # Normalize: diagnostic_python IS diagnostic_script
+                is_diagnostic_script = is_diagnostic_script or is_diagnostic_python
+
+                # v2.16: aggregate patch status
+                agg_patch_status = "unknown"
+                if patch_statuses_agg:
+                    if all(s == "success" for s in patch_statuses_agg):
+                        agg_patch_status = "success"
+                    elif all(s == "failed" for s in patch_statuses_agg):
+                        agg_patch_status = "failed"
                     else:
-                        title = "Изменил файлы" if all_success else "Пытался изменить файлы"
-                elif is_diagnostic_python:
-                    title = "Проверил live telemetry диагностическим Python-скриптом"
-                elif is_unittest:
-                    title = "Запустил тесты"
-                elif is_node_check:
-                    title = "Проверил JavaScript синтаксис"
-                elif is_search:
-                    title = "Искал по коду"
-                elif is_git:
-                    title = "Проверил изменения в Git"
-                elif is_multi_read:
-                    title = "Прочитал первичный контекст проекта"
+                        agg_patch_status = "mixed"
+
+                title_parts: list[str] = []
+                if is_plan_update:
+                    if has_visible_plan:
+                        title_parts.append("сформулировал план и обновил служебный план Codex")
+                    else:
+                        title_parts.append("обновил служебный план Codex")
+                if is_apply_patch:
+                    if agg_patch_status == "success":
+                        title_parts.append("применил patch")
+                    elif agg_patch_status == "failed":
+                        title_parts.append("попытался применить patch, но он не применился")
+                    elif agg_patch_status == "mixed":
+                        title_parts.append("применил patch (часть не применилась)")
+                    else:
+                        title_parts.append("выполнил patch-действие")
+                if is_search:
+                    title_parts.append("искал по коду")
+                if is_git:
+                    title_parts.append("проверил Git")
+                if is_unittest:
+                    title_parts.append("запустил тесты")
+                if is_node_check:
+                    title_parts.append("проверил синтаксис")
+                if is_diagnostic_script:
+                    title_parts.append("запустил диагностический скрипт")
+                if is_multi_read:
+                    title_parts.append("прочитал файлы")
                 elif is_single_read:
-                    title = "Прочитал файл"
-                elif is_diagnostic_cmd:
-                    title = "Выполнил диагностические команды"
-                else:
-                    # v2.9: unknown/service tool — show as service action, not diagnostic
+                    title_parts.append("прочитал файл")
+                if is_diagnostic_cmd:
+                    title_parts.append("выполнил диагностические команды")
+
+                if not title_parts:
+                    # Unknown/service tool
                     title = "Выполнил служебное действие"
+                elif len(title_parts) == 1:
+                    title = title_parts[0]
+                elif len(title_parts) == 2:
+                    title = title_parts[0] + " и " + title_parts[1]
+                else:
+                    title = ", ".join(title_parts[:-1]) + " и " + title_parts[-1]
+
+                # Capitalize first letter
+                if title:
+                    title = title[0].upper() + title[1:]
 
                 # Build objects label
                 objects_label = ""
@@ -2692,8 +3283,13 @@ def _build_live_steps(events: list[dict[str, Any]], thread_id: str) -> tuple[lis
             if "Сформулировал" in title and item.get("row_type") == "ai_call_only":
                 msg_len = len(assistant_text) if assistant_text else None
                 preview = assistant_text[:300] if assistant_text else ""
-                source = "step_assistant_answer" if assistant_text else "none"
-                source_conf = "medium_inferred" if assistant_text else "none"
+                # v2.15: check if raw agent_message / response_item exists
+                has_raw_message = any(
+                    it.get("category") == "model_request" or it.get("category") == "assistant_message"
+                    for it in (raw_items if raw_items else [])
+                )
+                source = "raw_agent_message" if has_raw_message else ("step_assistant_answer" if assistant_text else "none")
+                source_conf = "high/raw" if has_raw_message else ("medium_inferred" if assistant_text else "none")
                 cost_note = (
                     "Стоимость этого этапа — стоимость генерации видимого ответа. "
                     "В этом AI-call не было новых tool events: модель не читала файлы и не запускала команды. "
@@ -2712,6 +3308,14 @@ def _build_live_steps(events: list[dict[str, Any]], thread_id: str) -> tuple[lis
                     "has_new_tool_events": False,
                     "cost_explanation_ru": cost_note,
                 }
+                # v2.16: sync confidence — final_report with raw message is high/raw
+                if has_raw_message:
+                    item["recognition_confidence"] = "high"
+                    item["recognition_source"] = "raw_agent_message"
+                    item["confidence"] = "high"
+
+        # ── v2.14: why_expensive detection for lightweight actions with high New input ──
+        _add_why_expensive_blocks(human_timeline_items, request_usage_items, lte)
 
         # ── Technical AI calls table (separate from human timeline) ──
         technical_ai_calls: list[dict[str, Any]] = []
@@ -2736,36 +3340,78 @@ def _build_live_steps(events: list[dict[str, Any]], thread_id: str) -> tuple[lis
                 ),
             })
 
-        # ── v2.6: human_summary_ru — 1-3 sentence summary from timeline actions ──
+        # ── v2.15: human_summary_ru — built from real action_kinds, not title text ──
         all_timeline_titles = [it.get("display_title_ru", "") for it in human_timeline_items if it.get("display_title_ru")]
         all_timeline_titles_dedup = list(dict.fromkeys(all_timeline_titles))
 
+        # Collect real action kinds from timeline items
+        timeline_action_kinds: set[str] = set()
+        for it in human_timeline_items:
+            ak = it.get("action_kind", "")
+            if not ak:
+                title = it.get("display_title_ru", "")
+                row_type = it.get("row_type", "")
+                if row_type == "ai_call_only":
+                    amd = it.get("assistant_message_data") or {}
+                    if amd.get("is_final_report"):
+                        ak = "final_report"
+                    else:
+                        ak = "model_only"
+                elif "Прочитал" in title:
+                    ak = "file_read"
+                elif "Искал" in title:
+                    ak = "code_search"
+            if ak:
+                timeline_action_kinds.add(ak)
+
+        # v2.15: explicit test_run detection from internal action items
+        has_test = any(
+            it.get("action_category") == "test_run" or it.get("category") == "test_run"
+            for it in (raw_items if raw_items else [])
+        ) or counts.get("test_runs", 0) > 0
+
+        # ── v2.16: collect patch statuses from timeline items ──
+        any_patch_failed = False
+        any_patch_success = False
+        any_patch_present = False
+        for it in human_timeline_items:
+            apd = it.get("apply_patch_data")
+            if apd and apd.get("available"):
+                any_patch_present = True
+                if apd.get("any_failed") or apd.get("patch_status") == "failed":
+                    any_patch_failed = True
+                if apd.get("all_successful") or apd.get("patch_status") == "success":
+                    any_patch_success = True
+
         summary_parts: list[str] = []
-        has_read = any("Прочитал" in t for t in all_timeline_titles_dedup)
-        has_search = any("Искал" in t for t in all_timeline_titles_dedup)
-        has_diag = any("Проверил" in t or "Запустил тесты" in t or "Запустил диагностический" in t for t in all_timeline_titles_dedup)
-        has_write = any("внёс правки" in t or "Исправил" in t for t in all_timeline_titles_dedup)
-        has_test = any("Запустил тесты" in t for t in all_timeline_titles_dedup)
-        has_git = any("изменения в Git" in t for t in all_timeline_titles_dedup)
-        has_detail = any("подробный вывод" in t for t in all_timeline_titles_dedup)
-        has_analyze = any("Анализировал" in t or "Осмыслил" in t for t in all_timeline_titles_dedup)
+        has_read = "file_read" in timeline_action_kinds or counts.get("file_reads", 0) > 0
+        has_search = "code_search" in timeline_action_kinds or counts.get("code_search", 0) > 0
+        has_write = any_patch_present or "patch_action" in timeline_action_kinds or counts.get("file_writes", 0) > 0
+        has_git = "git_operation" in timeline_action_kinds or counts.get("git_operations", 0) > 0
+        has_diag = "diagnostic_script" in timeline_action_kinds or counts.get("shell_commands", 0) > 0
+        has_final = "final_report" in timeline_action_kinds
 
         if has_read:
             summary_parts.append("прочитал handoff и проектный контекст")
         if has_search:
             summary_parts.append("искал по коду")
-        if has_diag and not (has_read or has_write):
-            summary_parts.append("проверил live telemetry / raw rollout")
-        if has_write:
-            summary_parts.append("внёс правки в backend/frontend")
+        # v2.16: patch-aware summary
+        if any_patch_success and any_patch_failed:
+            summary_parts.append("часть правок внёс, часть не применилась")
+        elif any_patch_success:
+            summary_parts.append("внёс правки")
+        elif any_patch_failed:
+            summary_parts.append("пытался внести правки, но они не применились")
+        elif has_write:
+            summary_parts.append("внёс правки")
         if has_test:
             summary_parts.append("прогнал тесты")
         if has_git:
             summary_parts.append("проверил изменения в Git")
-        if has_detail:
-            summary_parts.append("сформулировал подробный вывод")
-        if has_analyze and not has_write:
-            summary_parts.append("проанализировал результаты")
+        if has_diag:
+            summary_parts.append("проверил live telemetry / raw rollout")
+        if has_final:
+            summary_parts.append("сформулировал итоговый отчёт")
 
         human_summary_text = ""
         if summary_parts:
@@ -3597,6 +4243,8 @@ class MonitorHandler(SimpleHTTPRequestHandler):
             return self._handle_sessions(params)
         if path == "/api/session":
             return self._handle_session(params)
+        if path == "/api/raw_step_download":
+            return self._handle_raw_step_download(params)
 
         return self._serve_static(path)
 
@@ -3614,6 +4262,8 @@ class MonitorHandler(SimpleHTTPRequestHandler):
             return self._handle_archive(body, params, archive=False)
         if path == "/api/audit_session":
             return self._handle_audit_session(body, params)
+        if path == "/api/raw_step_export":
+            return self._handle_raw_step_export(body, params)
         if path == "/api/shutdown":
             return self._handle_shutdown()
 
@@ -3967,6 +4617,141 @@ class MonitorHandler(SimpleHTTPRequestHandler):
             "session_id": session_id,
             "audit_timestamp": result["audit_timestamp"],
         })
+
+    def _handle_raw_step_export(self, body: dict[str, Any], params: dict[str, list[str]]) -> None:
+        """POST /api/raw_step_export — raw-first export for selected visible steps."""
+        config = load_config(self.server.config_path)
+        source_id = (
+            body.get("source_id") or body.get("project_id")
+            or (params.get("source_id", [""]) or [""])[0]
+            or (params.get("project_id", [""]) or [""])[0]
+        )
+        session_id = body.get("session_id") or (params.get("session_id", [""]) or [""])[0]
+        step_indices = body.get("step_indices") or []
+
+        if not source_id:
+            source_id = config.get("default_source_id", "")
+
+        source = find_source(config, source_id)
+        if not source:
+            self._error(404, f"source not found: {source_id}")
+            return
+        if not session_id:
+            self._error(400, "session_id is required")
+            return
+        if not step_indices or not isinstance(step_indices, list):
+            self._error(400, "step_indices (list of integers) is required")
+            return
+
+        kind = source.get("kind", "archive")
+        if kind == "live":
+            detail = build_live_session_detail(source, session_id)
+        else:
+            detail = build_archive_session_detail(source, session_id)
+
+        if detail is None:
+            self._error(404, f"session not found: {session_id}")
+            return
+
+        steps = detail.get("steps", [])
+        # Build lookup by index
+        steps_by_idx: dict[int, dict[str, Any]] = {}
+        for s in steps:
+            idx = s.get("step_index", s.get("index", 0))
+            if idx:
+                steps_by_idx[idx] = s
+
+        selected_steps = []
+        for si in step_indices:
+            if not isinstance(si, (int, float)):
+                continue
+            si_int = int(si)
+            if si_int in steps_by_idx:
+                selected_steps.append(steps_by_idx[si_int])
+
+        if not selected_steps:
+            self._error(404, "no selected steps found with given indices")
+            return
+
+        result = _build_raw_step_export(source, session_id, selected_steps)
+        self._ok(result)
+
+    def _handle_raw_step_download(self, params: dict[str, list[str]]) -> None:
+        """GET /api/raw_step_download — download raw bundle as .md file."""
+        config = load_config(self.server.config_path)
+        source_id = (params.get("source_id", [""]) or [""])[0]
+        session_id = (params.get("session_id", [""]) or [""])[0]
+        step_indices_str = (params.get("step_indices", [""]) or [""])[0]
+
+        if not source_id:
+            source_id = config.get("default_source_id", "")
+
+        source = find_source(config, source_id)
+        if not source:
+            self._error(404, f"source not found: {source_id}")
+            return
+        if not session_id:
+            self._error(400, "session_id is required")
+            return
+        if not step_indices_str:
+            self._error(400, "step_indices is required (comma-separated)")
+            return
+
+        # Parse step_indices from comma-separated string
+        step_indices: list[int] = []
+        for part in step_indices_str.split(","):
+            part = part.strip()
+            if part:
+                try:
+                    step_indices.append(int(part))
+                except ValueError:
+                    continue
+
+        if not step_indices:
+            self._error(400, "step_indices must contain valid integers")
+            return
+
+        kind = source.get("kind", "archive")
+        if kind == "live":
+            detail = build_live_session_detail(source, session_id)
+        else:
+            detail = build_archive_session_detail(source, session_id)
+
+        if detail is None:
+            self._error(404, f"session not found: {session_id}")
+            return
+
+        steps = detail.get("steps", [])
+        steps_by_idx: dict[int, dict[str, Any]] = {}
+        for s in steps:
+            idx = s.get("step_index", s.get("index", 0))
+            if idx:
+                steps_by_idx[idx] = s
+
+        selected_steps = []
+        for si in step_indices:
+            if si in steps_by_idx:
+                selected_steps.append(steps_by_idx[si])
+
+        if not selected_steps:
+            self._error(404, "no selected steps found")
+            return
+
+        result = _build_raw_step_export(source, session_id, selected_steps)
+        bundle_text = result.get("bundle_text", "")
+
+        # Return as file download
+        safe_sid = session_id[:12].replace("/", "_").replace("\\", "_")
+        step_ids = "_".join(str(si) for si in step_indices[:5])
+        filename = f"raw_steps_{safe_sid}_step_{step_ids}.md"
+        body = bundle_text.encode("utf-8")
+        self.send_response(200)
+        self.send_header("Content-Type", "text/markdown; charset=utf-8")
+        self.send_header("Content-Disposition", f'attachment; filename="{filename}"')
+        self.send_header("Content-Length", str(len(body)))
+        self.send_header("Access-Control-Allow-Origin", "*")
+        self.end_headers()
+        self.wfile.write(body)
 
     def _handle_shutdown(self) -> None:
         self._ok({"shutdown": True, "message": "Server will stop."})
