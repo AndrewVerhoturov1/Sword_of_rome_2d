@@ -198,6 +198,11 @@ class TestLiveChatFixture(unittest.TestCase):
             encoding="utf-8",
         )
 
+    def _append_session_index_entry(self, payload: dict[str, object]):
+        index_path = self.codex_dir / "session_index.jsonl"
+        with index_path.open("a", encoding="utf-8") as handle:
+            handle.write(json.dumps(payload, ensure_ascii=False) + "\n")
+
     def _write_rollout(self):
         rollout_dir = self.codex_dir / "sessions" / "2026" / "06" / "06"
         rollout_dir.mkdir(parents=True)
@@ -347,6 +352,69 @@ class TestLiveChatFixture(unittest.TestCase):
             encoding="utf-8",
         )
 
+    def _write_extra_rollout(
+        self,
+        *,
+        thread_id: str,
+        title: str,
+        date_dir: tuple[str, str, str],
+        file_name: str,
+        timestamp: str,
+        model: str = "gpt-5.5",
+    ):
+        year, month, day = date_dir
+        rollout_dir = self.codex_dir / "sessions" / year / month / day
+        rollout_dir.mkdir(parents=True, exist_ok=True)
+        rollout_path = rollout_dir / file_name
+        lines = [
+            {
+                "timestamp": timestamp,
+                "type": "session_meta",
+                "payload": {"id": thread_id, "cwd": "D:/Codex+Kilocode/projects/sword-of-rome-web"},
+            },
+            {
+                "timestamp": timestamp,
+                "type": "turn_context",
+                "payload": {"thread_id": thread_id, "model": model, "reasoning_effort": "medium"},
+            },
+            {
+                "timestamp": timestamp,
+                "type": "response_item",
+                "payload": {"role": "user", "turn_id": "turn-1", "content": [{"text": title}]},
+            },
+            {
+                "timestamp": timestamp,
+                "type": "response_item",
+                "payload": {"role": "assistant", "content": [{"text": "Ответ"}]},
+            },
+            {
+                "timestamp": timestamp,
+                "type": "event_msg",
+                "payload": {
+                    "type": "token_count",
+                    "info": {
+                        "last_token_usage": {
+                            "input_tokens": 100,
+                            "cached_input_tokens": 20,
+                            "output_tokens": 10,
+                            "reasoning_output_tokens": 1,
+                        },
+                        "total_token_usage": {
+                            "input_tokens": 100,
+                            "cached_input_tokens": 20,
+                            "output_tokens": 10,
+                            "reasoning_output_tokens": 1,
+                        },
+                    },
+                },
+            },
+        ]
+        rollout_path.write_text(
+            "\n".join(json.dumps(line, ensure_ascii=False) for line in lines) + "\n",
+            encoding="utf-8",
+        )
+        return rollout_path
+
     def test_discover_live_sessions_uses_rollout_summary(self):
         source = {"id": "codex_live_threads", "kind": "live", "codex_dir": str(self.codex_dir)}
         _server_mod._get_live_rollout_summaries(Path(self.codex_dir), allow_build=True)
@@ -357,14 +425,14 @@ class TestLiveChatFixture(unittest.TestCase):
         self.assertEqual(session["step_count"], 2)
         self.assertGreater(session["total_cost_usd"], 0)
 
-    def test_discover_live_sessions_without_warm_cache_still_lists_threads(self):
+    def test_discover_live_sessions_without_warm_cache_builds_rollout_fallback(self):
         source = {"id": "codex_live_threads", "kind": "live", "codex_dir": str(self.codex_dir)}
         sessions = _server_mod.discover_live_sessions(source)
         self.assertEqual(len(sessions), 1)
         session = sessions[0]
         self.assertEqual(session["title"], "Проверить телеметрию локально")
-        self.assertIsNone(session["step_count"])
-        self.assertIsNone(session["total_cost_usd"])
+        self.assertEqual(session["step_count"], 2)
+        self.assertGreater(session["total_cost_usd"], 0)
 
     def test_build_live_session_detail_skips_system_prompt_step(self):
         source = {"id": "codex_live_threads", "kind": "live", "codex_dir": str(self.codex_dir)}
@@ -402,6 +470,43 @@ class TestLiveChatFixture(unittest.TestCase):
         self.assertEqual(event["event_type"], "context_compacted")
         self.assertEqual(event["after_step_index"], 2)
         self.assertEqual(event["compaction_task_id"], "compact-turn-1")
+
+    def test_read_session_index_accepts_id_key(self):
+        self._append_session_index_entry(
+            {
+                "id": "thread-live-002",
+                "thread_name": "Новый чат только в index",
+                "updated_at": "2026-06-07T10:00:00Z",
+            }
+        )
+        entries = _server_mod._read_session_index(self.codex_dir / "session_index.jsonl")
+        self.assertIn("thread-live-002", entries)
+        self.assertEqual(entries["thread-live-002"]["thread_name"], "Новый чат только в index")
+
+    def test_discover_live_sessions_includes_raw_only_thread(self):
+        raw_only_id = "thread-live-raw-only"
+        self._append_session_index_entry(
+            {
+                "id": raw_only_id,
+                "thread_name": "Новый чат только в raw",
+                "updated_at": "2026-06-07T12:00:00Z",
+            }
+        )
+        self._write_extra_rollout(
+            thread_id=raw_only_id,
+            title="Новый чат только в raw",
+            date_dir=("2026", "06", "07"),
+            file_name="rollout-raw-only.jsonl",
+            timestamp="2026-06-07T12:00:00Z",
+        )
+        source = {"id": "codex_live_threads", "kind": "live", "codex_dir": str(self.codex_dir)}
+        sessions = _server_mod.discover_live_sessions(source)
+        ids = [session["id"] for session in sessions]
+        self.assertIn(raw_only_id, ids)
+        session = next(session for session in sessions if session["id"] == raw_only_id)
+        self.assertEqual(session["title"], "Новый чат только в raw")
+        self.assertEqual(session["date"], "2026-06-07T12:00:00Z")
+        self.assertEqual(session["step_count"], 1)
 
 
 class TestFrontendLiveSummaryContract(unittest.TestCase):
@@ -1036,6 +1141,399 @@ class TestAgentActivityBreakdownV22(unittest.TestCase):
                 self.assertIsNotNone(aa)
         finally:
             fixture.tearDown()
+
+
+class TestRawStepExport(unittest.TestCase):
+    """v2.14: Tests for raw-first step export via _build_raw_step_export."""
+
+    def _make_rollout_events(self, count: int, with_auth: bool = False) -> list[dict]:
+        """Build synthetic rollout events with known structure."""
+        events = []
+        for i in range(1, count + 1):
+            if i % 5 == 0:
+                # token_count (event_msg)
+                events.append({
+                    "type": "event_msg",
+                    "timestamp": f"2026-06-10T00:00:{i:02d}Z",
+                    "payload": {
+                        "info": {
+                            "total_token_usage": {
+                                "input_tokens": 10000 + i * 1000,
+                                "cached_input_tokens": 2000 + i * 200,
+                                "output_tokens": 500 + i * 50,
+                                "reasoning_tokens": 100 + i * 10,
+                            },
+                        },
+                    },
+                })
+            elif i % 5 == 2:
+                # function_call
+                call_id = f"call_{i}"
+                events.append({
+                    "type": "response_item",
+                    "timestamp": f"2026-06-10T00:00:{i:02d}Z",
+                    "payload": {
+                        "type": "function_call",
+                        "call_id": call_id,
+                        "name": "read_file" if i % 3 == 0 else "execute_command",
+                        "arguments": {"filePath": f"/test/file_{i}.ts"} if i % 3 == 0 else {"command": f"echo test_{i}"},
+                    },
+                })
+            elif i % 5 == 3:
+                # function_call_output
+                call_id = f"call_{i - 1}"
+                events.append({
+                    "type": "response_item",
+                    "timestamp": f"2026-06-10T00:00:{i:02d}Z",
+                    "payload": {
+                        "type": "function_call_output",
+                        "call_id": call_id,
+                        "output": f"Output for {call_id}",
+                    },
+                })
+            elif i % 5 == 1:
+                # assistant message
+                events.append({
+                    "type": "response_item",
+                    "timestamp": f"2026-06-10T00:00:{i:02d}Z",
+                    "payload": {
+                        "type": "message",
+                        "role": "assistant",
+                        "content": [{"type": "output_text", "text": f"Assistant message content for event {i}"}],
+                    },
+                })
+            else:
+                # unknown/generic event
+                events.append({
+                    "type": "unknown_event",
+                    "timestamp": f"2026-06-10T00:00:{i:02d}Z",
+                    "payload": {"data": f"unknown_{i}", "value": i},
+                })
+
+        if with_auth:
+            events.insert(2, {
+                "type": "environment_event",
+                "timestamp": "2026-06-10T00:00:02Z",
+                "payload": {
+                    "user.email": "test@example.com",
+                    "user.account_id": "acct_12345",
+                    "authorization": "Bearer secret-token-xxx",
+                    "api_key": "sk-1234567890",
+                    "host.name": "test-host",
+                },
+            })
+
+        return events
+
+    def _setup_rollout_fixture(self, events: list[dict]) -> tuple[Path, Path, str]:
+        """Create temp codex_dir with rollout JSONL, return (codex_dir, rollout_path, thread_id)."""
+        tmpdir = Path(tempfile.mkdtemp())
+        sessions_dir = tmpdir / "sessions" / "test-thread"
+        sessions_dir.mkdir(parents=True)
+        rollout_path = sessions_dir / "rollout-001.jsonl"
+        with rollout_path.open("w", encoding="utf-8") as f:
+            for ev in events:
+                f.write(json.dumps(ev, ensure_ascii=False) + "\n")
+
+        thread_id = "test-thread-001"
+        return tmpdir, rollout_path, thread_id
+
+    def test_single_step_raw_export(self):
+        """Raw export contains only events in event_range, order preserved, unknown included."""
+        events = self._make_rollout_events(20)
+        codex_dir, _, thread_id = self._setup_rollout_fixture(events)
+
+        try:
+            # Patch _get_live_rollout_summaries to return our fixture
+            original = _server_mod._get_live_rollout_summaries
+            def _mock_summaries(cd, **kw):
+                if str(cd) == str(codex_dir):
+                    return {thread_id: {"paths": [str(codex_dir / "sessions" / "test-thread" / "rollout-001.jsonl")]}}
+                return {}
+            _server_mod._get_live_rollout_summaries = _mock_summaries
+
+            try:
+                source = {"id": "test", "kind": "live", "codex_dir": str(codex_dir)}
+                step_detail = [{
+                    "index": 1,
+                    "event_range": {"start_event_index": 10, "end_event_index": 17},
+                }]
+                result = _server_mod._build_raw_step_export(source, thread_id, step_detail)
+
+                self.assertIn("bundle_text", result)
+                bundle = result["bundle_text"]
+                # Should have FILE markers
+                self.assertIn("===== FILE: step_1_raw.jsonl =====", bundle)
+                self.assertIn("===== FILE: step_1_README.md =====", bundle)
+
+                # Count JSONL lines in bundle (between markers)
+                parts = bundle.split("===== FILE: step_1_raw.jsonl =====")
+                self.assertEqual(len(parts), 2)
+                after_raw = parts[1].split("===== FILE: step_1_README.md =====")
+                raw_section = after_raw[0].strip()
+                raw_lines = [l for l in raw_section.split("\n") if l.strip()]
+                # Events 10..17 = 8 events
+                self.assertEqual(len(raw_lines), 8)
+
+                # First raw line should be event 10 (event_msg / token_count)
+                self.assertIn("event_msg", raw_lines[0] if raw_lines else "")
+
+                # Unknown events present (event 11, 16 are unknown by pattern)
+                unknown_count = sum(1 for l in raw_lines if "unknown_event" in l)
+                self.assertGreater(unknown_count, 0)
+
+                # README should have event range
+                readme_section = after_raw[1] if len(after_raw) > 1 else ""
+                self.assertIn("Event range: 10..17", readme_section)
+                self.assertIn("Raw events count: 8", readme_section)
+
+                # Steps metadata
+                self.assertEqual(len(result["steps"]), 1)
+                self.assertEqual(result["steps"][0]["step_index"], 1)
+                self.assertEqual(result["steps"][0]["raw_events_count"], 8)
+            finally:
+                _server_mod._get_live_rollout_summaries = original
+        finally:
+            import shutil
+            shutil.rmtree(str(codex_dir), ignore_errors=True)
+
+    def test_multiple_selected_steps(self):
+        """Bundle has separate raw + README for each selected step."""
+        events = self._make_rollout_events(30)
+        codex_dir, _, thread_id = self._setup_rollout_fixture(events)
+
+        original = _server_mod._get_live_rollout_summaries
+        def _mock_summaries(cd, **kw):
+            if str(cd) == str(codex_dir):
+                return {thread_id: {"paths": [str(codex_dir / "sessions" / "test-thread" / "rollout-001.jsonl")]}}
+            return {}
+        _server_mod._get_live_rollout_summaries = _mock_summaries
+
+        try:
+            source = {"id": "test", "kind": "live", "codex_dir": str(codex_dir)}
+            steps_detail = [
+                {"index": 1, "event_range": {"start_event_index": 5, "end_event_index": 10}},
+                {"index": 4, "event_range": {"start_event_index": 20, "end_event_index": 25}},
+            ]
+            result = _server_mod._build_raw_step_export(source, thread_id, steps_detail)
+
+            bundle = result["bundle_text"]
+            self.assertIn("===== FILE: step_1_raw.jsonl =====", bundle)
+            self.assertIn("===== FILE: step_1_README.md =====", bundle)
+            self.assertIn("===== FILE: step_4_raw.jsonl =====", bundle)
+            self.assertIn("===== FILE: step_4_README.md =====", bundle)
+
+            self.assertEqual(len(result["steps"]), 2)
+            self.assertEqual(result["steps"][0]["step_index"], 1)
+            self.assertEqual(result["steps"][1]["step_index"], 4)
+        finally:
+            _server_mod._get_live_rollout_summaries = original
+            import shutil
+            shutil.rmtree(str(codex_dir), ignore_errors=True)
+
+    def test_function_call_pairing_index(self):
+        """README tool call index lists paired output events."""
+        events = self._make_rollout_events(10)
+        codex_dir, _, thread_id = self._setup_rollout_fixture(events)
+
+        original = _server_mod._get_live_rollout_summaries
+        def _mock_summaries(cd, **kw):
+            if str(cd) == str(codex_dir):
+                return {thread_id: {"paths": [str(codex_dir / "sessions" / "test-thread" / "rollout-001.jsonl")]}}
+            return {}
+        _server_mod._get_live_rollout_summaries = _mock_summaries
+
+        try:
+            source = {"id": "test", "kind": "live", "codex_dir": str(codex_dir)}
+            step_detail = [{"index": 1, "event_range": {"start_event_index": 1, "end_event_index": 10}}]
+            result = _server_mod._build_raw_step_export(source, thread_id, step_detail)
+
+            bundle = result["bundle_text"]
+            # Readme should list function_call + function_call_output pairs
+            self.assertIn("function_call", bundle)
+            self.assertIn("function_call_output", bundle)
+
+            # Raw lines unchanged - should contain both call and output events
+            self.assertIn("===== FILE: step_1_raw.jsonl =====", bundle)
+            raw_after = bundle.split("===== FILE: step_1_raw.jsonl =====")[1]
+            raw_section = raw_after.split("===== FILE: step_1_README.md =====")[0]
+            self.assertIn("function_call", raw_section)
+            self.assertIn("function_call_output", raw_section)
+        finally:
+            _server_mod._get_live_rollout_summaries = original
+            import shutil
+            shutil.rmtree(str(codex_dir), ignore_errors=True)
+
+    def test_token_count_index(self):
+        """README lists AI calls from token_count events."""
+        events = self._make_rollout_events(15)
+        codex_dir, _, thread_id = self._setup_rollout_fixture(events)
+
+        original = _server_mod._get_live_rollout_summaries
+        def _mock_summaries(cd, **kw):
+            if str(cd) == str(codex_dir):
+                return {thread_id: {"paths": [str(codex_dir / "sessions" / "test-thread" / "rollout-001.jsonl")]}}
+            return {}
+        _server_mod._get_live_rollout_summaries = _mock_summaries
+
+        try:
+            source = {"id": "test", "kind": "live", "codex_dir": str(codex_dir)}
+            step_detail = [{"index": 1, "event_range": {"start_event_index": 1, "end_event_index": 15}}]
+            result = _server_mod._build_raw_step_export(source, thread_id, step_detail)
+
+            bundle = result["bundle_text"]
+            # v2.18: split into request-level + cumulative tables
+            self.assertIn("## AI calls / request-level usage (last_token_usage)", bundle)
+            self.assertIn("## Cumulative token checkpoints (total_token_usage)", bundle)
+            # Should have token usage values
+            self.assertIn("input", bundle.lower())
+            self.assertIn("cached", bundle.lower())
+            self.assertIn("total_input", bundle.lower())
+
+            # Steps metadata should report AI calls (total token_count events)
+            self.assertGreater(result["steps"][0]["ai_calls_count"], 0)
+        finally:
+            _server_mod._get_live_rollout_summaries = original
+            import shutil
+            shutil.rmtree(str(codex_dir), ignore_errors=True)
+
+    def test_redaction(self):
+        """Sensitive fields are redacted, event structure preserved."""
+        events = self._make_rollout_events(5, with_auth=True)
+        codex_dir, _, thread_id = self._setup_rollout_fixture(events)
+
+        original = _server_mod._get_live_rollout_summaries
+        def _mock_summaries(cd, **kw):
+            if str(cd) == str(codex_dir):
+                return {thread_id: {"paths": [str(codex_dir / "sessions" / "test-thread" / "rollout-001.jsonl")]}}
+            return {}
+        _server_mod._get_live_rollout_summaries = _mock_summaries
+
+        try:
+            source = {"id": "test", "kind": "live", "codex_dir": str(codex_dir)}
+            step_detail = [{"index": 1, "event_range": {"start_event_index": 1, "end_event_index": 6}}]
+            result = _server_mod._build_raw_step_export(source, thread_id, step_detail)
+
+            bundle = result["bundle_text"]
+
+            # Sensitive values should be redacted
+            self.assertNotIn("test@example.com", bundle)
+            self.assertNotIn("acct_12345", bundle)
+            self.assertNotIn("Bearer secret-token-xxx", bundle)
+            self.assertNotIn("sk-1234567890", bundle)
+            self.assertIn("[REDACTED]", bundle)
+
+            # Event structure preserved - the environment_event should still be present
+            self.assertIn("environment_event", bundle)
+
+            # README should say redaction enabled
+            self.assertIn("Redaction: enabled", bundle)
+
+            # host.name should NOT be redacted
+            self.assertIn("test-host", bundle)
+
+            # Redaction fields listed
+            self.assertIn("redacted_fields", result)
+            self.assertTrue(isinstance(result["redacted_fields"], list))
+        finally:
+            _server_mod._get_live_rollout_summaries = original
+            import shutil
+            shutil.rmtree(str(codex_dir), ignore_errors=True)
+
+
+class TestV217Redaction(unittest.TestCase):
+    """v2.17: Tests for path-aware redaction — usage preserved, secrets redacted."""
+
+    @staticmethod
+    def _redact(ev):
+        from scripts.codex_token_monitor_server import _redact_raw_event
+        return _redact_raw_event(ev)
+
+    # ── Usage preservation tests ──
+
+    def test_last_token_usage_survives(self):
+        """last_token_usage with numeric children survives redaction."""
+        ev = {"type": "event_msg", "payload": {"info": {
+            "last_token_usage": {"input_tokens": 25865, "cached_input_tokens": 23424, "output_tokens": 37}
+        }}}
+        result = self._redact(ev)
+        ltu = result["payload"]["info"]["last_token_usage"]
+        self.assertEqual(ltu["input_tokens"], 25865)
+        self.assertEqual(ltu["cached_input_tokens"], 23424)
+        self.assertEqual(ltu["output_tokens"], 37)
+
+    def test_total_token_usage_survives(self):
+        """total_token_usage with numeric children survives redaction."""
+        ev = {"type": "event_msg", "payload": {"info": {
+            "total_token_usage": {"input_tokens": 123456, "cached_input_tokens": 100000, "output_tokens": 1234}
+        }}}
+        result = self._redact(ev)
+        ttu = result["payload"]["info"]["total_token_usage"]
+        self.assertEqual(ttu["input_tokens"], 123456)
+        self.assertEqual(ttu["cached_input_tokens"], 100000)
+        self.assertEqual(ttu["output_tokens"], 1234)
+
+    def test_input_tokens_survive(self):
+        """Flat input_tokens / cached_input_tokens / output_tokens survive."""
+        ev = {"input_tokens": 50000, "cached_input_tokens": 40000, "output_tokens": 1000}
+        result = self._redact(ev)
+        self.assertEqual(result["input_tokens"], 50000)
+        self.assertEqual(result["cached_input_tokens"], 40000)
+        self.assertEqual(result["output_tokens"], 1000)
+
+    def test_reasoning_output_tokens_survive(self):
+        """reasoning_output_tokens survives redaction."""
+        ev = {"reasoning_output_tokens": 176}
+        result = self._redact(ev)
+        self.assertEqual(result["reasoning_output_tokens"], 176)
+
+    def test_token_count_variants_survive(self):
+        """input_token_count / cached_token_count / output_token_count survive."""
+        ev = {"input_token_count": 100, "cached_token_count": 80, "output_token_count": 20}
+        result = self._redact(ev)
+        self.assertEqual(result["input_token_count"], 100)
+        self.assertEqual(result["cached_token_count"], 80)
+        self.assertEqual(result["output_token_count"], 20)
+
+    def test_future_telemetry_suffix_survives(self):
+        """Future fields ending with _token_usage survive."""
+        ev = {"audio_token_usage": {"input_tokens": 500, "output_tokens": 100}}
+        result = self._redact(ev)
+        self.assertEqual(result["audio_token_usage"]["input_tokens"], 500)
+        self.assertEqual(result["audio_token_usage"]["output_tokens"], 100)
+
+    # ── Secret redaction tests ──
+
+    def test_auth_tokens_redacted(self):
+        """access_token, refresh_token, bearer_token are redacted."""
+        ev = {"access_token": "secret123", "refresh_token": "secret456", "bearer_token": "secret789"}
+        result = self._redact(ev)
+        self.assertEqual(result["access_token"], "[REDACTED]")
+        self.assertEqual(result["refresh_token"], "[REDACTED]")
+        self.assertEqual(result["bearer_token"], "[REDACTED]")
+
+    def test_personal_identifiers_redacted(self):
+        """user.email, user.account_id are redacted."""
+        ev = {"user": {"email": "test@example.com", "account_id": "U123"}}
+        result = self._redact(ev)
+        self.assertEqual(result["user"]["email"], "[REDACTED]")
+        self.assertEqual(result["user"]["account_id"], "[REDACTED]")
+
+    def test_secret_password_redacted(self):
+        """secret and password keys are redacted."""
+        ev = {"client_secret": "abc", "password": "xyz", "api_key": "key123"}
+        result = self._redact(ev)
+        self.assertEqual(result["client_secret"], "[REDACTED]")
+        self.assertEqual(result["password"], "[REDACTED]")
+        self.assertEqual(result["api_key"], "[REDACTED]")
+
+    def test_authorization_cookie_redacted(self):
+        """authorization and cookie headers redacted."""
+        ev = {"authorization": "Bearer tok", "cookie": "sess=abc", "proxy-authorization": "Basic x"}
+        result = self._redact(ev)
+        self.assertEqual(result["authorization"], "[REDACTED]")
+        self.assertEqual(result["cookie"], "[REDACTED]")
+        self.assertEqual(result["proxy-authorization"], "[REDACTED]")
 
 
 if __name__ == "__main__":

@@ -80,9 +80,22 @@ active follow-up
   - можно ли high-confidence связать AI calls с действиями;
   - что именно monitor сейчас показывает неправильно по смыслу.
 
+### P9: Freeform monitor adjustments by live user request
+
+- Status: planned.
+- Подготовить один свободный Kilo handoff на правки `Codex Token Monitor` внутри текущего подпроекта без узкого заранее зафиксированного implementation scope.
+- Сохранить только базовые границы:
+  - monitor/audit/docs/tests slice only;
+  - no source-split change;
+  - no new OTel;
+  - no live Codex config change;
+  - no writes into `C:/Users/andre/.codex/**`;
+  - no unrelated product refactor.
+- Человек будет вести run вживую и зафиксирует фактический результат потом отдельным отчётом.
+
 ## Active Plan Item
 
-`P8: Produce raw forensic dump for Step 1 before changing step-cost semantics`
+`P9: Freeform monitor adjustments by live user request`
 
 ## Runs
 
@@ -97,6 +110,7 @@ active follow-up
 | 007 | User overrode the previous next-step route: before honesty hardening, prepare one more Kilo implementation slice inside Audit itself for cumulative-after-step accounting, unattributed live usage, export honesty checks, and CLI/forensic-pack execution paths. |
 | 008 | Reviewed Kilo run 0050, accepted cumulative-accounting baseline, and retargeted the next slice to correct visible-step full-cost semantics: one visible step may contain many internal model requests, so request cost must be separated from full step cost. |
 | 009 | User overrode immediate implementation route again: before changing step-cost semantics, prepare a raw forensic dump slice for live session `019e9d3e...`, Step 1, event range `6-210`, to inspect actual telemetry evidence without UI/parser edits. |
+| 010 | User requested a deliberately freeform Kilo run for further monitor adjustments inside accepted tokken_dashboard boundaries, with exact implementation details to be shaped live during execution. |
 
 ## User Overrides
 
@@ -214,3 +228,14 @@ active follow-up
   - event range `6-210`
 - Purpose:
   - inspect real telemetry evidence around hidden AI calls, request usage items, file/path mentions, commands, tests, git, compaction, and confidence of linkage before any new cost-semantics implementation.
+
+## Review checkpoint - 2026-06-10 freeform monitor run preparation
+
+- User requested a deliberately non-strict Kilo handoff for further monitor adjustments.
+- This run is allowed to adapt during live collaboration, but must stay inside current tokken_dashboard boundaries:
+  - monitor/audit/docs/tests only;
+  - no source-split change;
+  - no new OTel;
+  - no live config change;
+  - no writes into `.codex`;
+  - no unrelated product refactor.

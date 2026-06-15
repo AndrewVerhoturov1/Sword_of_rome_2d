@@ -1,0 +1,96 @@
+# V2 Prompt — Raw Export Redaction Fix
+
+## V2 ID
+
+`V2-20260610-142500`
+
+## Инструкция внешнему чату
+
+Ты — внешний senior reviewer. Твоя задача — дать bounded technical advice по архитектурному исправлению redaction в Codex Token Monitor raw export.
+
+**Прочитай V2 request report первым:** [V2 Request](https://raw.githubusercontent.com/AndrewVerhoturov1/Sword_of_rome_2d/0edf559/.ai/external_reviews/requests/V2-20260610-142500_request.md)
+
+## Central rules
+
+Обязательные правила для внешнего чата: https://raw.githubusercontent.com/AndrewVerhoturov1/ai-workflow-core/main/external_chat_rules.md
+
+Project navigation (можно переходить по ссылкам): https://raw.githubusercontent.com/AndrewVerhoturov1/ai-workflow-core/main/repo_navigation.md
+
+## Snapshot
+
+- **Review branch:** `review/v2/20260610-142500-raw-export-redaction-fix`
+- **Base commit:** `66d6d50`
+- **Snapshot commit:** `0edf559`
+- **Compare:** https://github.com/AndrewVerhoturov1/Sword_of_rome_2d/compare/66d6d50...0edf559
+
+## Ключевой файл для review
+
+**WIP snapshot (snapshot commit):**
+https://raw.githubusercontent.com/AndrewVerhoturov1/Sword_of_rome_2d/0edf559/scripts/codex_token_monitor_server.py
+
+**Base (для сравнения):**
+https://raw.githubusercontent.com/AndrewVerhoturov1/Sword_of_rome_2d/66d6d50/scripts/codex_token_monitor_server.py
+
+**Конкретные строки с проблемой в snapshot:**
+- `_RAW_REDACT_KEYS` и `_redact_raw_event()` — строки 749-772
+- `_build_raw_step_export()` — строки 775-855+
+- `_handle_raw_step_export()` (POST endpoint) — строки 4620+
+
+## Дополнительные файлы (WIP snapshot)
+
+- Тесты: https://raw.githubusercontent.com/AndrewVerhoturov1/Sword_of_rome_2d/0edf559/tests/test_codex_token_monitor_server.py
+- Классификация: https://raw.githubusercontent.com/AndrewVerhoturov1/Sword_of_rome_2d/0edf559/tests/test_classification_rules.py
+- UI: https://raw.githubusercontent.com/AndrewVerhoturov1/Sword_of_rome_2d/0edf559/static/codex-token-monitor/app.js
+
+## Root cause (уже идентифицирован локально)
+
+В [`_redact_raw_event()`](https://raw.githubusercontent.com/AndrewVerhoturov1/Sword_of_rome_2d/0edf559/scripts/codex_token_monitor_server.py) на строках 763-764:
+
+```python
+if k.lower() in _RAW_REDACT_KEYS or any(
+    sk in k.lower() for sk in ("secret", "password", "token")
+):
+```
+
+Подстрока `"token"` матчит ключи: `input_tokens`, `cached_input_tokens`, `output_tokens`, `reasoning_output_tokens`, `total_tokens`, `cached_tokens`, `last_token_usage`, `total_token_usage`.
+
+Все эти usage-числа заменяются на `[REDACTED]`, что делает raw export непригодным для независимого аудита стоимости.
+
+## Вопросы
+
+1. **Root cause confirmation:** Это единственное место, где usage-числа теряются? Или есть другие места в коде?
+
+2. **Architecture:** Как правильно структурировать whitelist/blacklist для рекурсивного redactor-а?
+   - (A) Whitelist по паттерну: не редактировать ключи содержащие `_tokens`, `_token_usage`, `_token_count`
+   - (B) Blacklist: сузить `"token"` до `"api_token"`, `"auth_token"`, `"bearer_token"`, `"refresh_token"`
+   - (C) Type-based: редактировать только строки, числа и объекты не трогать
+   - (D) Комбинированный подход или иной вариант?
+
+3. **Future-proofing:** Как сделать чтобы новые usage-поля в будущих версиях Codex rollout не ломались redaction-ом? Whitelist-by-pattern (`*_tokens`, `*_token_usage`) надёжнее или есть риск false-negative для будущих auth-полей с похожими именами?
+
+4. **Event index:** Нужно ли оборачивать каждый raw event в `{event_index, raw: {...}}` или добавить `event_index` как поле внутрь существующего объекта? Какой подход правильнее для machine-readable audit?
+
+5. **Usage source tracking:** Где в human timeline/details лучше всего добавить ссылку `Usage raw event #N` и поле `Usage source: last_token_usage / total_token_usage_fallback / missing`? В `linked_ai_call`, в `details`, или в отдельном поле?
+
+## Ожидаемый ответ
+
+Bounded technical advice с явным разделением:
+- **Confirmed from snapshot** — что видно в коде
+- **Hypothesis** — что вероятно, но не подтверждено
+- **Not available / not verified** — что нельзя проверить без runtime
+- **Recommended correction path** — конкретный подход с обоснованием
+- **Risks** — что может пойти не так
+
+## Границы
+
+- Не пиши готовый patch
+- Не утверждай что видел runtime, tests, shell или git status
+- Не предлагай решения требующие repo authority
+
+## Обязательные секции ответа
+
+- `External Question ID`: V2-20260610-142500
+- `Context Readback` — что прочитал
+- `Provider/Model`
+- `Answer` (со структурой Confirmed / Hypothesis / Not verified)
+- `Candidate Navigation Entry`
